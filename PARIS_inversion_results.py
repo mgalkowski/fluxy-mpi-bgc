@@ -126,6 +126,21 @@ plt.rc('font', **font)
 def read_flux(data_dir,species,models,model_filenames):
     """
     Extracts flux and country flux timeseries from each model.
+    
+    Args:
+        data_dir (str): 
+            Path to top data directory.
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        models (list of str): 
+            Keys specifying model names, e.g. ['intem','elris']
+        model_filenames (dict of str): 
+            Paired models and filenames, e.g. {'intem':'InTEM_NAME_EUROPE',
+                                               'elris':'ELRIS_NAME_EUROPE_baselinetest'}
+                                       
+    Returns:
+        ds_all (dictionary of datasets): 
+            xarray dataset read directly from each model's flux netCDF.
     """
     
     ds_all = {}
@@ -153,11 +168,26 @@ def slice_flux(ds_all,start_date,end_date,
     """
     Slices the flux datasets to within given time limits and 
     scales fluxes into Tg/Gg based on the species.
+    
+    Args:
+        ds_all (dictionary of datasets): 
+            xarray datasets read directly from each model's flux netCDF.
+        start_date (str): 
+            Date to slice data from, e.g. '2021-01-01'
+        end_date (str): 
+            Date to slice data to, e.g. '2022-01-01' would include all
+            data up to 2021-12-31.
+        scale_units (bool): 
+            If True, scales country fluxes to Tg or Gy per year.
+        species (str):
+            Gas species, used to choose scaling units, e.g. 'ch4'.
+    Returns:
+        ds_all (dictionary of datasets):
+            xarray datasets, scaled and sliced between chosen dates.
+    
     """
     
-    #skip_var = ['fluxapriori','fluxapost','qfluxapriori','qfluxapost',
-    #            'countrynames','region_definitions'] #variables that aren't scaled by units
-    
+    #variables that aren't scaled by units
     skip_var = ['flux_total_prior','flux_total_posterior','percentile_flux_total_prior',
                 'percentile_flux_total_posterior','countryname','country',
                 'country_fraction','outer_region_fraction']
@@ -184,6 +214,7 @@ def slice_flux(ds_all,start_date,end_date,
                 for v in var_names:
                     ds_all[m][v].values = ds_all[m][v].values/units_scaling[m0][species]
                     
+            # fix for flux scaling issue in ELRIS - to be removed once fixed in .nc files
             if 'elris' in m:
                 for v in elris_scale:
                     ds_all[m][v].values = ds_all[m][v].values/1e12                    
@@ -195,6 +226,20 @@ def slice_flux(ds_all,start_date,end_date,
 def read_mf(data_dir,species,models,model_filenames):
     """
     Extracts mole fraction timeseries data from each model.
+    Args:
+        data_dir (str): 
+            Path to top data directory.
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        models (list of str): 
+            Keys specifying model names, e.g. ['intem','elris']
+        model_filenames (dict of str): 
+            Paired models and filenames, e.g. {'intem':'InTEM_NAME_EUROPE',
+                                               'elris':'ELRIS_NAME_EUROPE_baselinetest'}
+                                       
+    Returns:
+        ds_all (dictionary of datasets): 
+            xarray dataset read directly from each model's mole fraction netCDF.
     """
 
     ds_all = {}
@@ -221,7 +266,34 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
              species=None):
     """
     Slices down the mole fraction timeseries data, to within the
-    given time limits, and/or for the chosen site."""
+    given time limits, and/or for the chosen site.
+    
+    Args:
+        ds_all (dictionary of datasets): 
+            xarray datasets read directly from each model's flux netCDF.
+        start_date (str): 
+            Date to slice data from, e.g. '2021-01-01'
+        end_date (str): 
+            Date to slice data to, e.g. '2022-01-01' would include all
+            data up to 2021-12-31.
+        site (str):
+            Obs site to select data from, e.g. 'MHD'.
+        baseline_only (bool):
+            If True, removes timestamps that are not defined as baseline,
+            using InTEM's definition of baseline.
+        baseline_site (str):
+            Site used to define baseline at, options for 'MHD', 'JFJ', or 'CMN'.
+        data_dir (str): 
+            Path to top data directory, used to read baseline info files.
+        scale_units (bool): 
+            If True, scales country fluxes to Tg or Gy per year.
+        species (str):
+            Gas species, used to choose scaling units, e.g. 'ch4'.
+    Returns:
+        ds_all (dictionary of datasets):
+            xarray datasets, scaled and sliced between chosen dates and for 
+            chosen site.
+    """
     
     if baseline_only == True:
         with xr.open_dataset(os.path.join(data_dir,f'intem_baseline_timestamps/{baseline_site}_InTEM_baseline_timestamps.nc')) as f:
@@ -296,6 +368,16 @@ def stats_mf(ds_all):
     Calculates the Pearson correlation coefficent and normalised root
     mean square error, of the fit between the posterior mean mf and the 
     observed mole fraction.
+    
+    Args:
+        ds_all (dictionary of datasets):
+            xarray datasets from slice_mf(), sliced between chosen dates
+            but still containing all sites.
+    Returns:
+        pearson (dictionary of dictionaries):
+            Pearson correlation coeffiecient, for each site and for each model.
+        nrmse (dictionary of dictionaries):
+            Normalised root mean square error, for each site and for each model.
     """
     
     sites_all = np.array([])
@@ -358,7 +440,31 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
     Timeseries plots of observations and modelled mole fractions or 
     baselines from each model.
     Also includes a histogram for each model, showing the difference between
-    the prior and posterior fit to the observations."""
+    the prior and posterior fit to the observations.
+    
+    Args:
+        ds_all (dictionary of datasets):
+            xarray datasets, scaled and sliced between chosen dates and for 
+            chosen site.
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        site (str):
+            Obs site, e.g. 'MHD'.
+        model_labels (dict of str):
+            Models and corresponding strings used to describe the model in the 
+            plot legend.
+        model_colors (dict of str):
+            Models and corresponding colours used to plot the model.
+        include (list of str):
+            Variables included in the plot, options for 'Yobs', 'Yapriori',
+            'Yapost', 'YaprioriBC', 'YapostBC'.
+        diff_include (list of str):
+            Variables included in the 'obs - variable' difference histogram, 
+            same options as above.
+    Returns:
+        fig (figure): 
+            A timeseries and histogram plot for each model included.
+    """
         
     var_labels = {'Yapriori':'prior mf',
                   'Yapost':'posterior mean mf',
@@ -469,6 +575,35 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                                model_colors,
                                include=['Yapost'],
                                diff_include=['Yapost']):
+    """
+    Timeseries plots of observations and modelled mole fractions or 
+    baselines from each model, all on one plot.
+    Also includes a histogram for each model, showing the difference between
+    the prior and posterior fit to the observations.
+    
+    Args:
+        ds_all (dictionary of datasets):
+            xarray datasets, scaled and sliced between chosen dates and for 
+            chosen site.
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        site (str):
+            Obs site, e.g. 'MHD'.
+        model_labels (dict of str):
+            Models and corresponding strings used to describe the model in the 
+            plot legend.
+        model_colors (dict of str):
+            Models and corresponding colours used to plot the model.
+        include (list of str):
+            Variables included in the plot, options for 'Yobs', 'Yapriori',
+            'Yapost', 'YaprioriBC', 'YapostBC'.
+        diff_include (list of str):
+            Variables included in the 'obs - variable' difference histogram, 
+            same options as above.
+    Returns:
+        fig (figure): 
+            One timeseries and histogram plot containing data from all models.
+    """
 
     var_labels = {'Yobs':'observed mf',
                   'Yapriori':'prior mf',
@@ -574,6 +709,37 @@ def plot_obs_diff(ds_all,species,site,model_labels,
                                model_colors,
                                include=['Yapost'],
                                diff_include=['Yapost']):
+    """
+    Plot of the absolute difference between variables from two models.
+    Also includes a histogram for each model, showing the difference between
+    the 'include' variables fit to the observations.
+    
+    If more than two models are included in ds_all, only the first two
+    models will be plotted.
+    
+    Args:
+        ds_all (dictionary of datasets):
+            xarray datasets, scaled and sliced between chosen dates and for 
+            chosen site.
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        site (str):
+            Obs site, e.g. 'MHD'.
+        model_labels (dict of str):
+            Models and corresponding strings used to describe the model in the 
+            plot legend.
+        model_colors (dict of str):
+            Models and corresponding colours used to plot the model.
+        include (list of str):
+            Variables included in the plot, options for 'Yobs', 'Yapriori',
+            'Yapost', 'YaprioriBC', 'YapostBC'.
+        diff_include (list of str):
+            Variables included in the 'obs - variable' difference histogram, 
+            same options as above.
+    Returns:
+        fig (figure): 
+            A timeseries and histogram plot for each model included.
+    """
 
     var_labels = {'Yapriori':'prior mf',
                   'Yapost':'posterior mean mf',
@@ -669,6 +835,24 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
                   start_date=None,end_date=None):
     """
     Plots fit statistics for all sites, for all models.
+    
+    Args:
+        pearson (dictionary of dictionaries):
+            Pearson correlation coeffiecient, for each site and for each model.
+        nrmse (dictionary of dictionaries):
+            Normalised root mean square error, for each site and for each model.
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        model_labels (dict of str):
+            Models and corresponding strings used to describe the model in the 
+            plot legend.
+        model_colors (dict of str):
+            Models and corresponding colours used to plot the model.
+        start_date (str) and end_date (str):
+            Dates used to title the plot. 
+    Returns:
+        fig (figure): 
+            Two plots showing each model's fit statistics, for each site.
     """
     
     x_val = []
@@ -731,6 +915,29 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
     areas in plot_regions.
+    
+    Args:
+        ds_all (dictionary of datasets):
+            xarray datasets of fluxes, scaled and sliced between 
+            chosen dates.
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        plot_regions (list of str):
+            Country or regions to plot, e.g. ['UNITED KINGDOM','SWITZERLAND']
+        model_labels (dict of str):
+            Models and corresponding strings used to describe the model in the 
+            plot legend.
+        model_colors (dict of str):
+            Models and corresponding colours used to plot the model.
+        plot_inventory (bool):
+            If True, plots inventory flux estimates as bars in each plot.
+        data_dir (str): 
+            Path to top data directory, used to read inventory data files.
+        fix_y_axes (bool):
+            If True, uses a consistent y axis for all plots.
+    Returns:
+        fig (figure): 
+            A plot per country/region.
     """
     
     if plot_inventory == True:
@@ -859,6 +1066,26 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
+    
+    If ds_all contains mulitple time periods for each model, the average 
+    across all times will be plotted.
+    
+    Args:
+        ds_all (dictionary of datasets):
+            xarray datasets of fluxes, scaled and sliced between 
+            chosen dates.
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        plot_area (str):
+            Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
+            'NWEU','CWEU','EUROPE'.
+        model_labels (dict of str):
+            Models and corresponding strings used to describe the model in the 
+            plot legend.
+    Returns:
+        fig (figure): 
+            A plot of spatial flux posterior and prior mean/mode and a plot 
+            of the absolute difference between these, for each model.
     """
     
     cmap = 'viridis' #'Blues'
@@ -882,7 +1109,8 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
                     'NWEU':[-11,11,45,62],
-                    'CWEU':[-12,27,37,66]}
+                    'CWEU':[-12,27,37,66],
+                    'EUROPE':[-98,40,10,80]}
 
     fig,ax = plt.subplots(3,n_cols,constrained_layout=True,figsize=(n_cols*5,9),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
@@ -967,6 +1195,28 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels):
     """
     Plots posterior fluxes and the difference between these
     for two models.
+    Plots posterior and prior fluxes and the difference between these
+    for all models.
+    
+    If ds_all contains more than two models, only the first two will
+    be plotted.
+    
+    Args:
+        ds_all (dictionary of datasets):
+            xarray datasets of fluxes, scaled and sliced between 
+            chosen dates.
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        plot_area (str):
+            Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
+            'NWEU','CWEU'.
+        model_labels (dict of str):
+            Models and corresponding strings used to describe the model in the 
+            plot legend.
+    Returns:
+        fig (figure): 
+            A plot of spatial flux posterior from two models a plot 
+            of the absolute difference between these.
     """
     
     cmap = 'viridis' #'Blues'
