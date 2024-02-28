@@ -550,8 +550,12 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
         ax.set_title(model_labels[m])
         ax.set_ylabel(f'{species_print[species]} {site} ({mf_units_print[species]})')
         leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
-        for l in leg.legend_handles:
-            l.set_linewidth(3.0)
+        try:
+            for l in leg.legend_handles:
+                l.set_linewidth(3.0)
+        except:
+            for l in leg.legendHandles:
+                l.set_linewidth(3.0)
         
         if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
             ax.xaxis.set_minor_locator(MonthLocator())
@@ -685,8 +689,12 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
     ax.set_title(model_labels[m])
     ax.set_ylabel(f'{species_print[species]} {site} ({mf_units_print[species]})')
     leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
-    for l in leg.legend_handles:
-        l.set_linewidth(3.0)
+    try:
+        for l in leg.legend_handles:
+            l.set_linewidth(3.0)
+    except:
+        for l in leg.legendHandles:
+            l.set_linewidth(3.0)
     
     if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
         ax.xaxis.set_minor_locator(MonthLocator())
@@ -810,8 +818,12 @@ def plot_obs_diff(ds_all,species,site,model_labels,
     ax.set_title(model_labels[m])
     ax.set_ylabel(f'{species_print[species]} {site} ({mf_units_print[species]})')
     leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
-    for l in leg.legend_handles:
-        l.set_linewidth(3.0)
+    try:
+        for l in leg.legend_handles:
+            l.set_linewidth(3.0)
+    except:
+        for l in leg.legendHandles:
+            l.set_linewidth(3.0)
     
     if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
         ax.xaxis.set_minor_locator(MonthLocator())
@@ -898,8 +910,12 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
     #ax[2].set_ylabel('Standard\ndeviation')
 
     leg = ax[0].legend(ncol=2,borderpad=.2,columnspacing=1.0)
-    for l in leg.legend_handles:
-        l.set_linewidth(1.0)
+    try:
+        for l in leg.legend_handles:
+            l.set_linewidth(3.0)
+    except:
+        for l in leg.legendHandles:
+            l.set_linewidth(3.0)
 
     fig.suptitle((f'{species_print[species]} Modelled mole fraction statistical fit to obs')+
                  f' \n{start_date} to {end_date}')
@@ -941,7 +957,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
     """
     
     if plot_inventory == True:
-        with xr.open_dataset(os.path.join(data_dir,f'UNFCCC_inventory_{model_species["intem"][species]}.nc')) as f:
+        with xr.open_dataset(os.path.join(data_dir,'inventory',f'UNFCCC_inventory_{model_species["intem"][species]}.nc')) as f:
             inv_ds = f
 
     a,b = 0,0
@@ -1031,10 +1047,10 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
         '''
         leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
         if plot_inventory == True:
-            for l in leg.legend_handles[:-1]:
+            for l in leg.legendHandles[:-1]:
                 l.set_linewidth(3.0)
         else:
-            for l in leg.legend_handles:
+            for l in leg.legendHandles:
                 l.set_linewidth(3.0)
                 
         ax[a,b].set_title(f'{country}')
