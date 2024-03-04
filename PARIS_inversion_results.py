@@ -1003,21 +1003,21 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                 ds_all[m]['country_flux_total_posterior'].values[:,country_index],
                             label=model_labels[m],color=model_colors[m][0])
                 
+                ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+                            ds_all[m]['country_flux_total_prior'].values[:,country_index],
+                            label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
+                
+                max_cf.append(ax[a,b].get_ylim()[1])
+                
                 ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
                                     ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index],
                                     ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index],
                                     alpha=0.3,color=model_colors[m][0])
                 
-                ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
-                            ds_all[m]['country_flux_total_prior'].values[:,country_index],
-                            label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
-                
                 ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
                                     ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index],
                                     ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index],
                                     alpha=0.1,color=model_colors[m][0])
-                
-                max_cf.append(ax[a,b].get_ylim()[1])
                 
                 min_x.append(np.min(ds_all[m].time.values).astype('datetime64[M]'))
                 max_x.append(np.max(ds_all[m].time.values).astype('datetime64[M]'))
@@ -1070,8 +1070,12 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
         for b in range(n_cols):
             if fix_y_axes == True:
                 ax[a,b].set_ylim([0,(np.max(max_cf)+(0.1*np.max(max_cf)))])  
-            ax[a,b].set_ylim(bottom=0)  
+            elif type(fix_y_axes) == list:
+                ax[a,b].set_ylim(fix_y_axes)
             
+            elif fix_y_axes == False:
+                ax[a,b].set_ylim(bottom=0)  
+
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim parameter')
     
     return fig
