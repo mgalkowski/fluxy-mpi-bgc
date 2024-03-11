@@ -971,7 +971,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
     min_x = []
     max_x = []
 
-    n_cols = int(len(plot_regions)/2)
+    n_cols = math.ceil(len(plot_regions)/2)
     if n_cols <= 1:
         n_cols = 2
         
