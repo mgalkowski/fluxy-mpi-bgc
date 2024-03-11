@@ -37,7 +37,7 @@ units_scaling = {'intem':{'ch4':1e9,
                         'sf6':1e6,
                         'n2o':1e6},
                 'rhime':{'ch4':1e12,
-                        'hfc134a':1e9,
+                        'hfc134a':1e6,
                         'pfc218':1e9,
                         'sf6':1e9,
                         'n2o':1e9},
@@ -103,7 +103,7 @@ model_species = {'intem':{'ch4':'ch4',
                           'n2o':'N2O'}}
 
 model_q_indices = {'intem':[0,1],
-                   'rhime':[1,2],
+                   'rhime':[0,1],
                    'elris':[0,1]}
 
 countries_all = ['IRELAND', 'UK', 'FRANCE', 'NETHERLANDS', 'GERMANY', 'DENMARK',
