@@ -114,9 +114,9 @@ countrycodes_all = ['IRL', 'GBR', 'FRA', 'NLD','DEU','DNK','CHE','AUT','ITA',
 
 countrycodes_dict = dict(zip(countries_all,countrycodes_all))
 
-annotate_coords = {0:[0.1,0.80],
-                   1:[0.1,0.60],
-                   2:[0.1,0.40]}
+annotate_coords = {0:[0.7,0.80],
+                   1:[0.7,0.60],
+                   2:[0.7,0.40]}
 
 font = {'size':12}
 plt.rc('font', **font)
@@ -261,7 +261,7 @@ def read_mf(data_dir,species,models,model_filenames):
 #####################################################################
 
 def slice_mf(ds_all,start_date=None,end_date=None,site=None,
-             baseline_only=False,baseline_site=None,data_dir=None,
+             baseline_site=None,data_dir=None,
              scale_units=False,
              species=None):
     """
@@ -278,11 +278,9 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
             data up to 2021-12-31.
         site (str):
             Obs site to select data from, e.g. 'MHD'.
-        baseline_only (bool):
-            If True, removes timestamps that are not defined as baseline,
-            using InTEM's definition of baseline.
         baseline_site (str):
             Site used to define baseline at, options for 'MHD', 'JFJ', or 'CMN'.
+            If None, does not mask timeseries by baseline times.
         data_dir (str): 
             Path to top data directory, used to read baseline info files.
         scale_units (bool): 
@@ -295,7 +293,7 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
             chosen site.
     """
     
-    if baseline_only == True:
+    if baseline_site is not None:
         with xr.open_dataset(os.path.join(data_dir,f'intem_baseline_timestamps/{baseline_site}_InTEM_baseline_timestamps.nc')) as f:
             baseline = f.sel(time=slice(start_date,end_date))
     
@@ -333,7 +331,7 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
         if 'elris' in m:
             ds_all[m]['time'] = ds_all[m]['time'] - np.timedelta64(offset,'h')/2
       
-        if baseline_only == True:
+        if baseline_site is not None:
             print('Masking timeseries to only include baseline times')
             
             try:
@@ -469,11 +467,17 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
     var_labels = {'Yapriori':'prior mf',
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
-                  'YapostBC':'posterior mean baseline'}
+                  'YapostBC':'posterior mean baseline',
+                  'Ybias':'posterior bias',
+                  'YaprioriOUTER':'prior outer region mf',
+                  'YapostOUTER':'posterior outer region mf',}
     var_colors = {'Yapriori':1,
                   'Yapost':0,
                   'YaprioriBC':1,
-                  'YapostBC':0}
+                  'YapostBC':0,
+                  'Ybias':0,
+                  'YaprioriOUTER':1,
+                  'YapostOUTER':0,}
         
     models = ds_all.keys()
     min_mf = []
@@ -531,8 +535,8 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
         for i,var in enumerate(diff_include):
             
             diff = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            diff_mean = np.round(np.nanmean(diff),2)
-            diff_sd = np.round(np.nanstd(diff),2)
+            diff_mean = np.round(np.nanmean(diff),3)
+            diff_sd = np.round(np.nanstd(diff),3)
             
             a,b,c = ax2.hist(diff,bins=30,color=model_colors[m][var_colors[var]],density=1)
             ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
@@ -609,16 +613,16 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
             One timeseries and histogram plot containing data from all models.
     """
 
-    var_labels = {'Yobs':'observed mf',
-                  'Yapriori':'prior mf',
+    var_labels = {'Yapriori':'prior mf',
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
-                  'YapostBC':'posterior mean baseline'}
-    var_colors = {'Yobs':0,
-                  'Yapriori':1,
+                  'YapostBC':'posterior mean baseline',
+                  'Ybias':'posterior bias'}
+    var_colors = {'Yapriori':1,
                   'Yapost':0,
                   'YaprioriBC':1,
-                  'YapostBC':0}
+                  'YapostBC':0,
+                  'Ybias':0}
         
     models = ds_all.keys()
     min_mf = []
@@ -670,8 +674,8 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
         for v,var in enumerate(diff_include):
             
             diff = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            diff_mean = np.round(np.nanmean(diff),2)
-            diff_sd = np.round(np.nanstd(diff),2)
+            diff_mean = np.round(np.nanmean(diff),3)
+            diff_sd = np.round(np.nanstd(diff),3)
             
             a,b,c = ax2.hist(diff,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
             ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
@@ -752,11 +756,13 @@ def plot_obs_diff(ds_all,species,site,model_labels,
     var_labels = {'Yapriori':'prior mf',
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
-                  'YapostBC':'posterior mean baseline'}
+                  'YapostBC':'posterior mean baseline',
+                  'Ybias':'posterior bias'}
     var_colors = {'Yapriori':1,
                   'Yapost':0,
                   'YaprioriBC':1,
-                  'YapostBC':0}
+                  'YapostBC':0,
+                  'Ybias':0}
         
     models = list(ds_all.keys())
     min_mf = []
@@ -799,8 +805,8 @@ def plot_obs_diff(ds_all,species,site,model_labels,
         for v,var in enumerate(diff_include):
             
             diff = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            diff_mean = np.round(np.nanmean(diff),2)
-            diff_sd = np.round(np.nanstd(diff),2)
+            diff_mean = np.round(np.nanmean(diff),3)
+            diff_sd = np.round(np.nanstd(diff),3)
             
             a,b,c = ax2.hist(diff,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
             ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
