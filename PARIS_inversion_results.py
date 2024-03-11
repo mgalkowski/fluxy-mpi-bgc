@@ -106,17 +106,31 @@ model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
                    'elris':[0,1]}
 
-countries_all = ['IRELAND', 'UK', 'FRANCE', 'NETHERLANDS', 'GERMANY', 'DENMARK',
-                 'SWITZERLAND', 'AUSTRIA', 'ITALY', 'BELUX', 'BENELUX', 'NW_EU',
-                 'NW_EU2', 'NW_EU_CONTINENT', 'CW_EU', 'EU_GRP2']
-countrycodes_all = ['IRL', 'GBR', 'FRA', 'NLD','DEU','DNK','CHE','AUT','ITA',
-                    'BEL-LUX','BEL-LUX-NLD']
+countrycodes_dict = {'IRELAND':'IRL',
+                     'UK':'GBR',
+                     'FRANCE':'FRA',
+                     'NETHERLANDS':'NLD',
+                     'GERMANY':'DEU',
+                     'DENMARK':'DNK',
+                     'SWITZERLAND':'CHE',
+                     'AUSTRIA':'AUT',
+                     'ITALY':'ITA',
+                     'BELGIUM': 'BEL',
+                     'LUXEMBURG': 'LUX'}
 
-countrycodes_dict = dict(zip(countries_all,countrycodes_all))
+regions_dict = {'BELUX':'BEL-LUX',
+                'BENELUX':'BEL-LUX-NLD',
+                'CW_EU':'AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVK',
+                'EU_GRP2':'AUT-BEL-CHE-DEU-DNK-FRA-GBR-IRL-ITA-LUX-NLD',
+                'NW_EU':'BEL-DEU-DNK-FRA-GBR-IRL-LUX-NLD',
+                'NW_EU2':'BEL-DEU-FRA-GBR-IRL-LUX-NLD',
+                'NW_EU_CONTINENT':'BEL-DEU-FRA-LUX-NLD'}
 
-annotate_coords = {0:[0.1,0.80],
-                   1:[0.1,0.60],
-                   2:[0.1,0.40]}
+countrycodes_dict.update(regions_dict)
+
+annotate_coords = {0:[0.7,0.80],
+                   1:[0.7,0.60],
+                   2:[0.7,0.40]}
 
 font = {'size':12}
 plt.rc('font', **font)
@@ -190,7 +204,8 @@ def slice_flux(ds_all,start_date,end_date,
     #variables that aren't scaled by units
     skip_var = ['flux_total_prior','flux_total_posterior','percentile_flux_total_prior',
                 'percentile_flux_total_posterior','countryname','country',
-                'country_fraction','outer_region_fraction']
+                'country_fraction','outer_region_fraction',
+                'covariance_country_flux_total_posterior']
     
     elris_scale = ['flux_total_prior','flux_total_posterior','percentile_flux_total_prior',
                 'percentile_flux_total_posterior']
@@ -213,7 +228,12 @@ def slice_flux(ds_all,start_date,end_date,
                 var_names = [k for k in ds_all[m].keys() if k not in skip_var]
                 for v in var_names:
                     ds_all[m][v].values = ds_all[m][v].values/units_scaling[m0][species]
-                    
+
+                cov_var = 'covariance_country_flux_total_posterior'
+                if cov_var in ds_all[m].keys():
+                    ds_all[m][cov_var].values = ds_all[m][cov_var].values/units_scaling[m0][species]**2
+                    print(f'Scaling covariance units in {m} by {units_scaling[m0][species]**2}')
+
             # fix for flux scaling issue in ELRIS - to be removed once fixed in .nc files
             if 'elris' in m:
                 for v in elris_scale:
@@ -261,7 +281,7 @@ def read_mf(data_dir,species,models,model_filenames):
 #####################################################################
 
 def slice_mf(ds_all,start_date=None,end_date=None,site=None,
-             baseline_only=False,baseline_site=None,data_dir=None,
+             baseline_site=None,data_dir=None,
              scale_units=False,
              species=None):
     """
@@ -278,11 +298,9 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
             data up to 2021-12-31.
         site (str):
             Obs site to select data from, e.g. 'MHD'.
-        baseline_only (bool):
-            If True, removes timestamps that are not defined as baseline,
-            using InTEM's definition of baseline.
         baseline_site (str):
             Site used to define baseline at, options for 'MHD', 'JFJ', or 'CMN'.
+            If None, does not mask timeseries by baseline times.
         data_dir (str): 
             Path to top data directory, used to read baseline info files.
         scale_units (bool): 
@@ -295,7 +313,7 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
             chosen site.
     """
     
-    if baseline_only == True:
+    if baseline_site is not None:
         with xr.open_dataset(os.path.join(data_dir,f'intem_baseline_timestamps/{baseline_site}_InTEM_baseline_timestamps.nc')) as f:
             baseline = f.sel(time=slice(start_date,end_date))
     
@@ -333,7 +351,7 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
         if 'elris' in m:
             ds_all[m]['time'] = ds_all[m]['time'] - np.timedelta64(offset,'h')/2
       
-        if baseline_only == True:
+        if baseline_site is not None:
             print('Masking timeseries to only include baseline times')
             
             try:
@@ -469,11 +487,17 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
     var_labels = {'Yapriori':'prior mf',
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
-                  'YapostBC':'posterior mean baseline'}
+                  'YapostBC':'posterior mean baseline',
+                  'Ybias':'posterior bias',
+                  'YaprioriOUTER':'prior outer region mf',
+                  'YapostOUTER':'posterior outer region mf',}
     var_colors = {'Yapriori':1,
                   'Yapost':0,
                   'YaprioriBC':1,
-                  'YapostBC':0}
+                  'YapostBC':0,
+                  'Ybias':0,
+                  'YaprioriOUTER':1,
+                  'YapostOUTER':0,}
         
     models = ds_all.keys()
     min_mf = []
@@ -531,8 +555,8 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
         for i,var in enumerate(diff_include):
             
             diff = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            diff_mean = np.round(np.nanmean(diff),2)
-            diff_sd = np.round(np.nanstd(diff),2)
+            diff_mean = np.round(np.nanmean(diff),3)
+            diff_sd = np.round(np.nanstd(diff),3)
             
             a,b,c = ax2.hist(diff,bins=30,color=model_colors[m][var_colors[var]],density=1)
             ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
@@ -609,16 +633,16 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
             One timeseries and histogram plot containing data from all models.
     """
 
-    var_labels = {'Yobs':'observed mf',
-                  'Yapriori':'prior mf',
+    var_labels = {'Yapriori':'prior mf',
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
-                  'YapostBC':'posterior mean baseline'}
-    var_colors = {'Yobs':0,
-                  'Yapriori':1,
+                  'YapostBC':'posterior mean baseline',
+                  'Ybias':'posterior bias'}
+    var_colors = {'Yapriori':1,
                   'Yapost':0,
                   'YaprioriBC':1,
-                  'YapostBC':0}
+                  'YapostBC':0,
+                  'Ybias':0}
         
     models = ds_all.keys()
     min_mf = []
@@ -670,8 +694,8 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
         for v,var in enumerate(diff_include):
             
             diff = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            diff_mean = np.round(np.nanmean(diff),2)
-            diff_sd = np.round(np.nanstd(diff),2)
+            diff_mean = np.round(np.nanmean(diff),3)
+            diff_sd = np.round(np.nanstd(diff),3)
             
             a,b,c = ax2.hist(diff,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
             ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
@@ -752,11 +776,13 @@ def plot_obs_diff(ds_all,species,site,model_labels,
     var_labels = {'Yapriori':'prior mf',
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
-                  'YapostBC':'posterior mean baseline'}
+                  'YapostBC':'posterior mean baseline',
+                  'Ybias':'posterior bias'}
     var_colors = {'Yapriori':1,
                   'Yapost':0,
                   'YaprioriBC':1,
-                  'YapostBC':0}
+                  'YapostBC':0,
+                  'Ybias':0}
         
     models = list(ds_all.keys())
     min_mf = []
@@ -799,8 +825,8 @@ def plot_obs_diff(ds_all,species,site,model_labels,
         for v,var in enumerate(diff_include):
             
             diff = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            diff_mean = np.round(np.nanmean(diff),2)
-            diff_sd = np.round(np.nanstd(diff),2)
+            diff_mean = np.round(np.nanmean(diff),3)
+            diff_sd = np.round(np.nanstd(diff),3)
             
             a,b,c = ax2.hist(diff,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
             ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
@@ -965,7 +991,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
     min_x = []
     max_x = []
 
-    n_cols = int(len(plot_regions)/2)
+    n_cols = math.ceil(len(plot_regions)/2)
     if n_cols <= 1:
         n_cols = 2
         
@@ -1023,8 +1049,79 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 max_x.append(np.max(ds_all[m].time.values).astype('datetime64[M]'))
         
             except:
-                print(f'ERROR: Either start and end dates are incorrect or there is no {country} emissions in {m}.')
-                print(f'Skipping plotting {m}.')
+                try:
+                    region_search = regions_dict[country]
+                    print(f'WARNING: {country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
+
+                    country_list = region_search.split('-')
+
+                    if m0 == 'intem':
+                        c_key = 'countrynumber'
+                    elif m0 == 'rhime':
+                        c_key = 'country'
+                    elif m0 == 'elris':
+                        c_key = 'country'
+
+                    country_index_vec = np.zeros(len(ds_all[m][c_key]))
+                    sigma2_region_flux_total_prior = 0
+                    region_flux_total_posterior = 0
+                    region_flux_total_prior = 0
+
+                    # Compute sum of prior/posterior emissions and prior uncertainty
+                    for var in country_list:
+                        try:
+                            country_index = np.where(ds_all[m][c_key].values.astype(str) == var)[0][0]
+                            country_index_vec[country_index] = 1
+
+                            region_flux_total_posterior = region_flux_total_posterior + ds_all[m]['country_flux_total_posterior'].values[:,country_index]
+                            region_flux_total_prior     = region_flux_total_prior + ds_all[m]['country_flux_total_prior'].values[:,country_index]
+
+                            sigma_country_prior = ds_all[m]['country_flux_total_prior'].values[:,country_index] - ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]
+                            sigma2_region_flux_total_prior = sigma2_region_flux_total_prior + sigma_country_prior**2
+
+                        except:
+                            print(f'WARNING: {var} emissions are not present in {m}. This country will be neglected in {country} emissions.')
+
+                    ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+                                 region_flux_total_posterior,
+                                 label=model_labels[m],color=model_colors[m][0])
+
+                    ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+                                 region_flux_total_prior,
+                                 label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
+
+                    max_cf.append(ax[a,b].get_ylim()[1])
+
+                    sigma_region_flux_total_prior = np.sqrt(sigma2_region_flux_total_prior)
+
+                    ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+                                         region_flux_total_prior - sigma_region_flux_total_prior,
+                                         region_flux_total_prior + sigma_region_flux_total_prior,
+                                         alpha=0.1,color=model_colors[m][0])
+
+                    # Compute posterior uncertainty from covariance matrix
+                    try:
+                        sigma2 = np.zeros(np.shape(ds_all[m]['covariance_country_flux_total_posterior'])[0])
+
+                        for i in range(len(sigma2)):
+                            sigma2[i] = country_index_vec.dot(ds_all[m]['covariance_country_flux_total_posterior'].values[i,:,:].dot(country_index_vec))
+
+                        sigma_region_flux_total_posterior = np.sqrt(sigma2)
+
+                        ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+                                    region_flux_total_posterior - sigma_region_flux_total_posterior,
+                                    region_flux_total_posterior + sigma_region_flux_total_posterior,
+                                    alpha=0.3,color=model_colors[m][0])
+
+                    except:
+                        print(f'ERROR: Covariance matrix is not available for {m}.')
+
+                    min_x.append(np.min(ds_all[m].time.values).astype('datetime64[M]'))
+                    max_x.append(np.max(ds_all[m].time.values).astype('datetime64[M]'))
+
+                except:
+                    print(f'ERROR: Either start and end dates are incorrect or there is no {country} emissions in {m}.')
+                    print(f'Skipping plotting {m}.')
                                                     
         #format each subplot
         
