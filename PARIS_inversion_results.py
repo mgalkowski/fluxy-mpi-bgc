@@ -4,6 +4,7 @@ from pandas import to_datetime
 import matplotlib.pyplot as plt
 import os
 import glob
+import math
 from matplotlib.dates import YearLocator, MonthLocator
 from matplotlib.ticker import NullFormatter
 import pprint
