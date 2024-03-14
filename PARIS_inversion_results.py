@@ -458,7 +458,8 @@ def stats_mf(ds_all):
 def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                                model_colors,
                              include=['Yobs','Yapriori','Yapost'],
-                             diff_include=['Yapriori','Yapost']):
+                             diff_include=['Yapriori','Yapost'],
+                             add_unc=True):
     """
     Timeseries plots of observations and modelled mole fractions or 
     baselines from each model.
@@ -484,6 +485,8 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
         diff_include (list of str):
             Variables included in the 'obs - variable' difference histogram, 
             same options as above.
+        add_unc (bool):
+            if True, plot uncertainty bar on Yobs and Yapost timeseries.
     Returns:
         fig (figure): 
             A timeseries and histogram plot for each model included.
@@ -495,14 +498,20 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                   'YapostBC':'posterior mean baseline',
                   'Ybias':'posterior bias',
                   'YaprioriOUTER':'prior outer region mf',
-                  'YapostOUTER':'posterior outer region mf',}
+                  'YapostOUTER':'posterior outer region mf',
+                  'Yobs':'observed mf',
+                  'uYobs':'observed mf uncertainty',
+                  'uYmod':'model uncertainty'}
     var_colors = {'Yapriori':1,
                   'Yapost':0,
                   'YaprioriBC':1,
                   'YapostBC':0,
                   'Ybias':0,
                   'YaprioriOUTER':1,
-                  'YapostOUTER':0,}
+                  'YapostOUTER':0,
+                  'Yobs':0,
+                  'uYobs':0,
+                  'uYmod':1}
         
     models = ds_all.keys()
     min_mf = []
@@ -525,12 +534,29 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
         for var in include:
 
             if var == 'Yobs':
-                #ax.plot(ds_all[m].time.values,
-                #            ds_all[m]['Yobs'].values,
-                #            color='dimgrey',label=f'Obs ({model_labels[m]})')
+                if len(include) == 1:
+                    ax.scatter(ds_all[m].time.values,
+                               ds_all[m]['Yobs'].values,
+                               color=model_colors[m][var_colors[var]],label=f'Obs ({model_labels[m]})',s=8,alpha=0.8)
+
+                    if add_unc:
+                        ax.fill_between(ds_all[m].time.values,
+                                        ds_all[m]['Yobs'].values - ds_all[m]['uYobs'].values,
+                                        ds_all[m]['Yobs'].values + ds_all[m]['uYobs'].values,
+                                        color=model_colors[m][var_colors[var]],alpha=0.2)
+                else:
+                    #ax.plot(ds_all[m].time.values,
+                    #            ds_all[m]['Yobs'].values,
+                    #            color='dimgrey',label=f'Obs ({model_labels[m]})')
+                    ax.scatter(ds_all[m].time.values,
+                                ds_all[m]['Yobs'].values,
+                                color='grey',label=f'Obs ({model_labels[m]})',s=8,alpha=0.8)
+
+            elif var == 'uYmod':
+                uYmod = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
                 ax.scatter(ds_all[m].time.values,
-                            ds_all[m]['Yobs'].values,
-                            color='grey',label=f'Obs ({model_labels[m]})',s=8,alpha=0.8)
+                           uYmod,
+                           color=model_colors[m][var_colors[var]],label=f'{model_labels[m]} {var_labels[var]}',s=8,alpha=0.8)
 
             else:
                 #ax.plot(ds_all[m].time.values,
@@ -546,7 +572,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                         label=f'{model_labels[m]} {var_labels[var]}')
                 
 
-                if var == 'Yapost':
+                if (var == 'Yapost') and add_unc:
                     ax.fill_between(ds_all[m].time.values,
                                     ds_all[m]['qYapost'].values[:,model_q_indices[m0][0]],
                                     ds_all[m]['qYapost'].values[:,model_q_indices[m0][1]],
@@ -556,22 +582,40 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                 #                    ds_all[m]['qYapostBC'].values[:,model_q_indices[m][0]],
                 #                    ds_all[m]['qYapostBC'].values[:,model_q_indices[m][1]],
                 #                    color=model_colors[m][var_colors[var]],alpha=0.5)
-        
-        for i,var in enumerate(diff_include):
+
+        # Plot histogram
+        if len(diff_include) == 0:
+            make_diff   = False
+            vars        = include
+            legend_hist = 'Modelled mean'
+
+        else:
+            make_diff   = True
+            vars        = diff_include
+            legend_hist = 'Obs - modelled mean'
+
+        for i,var in enumerate(vars):
             
-            diff = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            diff_mean = np.round(np.nanmean(diff),3)
-            diff_sd = np.round(np.nanstd(diff),3)
+            if make_diff:
+                var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
+            else:
+                if var == 'uYmod':
+                    var_plot = uYmod
+                else:
+                    var_plot = ds_all[m][var].values
+
+            var_mean = np.round(np.nanmean(var_plot),2)
+            var_sd = np.round(np.nanstd(var_plot),2)
             
-            a,b,c = ax2.hist(diff,bins=30,color=model_colors[m][var_colors[var]],density=1)
+            a,b,c = ax2.hist(var_plot,bins=30,color=model_colors[m][var_colors[var]],density=1)
             ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
             
             with np.printoptions(precision=2, suppress=True):
 
-                ax2.annotate('$\mu$: '+str(diff_mean)+'\n$\sigma$: '+str(diff_sd),xy=annotate_coords[i],
+                ax2.annotate('$\mu$: '+str(var_mean)+'\n$\sigma$: '+str(var_sd),xy=annotate_coords[i],
                                 xycoords='axes fraction',color=model_colors[m][var_colors[var]])
-                
-        ax2.set_xlabel('Obs - modelled mean')
+
+        ax2.set_xlabel(legend_hist)
     
         min_mf.append(ax.get_ylim()[0])
         max_mf.append(ax.get_ylim()[1])
@@ -607,7 +651,8 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
 def plot_obs_modelled_together(ds_all,species,site,model_labels,
                                model_colors,
                                include=['Yapost'],
-                               diff_include=['Yapost']):
+                               diff_include=['Yapost'],
+                               add_unc=True):
     """
     Timeseries plots of observations and modelled mole fractions or 
     baselines from each model, all on one plot.
@@ -633,6 +678,8 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
         diff_include (list of str):
             Variables included in the 'obs - variable' difference histogram, 
             same options as above.
+        add_unc (bool):
+            if True, plot uncertainty bar on Yobs and Yapost timeseries.
     Returns:
         fig (figure): 
             One timeseries and histogram plot containing data from all models.
@@ -642,12 +689,22 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
                   'YapostBC':'posterior mean baseline',
-                  'Ybias':'posterior bias'}
+                  'Ybias':'posterior bias',
+                  'YaprioriOUTER':'prior outer region mf',
+                  'YapostOUTER':'posterior outer region mf',
+                  'Yobs':'observed mf',
+                  'uYobs':'uncertainty observed mf',
+                  'uYmod':'model uncertainty'}
     var_colors = {'Yapriori':1,
                   'Yapost':0,
                   'YaprioriBC':1,
                   'YapostBC':0,
-                  'Ybias':0}
+                  'Ybias':0,
+                  'YaprioriOUTER':1,
+                  'YapostOUTER':0,
+                  'Yobs':0,
+                  'uYobs':0,
+                  'uYmod':0}
         
     models = ds_all.keys()
     min_mf = []
@@ -670,6 +727,12 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                     ax.scatter(ds_all[m].time.values,
                                 ds_all[m]['Yobs'].values,
                                 color=model_colors[m][var_colors[var]],label=f'Obs ({model_labels[m]})',s=5,alpha=0.5)
+
+                    if add_unc:
+                        ax.fill_between(ds_all[m].time.values,
+                                        ds_all[m]['Yobs'].values - ds_all[m]['uYobs'].values,
+                                        ds_all[m]['Yobs'].values + ds_all[m]['uYobs'].values,
+                                        color=model_colors[m][var_colors[var]],alpha=0.2)
                 else:
                     #ax.plot(ds_all[m].time.values,
                     #            ds_all[m]['Yobs'].values,
@@ -678,6 +741,12 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                                 ds_all[m]['Yobs'].values,
                                 color='dimgrey',label=f'Obs ({model_labels[m]})',s=5,alpha=0.5)
 
+            elif var == 'uYmod':
+                uYmod = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
+                ax.scatter(ds_all[m].time.values,
+                           uYmod,
+                           color=model_colors[m][var_colors[var]],label=f'{model_labels[m]} {var_labels[var]}',s=8,alpha=0.8)
+
             else:
                 ax.scatter(ds_all[m].time.values,
                         ds_all[m][var].values,
@@ -685,7 +754,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                         label=f'{model_labels[m]} {var_labels[var]}',
                         linewidth=2,s=8)
 
-                if var == 'Yapost':
+                if (var == 'Yapost') and add_unc:
                     ax.fill_between(ds_all[m].time.values,
                                     ds_all[m]['qYapost'].values[:,model_q_indices[m0][0]],
                                     ds_all[m]['qYapost'].values[:,model_q_indices[m0][1]],
@@ -696,21 +765,40 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                 #                    ds_all[m]['qYapostBC'].values[:,model_q_indices[m][1]],
                 #                    color=model_colors[m][var_colors[var]],alpha=0.5)
         
-        for v,var in enumerate(diff_include):
+
+        # Plot histogram
+        if len(diff_include) == 0:
+            make_diff   = False
+            vars        = include
+            legend_hist = 'Modelled mean'
+
+        else:
+            make_diff   = True
+            vars        = diff_include
+            legend_hist = 'Obs - modelled mean'
+
+        for v,var in enumerate(vars):
             
-            diff = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            diff_mean = np.round(np.nanmean(diff),3)
-            diff_sd = np.round(np.nanstd(diff),3)
+            if make_diff:
+                var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
+            else:
+                if var == 'uYmod':
+                    var_plot = uYmod
+                else:
+                    var_plot = ds_all[m][var].values
+
+            var_mean = np.round(np.nanmean(var_plot),2)
+            var_sd = np.round(np.nanstd(var_plot),2)
             
-            a,b,c = ax2.hist(diff,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
+            a,b,c = ax2.hist(var_plot,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
             ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
             
             with np.printoptions(precision=2, suppress=True):
 
-                ax2.annotate('$\mu$: '+str(diff_mean)+'\n$\sigma$: '+str(diff_sd),xy=annotate_coords[i],
+                ax2.annotate('$\mu$: '+str(var_mean)+'\n$\sigma$: '+str(var_sd),xy=annotate_coords[i],
                                 xycoords='axes fraction',color=model_colors[m][var_colors[var]])
         
-    ax2.set_xlabel('Obs - modelled mean')
+    ax2.set_xlabel(legend_hist)
 
     min_mf.append(ax.get_ylim()[0])
     max_mf.append(ax.get_ylim()[1])
@@ -782,12 +870,22 @@ def plot_obs_diff(ds_all,species,site,model_labels,
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
                   'YapostBC':'posterior mean baseline',
-                  'Ybias':'posterior bias'}
+                  'Ybias':'posterior bias',
+                  'YaprioriOUTER':'prior outer region mf',
+                  'YapostOUTER':'posterior outer region mf',
+                  'Yobs':'observed mf',
+                  'uYobs':'uncertainty observed mf',
+                  'uYmod':'model uncertainty'}
     var_colors = {'Yapriori':1,
                   'Yapost':0,
                   'YaprioriBC':1,
                   'YapostBC':0,
-                  'Ybias':0}
+                  'Ybias':0,
+                  'YaprioriOUTER':1,
+                  'YapostOUTER':0,
+                  'Yobs':0,
+                  'uYobs':0,
+                  'uYmod':0}
         
     models = list(ds_all.keys())
     min_mf = []
@@ -807,12 +905,25 @@ def plot_obs_diff(ds_all,species,site,model_labels,
     
             
     for var in include:
+        if var == 'uYmod':
+            m00 = models[0].split('_')[0]
+            m01 = models[1].split('_')[0]
 
-        ax.scatter(ds_all[models[0]].time.values,
-                   ds_all[models[0]][var].values - ds_all[models[1]][var].values,
-                    color=model_colors[models[0]][var_colors[var]],alpha=0.5,
-                    label=f'{model_labels[models[0]]} - {model_labels[models[1]]}\n{var_labels[var]}',
-                    linewidth=2,s=8)
+            uYmod0 = ds_all[models[0]]['Yobs'].values - ds_all[models[0]]['qYmod'].values[:,model_q_indices[m00][0]]
+            uYmod1 = ds_all[models[1]]['Yobs'].values - ds_all[models[1]]['qYmod'].values[:,model_q_indices[m01][0]]
+
+            ax.scatter(ds_all[models[0]].time.values,
+                       uYmod0 - uYmod1,
+                       color=model_colors[models[0]][var_colors[var]],alpha=0.5,
+                       label=f'{model_labels[models[0]]} - {model_labels[models[1]]}\n{var_labels[var]}',
+                       linewidth=2,s=8)
+
+        else:
+            ax.scatter(ds_all[models[0]].time.values,
+                       ds_all[models[0]][var].values - ds_all[models[1]][var].values,
+                       color=model_colors[models[0]][var_colors[var]],alpha=0.5,
+                       label=f'{model_labels[models[0]]} - {model_labels[models[1]]}\n{var_labels[var]}',
+                       linewidth=2,s=8)
 
         #if var == 'Yapost':
         #    ax.fill_between(ds_all[m].time.values,
@@ -827,21 +938,41 @@ def plot_obs_diff(ds_all,species,site,model_labels,
         
     for i,m in enumerate(models):
         
-        for v,var in enumerate(diff_include):
+        m0 = m.split('_')[0]
+
+        # Plot histogram
+        if len(diff_include) == 0:
+            make_diff   = False
+            vars        = include
+            legend_hist = 'Modelled mean'
+
+        else:
+            make_diff   = True
+            vars        = diff_include
+            legend_hist = 'Obs - modelled mean'
+
+        for v,var in enumerate(vars):
+
+            if make_diff:
+                var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
+            else:
+                if var == 'uYmod':
+                    var_plot = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
+                else:
+                    var_plot = ds_all[m][var].values
             
-            diff = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            diff_mean = np.round(np.nanmean(diff),3)
-            diff_sd = np.round(np.nanstd(diff),3)
+            var_mean = np.round(np.nanmean(var_plot),2)
+            var_sd = np.round(np.nanstd(var_plot),2)
             
-            a,b,c = ax2.hist(diff,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
+            a,b,c = ax2.hist(var_plot,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
             ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
             
             with np.printoptions(precision=2, suppress=True):
 
-                ax2.annotate('$\mu$: '+str(diff_mean)+'\n$\sigma$: '+str(diff_sd),xy=annotate_coords[i],
+                ax2.annotate('$\mu$: '+str(var_mean)+'\n$\sigma$: '+str(var_sd),xy=annotate_coords[i],
                                 xycoords='axes fraction',color=model_colors[m][var_colors[var]])
         
-    ax2.set_xlabel('Obs - modelled mean')
+    ax2.set_xlabel(legend_hist)
 
     min_mf.append(ax.get_ylim()[0])
     max_mf.append(ax.get_ylim()[1])
