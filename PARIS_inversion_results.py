@@ -236,7 +236,7 @@ def slice_flux(ds_all,start_date,end_date,
                     print(f'Scaling covariance units in {m} by {units_scaling[m0][species]**2}')
 
             # fix for flux scaling issue in ELRIS - to be removed once fixed in .nc files
-            if 'elris' in m:
+            if 'elris_old' in m:
                 for v in elris_scale:
                     ds_all[m][v].values = ds_all[m][v].values/1e12                    
         
@@ -326,6 +326,14 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
         else:
             offset = (ds_all[m].time.values[1].astype('datetime64[h]') - ds_all[m].time.values[0].astype('datetime64[h]')).astype(int)
 
+        # fix to move elris timestamps back to the middle of av period - to be removed once fixed in .nc files
+        if 'elris_old' in m:
+            ds_all[m]['time'] = ds_all[m]['time'] - np.timedelta64(offset,'h')/2
+
+        # round seconds to integer (correction for elris)
+        if 'elris' in m:
+            ds_all[m]['time'] = ds_all[m]['time'].dt.round('s')
+
         if site is not None:
             try:
                 site_index = np.where(ds_all[m]['sitenames'].astype(str) == site)[0][0]
@@ -347,10 +355,6 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
                 var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav']]
                 for v in var_names:
                     ds_all[m][v] = ds_all[m][v]/mf_units_scaling[species]
-                   
-        # fix to move elris timestamps back to the middle of av period 
-        if 'elris' in m:
-            ds_all[m]['time'] = ds_all[m]['time'] - np.timedelta64(offset,'h')/2
       
         if baseline_site is not None:
             print('Masking timeseries to only include baseline times')
