@@ -238,7 +238,8 @@ def slice_flux(ds_all,start_date,end_date,
             # fix for flux scaling issue in ELRIS - to be removed once fixed in .nc files
             if 'elris_old' in m:
                 for v in elris_scale:
-                    ds_all[m][v].values = ds_all[m][v].values/1e12                    
+                    ds_all[m][v].values = ds_all[m][v].values/1e12
+                    print('Old ELRIS file! Applying additional scaling correction.')
         
     return ds_all
 
@@ -608,7 +609,8 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
             var_sd = np.round(np.nanstd(var_plot),2)
             
             a,b,c = ax2.hist(var_plot,bins=30,color=model_colors[m][var_colors[var]],density=1)
-            ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
+            if make_diff:
+                ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
             
             with np.printoptions(precision=2, suppress=True):
 
@@ -791,7 +793,8 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
             var_sd = np.round(np.nanstd(var_plot),2)
             
             a,b,c = ax2.hist(var_plot,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
-            ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
+            if make_diff:
+                ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
             
             with np.printoptions(precision=2, suppress=True):
 
@@ -965,7 +968,8 @@ def plot_obs_diff(ds_all,species,site,model_labels,
             var_sd = np.round(np.nanstd(var_plot),2)
             
             a,b,c = ax2.hist(var_plot,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
-            ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
+            if make_diff:
+                ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
             
             with np.printoptions(precision=2, suppress=True):
 
