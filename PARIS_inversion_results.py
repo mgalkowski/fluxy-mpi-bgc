@@ -1368,12 +1368,13 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     
     fluxlim = {'ch4':[0,1e-7],
         'hfc134a':[0,1e-11],
+        'hfc143a':[0,1e-11],
         'pfc218':[0,5e-14],
         'sf6':[0,2e-13],
         'n2o':[0,1e-9]}
 
     difflim = {'ch4':[-1e-7,1e-7],
-            'hfc134a':[-1e-11,1e-11],
+            'hfc143a':[-1e-11,1e-11],
             'pfc218':[-5e-14,5e-14],
             'sf6':[-5e-13,5e-13],
             'n2o':[-1e-9,1e-9]}
@@ -1499,12 +1500,14 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels):
     
     fluxlim = {'ch4':[0,1e-7],
         'hfc134a':[0,1e-11],
+        'hfc143a':[0,1e-11],
         'pfc218':[0,5e-14],
         'sf6':[0,2e-13],
         'n2o':[0,1e-9]}
 
     difflim = {'ch4':[-1e-7,1e-7],
             'hfc134a':[-1e-11,1e-11],
+            'hfc143a':[-1e-11,1e-11],
             'pfc218':[-5e-14,5e-14],
             'sf6':[-5e-13,5e-13],
             'n2o':[-1e-9,1e-9]}
