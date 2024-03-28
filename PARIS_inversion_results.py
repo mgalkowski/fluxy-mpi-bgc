@@ -12,72 +12,85 @@ import cartopy
 
 species_print = {'ch4':'CH$_4$',
                  'hfc134a':'HFC-134a',
+                 'hfc143a':'HFC-143a',
                  'pfc218':'PFC-218',
                  'sf6':'SF$_6$',
                  'n2o':'N$_2$O'}
 
 period = {'intem':{'ch4':'monthly',
                    'hfc134a':'yearly',
+                   'hfc143a':'yearly',
                    'pfc218':'yearly',
                    'sf6':'monthly',
                    'n2o':'monthly'},
           'rhime':{'ch4':'monthly',
                    'hfc134a':'yearly',
+                   'hfc143a':'yearly',
                    'pfc218':'yearly',
                    'sf6':'monthly',
                    'n2o':'monthly'},
           'elris':{'ch4':'monthly',
                    'hfc134a':'yearly',
+                   'hfc143a':'yearly',
                    'pfc218':'yearly',
                    'sf6':'yearly',
                    'n2o':'monthly'}}
 
 units_scaling = {'intem':{'ch4':1e9,
                         'hfc134a':1e6,
+                        'hfc143a':1e6,
                         'pfc218':1e6,
                         'sf6':1e6,
                         'n2o':1e6},
                 'rhime':{'ch4':1e12,
                         'hfc134a':1e6,
+                        'hfc143a':1e6,
                         'pfc218':1e6,
                         'sf6':1e9,
                         'n2o':1e9},
                 'elris':{'ch4':1e9,
                             'hfc134a':1e6,
+                            'hfc143a':1e6,
                             'pfc218':1e6,
                             'sf6':1e6,
                             'n2o':1e6}}
 
 units_print = {'ch4':'T',
                  'hfc134a':'G',
+                 'hfc143a':'G',
                  'pfc218':'G',
                  'sf6':'G',
                  'n2o':'G'}
 
 dt_units = {'intem':{'ch4':'datetime64[M]',
             'hfc134a':'datetime64[Y]',
+            'hfc143a':'datetime64[Y]',
             'pfc218':'datetime64[Y]',
             'sf6':'datetime64[M]',
             'n2o':'datetime64[M]'},
                 'rhime':{'ch4':'datetime64[M]',
             'hfc134a':'datetime64[Y]',
+            'hfc143a':'datetime64[Y]',
             'pfc218':'datetime64[Y]',
             'sf6':'datetime64[M]',
             'n2o':'datetime64[M]'},
                 'elris':{'ch4':'datetime64[M]',
             'hfc134a':'datetime64[Y]',
+            'hfc143a':'datetime64[Y]',
             'pfc218':'datetime64[Y]',
             'sf6':'datetime64[Y]',
             'n2o':'datetime64[M]'}}
 
 mf_units_scaling = {'ch4':1e-9,
                     'hfc134a':1e-12,
+                    'hfc143a':1e-12,
                     'pfc218':1e-12,
                     'sf6':1e-12,
                     'n2o':1e-12}
 
 mf_units_print = {'ch4':'ppb',
                   'hfc134a':'ppt',
+                  'hfc143a':'ppt',
                   'pfc218':'ppt',
                   'sf6':'ppt',
                   'n2o':'ppt'}
@@ -89,16 +102,19 @@ model_colors = {'intem':[['darkslateblue','dodgerblue'],
 
 model_species = {'intem':{'ch4':'ch4',
                           'hfc134a':'hfc134a',
+                          'hfc143a':'hfc143a',
                           'pfc218':'pfc218',
                           'sf6':'sf6',
                           'n2o':'n2o'},
                 'rhime':{'ch4':'ch4',
                           'hfc134a':'hfc134a',
+                          'hfc143a':'hfc143a',
                           'pfc218':'pfc218',
                           'sf6':'sf6',
                           'n2o':'n2o'},
                 'elris':{'ch4':'CH4',
                           'hfc134a':'HFC_134a',
+                          'hfc143a':'HFC_143a',
                           'pfc218':'PFC_218',
                           'sf6':'SF6',
                           'n2o':'N2O'}}
@@ -1352,12 +1368,13 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     
     fluxlim = {'ch4':[0,1e-7],
         'hfc134a':[0,1e-11],
+        'hfc143a':[0,1e-11],
         'pfc218':[0,5e-14],
         'sf6':[0,2e-13],
         'n2o':[0,1e-9]}
 
     difflim = {'ch4':[-1e-7,1e-7],
-            'hfc134a':[-1e-11,1e-11],
+            'hfc143a':[-1e-11,1e-11],
             'pfc218':[-5e-14,5e-14],
             'sf6':[-5e-13,5e-13],
             'n2o':[-1e-9,1e-9]}
@@ -1483,12 +1500,14 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels):
     
     fluxlim = {'ch4':[0,1e-7],
         'hfc134a':[0,1e-11],
+        'hfc143a':[0,1e-11],
         'pfc218':[0,5e-14],
         'sf6':[0,2e-13],
         'n2o':[0,1e-9]}
 
     difflim = {'ch4':[-1e-7,1e-7],
             'hfc134a':[-1e-11,1e-11],
+            'hfc143a':[-1e-11,1e-11],
             'pfc218':[-5e-14,5e-14],
             'sf6':[-5e-13,5e-13],
             'n2o':[-1e-9,1e-9]}
