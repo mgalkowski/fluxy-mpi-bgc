@@ -181,8 +181,11 @@ def read_flux(data_dir,species,models,model_filenames):
         
         m0 = m.split('_')[0]
         
+        model_dir = model_filenames[m].split('_')[0]
+        
         try:
-            filepath = glob.glob(os.path.join(data_dir,f'{model_filenames[m]}_{model_species[m0][species]}_{period[m0][species]}.nc'))
+            filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{model_filenames[m]}_{model_species[m0][species]}_{period[m0][species]}.nc'))
+            print(f'Reading data from: {filepath[0]}')
             with xr.open_dataset(filepath[0]) as in_ds:
                 ds_all[m] = in_ds
                 print('Done!')
@@ -285,11 +288,14 @@ def read_mf(data_dir,species,models,model_filenames):
     for m in models:
         
         m0 = m.split('_')[0]
+        model_dir = model_filenames[m].split('_')[0]
         
         print(f'\nAttempting to read data from {m}')
         try:
-            filepath = glob.glob(os.path.join(data_dir,f'{model_filenames[m]}_{model_species[m0][species]}_{period[m0][species]}_concentrations.nc'))
-            ds_all[m] = xr.open_dataset(filepath[0])
+            filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{model_filenames[m]}_{model_species[m0][species]}_{period[m0][species]}_concentrations.nc'))
+            print(f'Reading data from: {filepath[0]}')
+            with xr.open_dataset(filepath[0]) as in_ds:
+                ds_all[m] = in_ds
             print('Done!')
         except:
             print(f'Cannot find {m} file for {species}.')
