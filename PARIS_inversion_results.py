@@ -1456,9 +1456,15 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
                 border_color = 'dimgrey'
             else:
                 border_color = 'floralwhite'
-            ax[i,j].add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
-            ax[i,j].coastlines(resolution='50m',color=border_color,linewidth=1.)
-            ax[i,j].set_extent(region_limits[plot_area])
+
+            if n_cols == 1:
+                ax_var = ax[i]
+            else:
+                ax_var = ax[i,j]
+
+            ax_var.add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
+            ax_var.coastlines(resolution='50m',color=border_color,linewidth=1.)
+            ax_var.set_extent(region_limits[plot_area])
 
     for i,m in enumerate(ds_all.keys()):
         
@@ -1475,26 +1481,35 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
                 time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(dt_units[m0][species])).strftime("%d/%m/%Y")} - '+
                             f'{to_datetime(ds_all[m].time.values[-1].astype(dt_units[m0][species])).strftime("%d/%m/%Y")}')
 
-            ax[0,i].pcolormesh(lon,lat,
+            if n_cols == 1:
+                ax0 = ax[0]
+                ax1 = ax[1]
+                ax2 = ax[2]
+            else:
+                ax0 = ax[0,i]
+                ax1 = ax[1,i]
+                ax2 = ax[2,i]
+
+            ax0.pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0),cmap=cmap,
                             vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
 
-            ax[0,i].set_title(f'{model_labels[m]} prior')
+            ax0.set_title(f'{model_labels[m]} prior')
             
-            ax[1,i].pcolormesh(lon,lat,
+            ax1.pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0),cmap=cmap,
                             vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
 
-            ax[1,i].set_title(f'{model_labels[m]} posterior')
+            ax1.set_title(f'{model_labels[m]} posterior')
             
             flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0)
             flux_diff[np.where(flux_diff) == np.nan] = 0.
             
-            ax[2,i].pcolormesh(lon,lat,
+            ax2.pcolormesh(lon,lat,
                             flux_diff,
                             cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='flat')
 
-            ax[2,i].set_title(f'{model_labels[m]} posterior - prior')
+            ax2.set_title(f'{model_labels[m]} posterior - prior')
                 
         except:
             print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
@@ -1507,10 +1522,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     cbar.set_array(levels)
     cbar.set_clim(fluxlim[species])
 
-    color_bar1 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[0,:],shrink=0.9,pad=0.005)
+    color_bar1 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[0,...],shrink=0.9,pad=0.005)
     color_bar1.set_label(f'Prior mean {species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
-    color_bar2 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[1,:],shrink=0.9,pad=0.005)
+    color_bar2 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[1,...],shrink=0.9,pad=0.005)
     color_bar2.set_label(f'Posterior mean {species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     #difference colorbar
@@ -1519,7 +1534,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     cbar_diff.set_array(levels_diff)
     cbar_diff.set_clim(difflim[species])
 
-    color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,:],shrink=0.9,pad=0.005)
+    color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,...],shrink=0.9,pad=0.005)
     color_bar3.set_label(f'Prior - posterior {species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
     
     return fig
