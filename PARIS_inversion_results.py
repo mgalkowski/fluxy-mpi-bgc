@@ -1425,7 +1425,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
         'hfc143a':[0,1e-11],
         'hfc125':[0,1e-11],
         'hfc32':[0,1e-11],
-        'hfc227ea':[0,1e-11],
+        'hfc227ea':[0,2e-12],
         'pfc218':[0,5e-14],
         'sf6':[0,2e-13],
         'n2o':[0,1e-9]}
@@ -1435,7 +1435,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
             'hfc143a':[-1e-11,1e-11],
             'hfc125':[-1e-11,1e-11],
             'hfc32':[-1e-11,1e-11],
-            'hfc227ea':[-1e-11,1e-11],
+            'hfc227ea':[-4e-12,4e-12],
             'pfc218':[-5e-14,5e-14],
             'sf6':[-5e-13,5e-13],
             'n2o':[-1e-9,1e-9]}
@@ -1443,6 +1443,8 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
+                    'ITALY':[6,19,36,48],
+                    'SWITZERLAND':[5.5,11,45,49],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
