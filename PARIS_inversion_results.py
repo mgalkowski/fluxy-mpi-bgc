@@ -13,6 +13,9 @@ import cartopy
 species_print = {'ch4':'CH$_4$',
                  'hfc134a':'HFC-134a',
                  'hfc143a':'HFC-143a',
+                 'hfc125':'HFC-125',
+                 'hfc32':'HFC-32',
+                 'hfc227ea':'HFC-227ea',
                  'pfc218':'PFC-218',
                  'sf6':'SF$_6$',
                  'n2o':'N$_2$O'}
@@ -20,18 +23,27 @@ species_print = {'ch4':'CH$_4$',
 period = {'intem':{'ch4':'monthly',
                    'hfc134a':'yearly',
                    'hfc143a':'yearly',
+                   'hfc125':'yearly',
+                   'hfc32':'yearly',
+                   'hfc227ea':'yearly',
                    'pfc218':'yearly',
                    'sf6':'monthly',
                    'n2o':'monthly'},
           'rhime':{'ch4':'monthly',
                    'hfc134a':'yearly',
                    'hfc143a':'yearly',
+                   'hfc125':'yearly',
+                   'hfc32':'yearly',
+                   'hfc227ea':'yearly',
                    'pfc218':'yearly',
                    'sf6':'monthly',
                    'n2o':'monthly'},
           'elris':{'ch4':'monthly',
                    'hfc134a':'yearly',
                    'hfc143a':'yearly',
+                   'hfc125':'yearly',
+                   'hfc32':'yearly',
+                   'hfc227ea':'yearly',
                    'pfc218':'yearly',
                    'sf6':'yearly',
                    'n2o':'monthly'}}
@@ -39,18 +51,27 @@ period = {'intem':{'ch4':'monthly',
 units_scaling = {'intem':{'ch4':1e9,
                         'hfc134a':1e6,
                         'hfc143a':1e6,
+                        'hfc125':1e6,
+                        'hfc32':1e6,
+                        'hfc227ea':1e6,
                         'pfc218':1e6,
                         'sf6':1e6,
                         'n2o':1e6},
                 'rhime':{'ch4':1e12,
                         'hfc134a':1e6,
                         'hfc143a':1e6,
+                        'hfc125':1e6,
+                        'hfc32':1e6,
+                        'hfc227ea':1e6,
                         'pfc218':1e6,
                         'sf6':1e9,
                         'n2o':1e9},
                 'elris':{'ch4':1e9,
                             'hfc134a':1e6,
                             'hfc143a':1e6,
+                            'hfc125':1e6,
+                            'hfc32':1e6,
+                            'hfc227ea':1e6,
                             'pfc218':1e6,
                             'sf6':1e6,
                             'n2o':1e6}}
@@ -58,6 +79,9 @@ units_scaling = {'intem':{'ch4':1e9,
 units_print = {'ch4':'T',
                  'hfc134a':'G',
                  'hfc143a':'G',
+                 'hfc125':'G',
+                 'hfc32':'G',
+                 'hfc227ea':'G',
                  'pfc218':'G',
                  'sf6':'G',
                  'n2o':'G'}
@@ -65,18 +89,27 @@ units_print = {'ch4':'T',
 dt_units = {'intem':{'ch4':'datetime64[M]',
             'hfc134a':'datetime64[Y]',
             'hfc143a':'datetime64[Y]',
+            'hfc125':'datetime64[Y]',
+            'hfc32':'datetime64[Y]',
+            'hfc227ea':'datetime64[Y]',
             'pfc218':'datetime64[Y]',
             'sf6':'datetime64[M]',
             'n2o':'datetime64[M]'},
                 'rhime':{'ch4':'datetime64[M]',
             'hfc134a':'datetime64[Y]',
             'hfc143a':'datetime64[Y]',
+            'hfc125':'datetime64[Y]',
+            'hfc32':'datetime64[Y]',
+            'hfc227ea':'datetime64[Y]',
             'pfc218':'datetime64[Y]',
             'sf6':'datetime64[M]',
             'n2o':'datetime64[M]'},
                 'elris':{'ch4':'datetime64[M]',
             'hfc134a':'datetime64[Y]',
             'hfc143a':'datetime64[Y]',
+            'hfc125':'datetime64[Y]',
+            'hfc32':'datetime64[Y]',
+            'hfc227ea':'datetime64[Y]',
             'pfc218':'datetime64[Y]',
             'sf6':'datetime64[Y]',
             'n2o':'datetime64[M]'}}
@@ -84,6 +117,9 @@ dt_units = {'intem':{'ch4':'datetime64[M]',
 mf_units_scaling = {'ch4':1e-9,
                     'hfc134a':1e-12,
                     'hfc143a':1e-12,
+                    'hfc125':1e-12,
+                    'hfc32':1e-12,
+                    'hfc227ea':1e-12,
                     'pfc218':1e-12,
                     'sf6':1e-12,
                     'n2o':1e-12}
@@ -91,6 +127,9 @@ mf_units_scaling = {'ch4':1e-9,
 mf_units_print = {'ch4':'ppb',
                   'hfc134a':'ppt',
                   'hfc143a':'ppt',
+                  'hfc125':'ppt',
+                  'hfc32':'ppt',
+                  'hfc227ea':'ppt',
                   'pfc218':'ppt',
                   'sf6':'ppt',
                   'n2o':'ppt'}
@@ -103,18 +142,27 @@ model_colors = {'intem':[['darkslateblue','dodgerblue'],
 model_species = {'intem':{'ch4':'ch4',
                           'hfc134a':'hfc134a',
                           'hfc143a':'hfc143a',
+                          'hfc125':'hfc125',
+                          'hfc32':'hfc32',
+                          'hfc227ea':'hfc227ea',
                           'pfc218':'pfc218',
                           'sf6':'sf6',
                           'n2o':'n2o'},
                 'rhime':{'ch4':'ch4',
                           'hfc134a':'hfc134a',
                           'hfc143a':'hfc143a',
+                          'hfc125':'hfc125',
+                          'hfc32':'hfc32',
+                          'hfc227ea':'hfc227ea',
                           'pfc218':'pfc218',
                           'sf6':'sf6',
                           'n2o':'n2o'},
                 'elris':{'ch4':'CH4',
                           'hfc134a':'HFC_134a',
                           'hfc143a':'HFC_143a',
+                          'hfc125':'HFC_125',
+                          'hfc32':'HFC_32',
+                          'hfc227ea':'HFC_227ea',
                           'pfc218':'PFC_218',
                           'sf6':'SF6',
                           'n2o':'N2O'}}
@@ -1375,12 +1423,19 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     fluxlim = {'ch4':[0,1e-7],
         'hfc134a':[0,1e-11],
         'hfc143a':[0,1e-11],
+        'hfc125':[0,1e-11],
+        'hfc32':[0,1e-11],
+        'hfc227ea':[0,2e-12],
         'pfc218':[0,5e-14],
         'sf6':[0,2e-13],
         'n2o':[0,1e-9]}
 
     difflim = {'ch4':[-1e-7,1e-7],
+            'hfc134a':[-1e-11,1e-11],
             'hfc143a':[-1e-11,1e-11],
+            'hfc125':[-1e-11,1e-11],
+            'hfc32':[-1e-11,1e-11],
+            'hfc227ea':[-4e-12,4e-12],
             'pfc218':[-5e-14,5e-14],
             'sf6':[-5e-13,5e-13],
             'n2o':[-1e-9,1e-9]}
@@ -1388,6 +1443,8 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
+                    'ITALY':[6,19,36,48],
+                    'SWITZERLAND':[5.5,11,45,49],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
@@ -1401,9 +1458,15 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
                 border_color = 'dimgrey'
             else:
                 border_color = 'floralwhite'
-            ax[i,j].add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
-            ax[i,j].coastlines(resolution='50m',color=border_color,linewidth=1.)
-            ax[i,j].set_extent(region_limits[plot_area])
+
+            if n_cols == 1:
+                ax_var = ax[i]
+            else:
+                ax_var = ax[i,j]
+
+            ax_var.add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
+            ax_var.coastlines(resolution='50m',color=border_color,linewidth=1.)
+            ax_var.set_extent(region_limits[plot_area])
 
     for i,m in enumerate(ds_all.keys()):
         
@@ -1420,26 +1483,35 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
                 time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(dt_units[m0][species])).strftime("%d/%m/%Y")} - '+
                             f'{to_datetime(ds_all[m].time.values[-1].astype(dt_units[m0][species])).strftime("%d/%m/%Y")}')
 
-            ax[0,i].pcolormesh(lon,lat,
+            if n_cols == 1:
+                ax0 = ax[0]
+                ax1 = ax[1]
+                ax2 = ax[2]
+            else:
+                ax0 = ax[0,i]
+                ax1 = ax[1,i]
+                ax2 = ax[2,i]
+
+            ax0.pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0),cmap=cmap,
                             vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
 
-            ax[0,i].set_title(f'{model_labels[m]} prior')
+            ax0.set_title(f'{model_labels[m]} prior')
             
-            ax[1,i].pcolormesh(lon,lat,
+            ax1.pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0),cmap=cmap,
                             vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
 
-            ax[1,i].set_title(f'{model_labels[m]} posterior')
+            ax1.set_title(f'{model_labels[m]} posterior')
             
             flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0)
             flux_diff[np.where(flux_diff) == np.nan] = 0.
             
-            ax[2,i].pcolormesh(lon,lat,
+            ax2.pcolormesh(lon,lat,
                             flux_diff,
                             cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='flat')
 
-            ax[2,i].set_title(f'{model_labels[m]} posterior - prior')
+            ax2.set_title(f'{model_labels[m]} posterior - prior')
                 
         except:
             print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
@@ -1452,10 +1524,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     cbar.set_array(levels)
     cbar.set_clim(fluxlim[species])
 
-    color_bar1 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[0,:],shrink=0.9,pad=0.005)
+    color_bar1 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[0,...],shrink=0.9,pad=0.005)
     color_bar1.set_label(f'Prior mean {species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
-    color_bar2 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[1,:],shrink=0.9,pad=0.005)
+    color_bar2 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[1,...],shrink=0.9,pad=0.005)
     color_bar2.set_label(f'Posterior mean {species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     #difference colorbar
@@ -1464,7 +1536,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     cbar_diff.set_array(levels_diff)
     cbar_diff.set_clim(difflim[species])
 
-    color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,:],shrink=0.9,pad=0.005)
+    color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,...],shrink=0.9,pad=0.005)
     color_bar3.set_label(f'Prior - posterior {species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
     
     return fig
