@@ -687,6 +687,10 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                 ax2.annotate('$\mu$: '+str(var_mean)+'\n$\sigma$: '+str(var_sd),xy=annotate_coords[i],
                                 xycoords='axes fraction',color=model_colors[m][var_colors[var]])
 
+        # Write number of obs to plot
+        n_obs = (~np.isnan(ds_all[m]['Yobs'].values)).sum()
+        ax2.annotate('\n$N_{obs}$: '+str(n_obs),xy=[0.65,1.05],xycoords='axes fraction',color='k')
+
         ax2.set_xlabel(legend_hist)
     
         min_mf.append(ax.get_ylim()[0])
@@ -1163,7 +1167,8 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
 
 def plot_country_flux(ds_all,species,plot_regions,model_labels,
                       model_colors,
-                      plot_inventory=True,data_dir=None,fix_y_axes=False):
+                      plot_inventory=True,data_dir=None,fix_y_axes=False,
+                      add_prior_unc=False, set_global_leg=False):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
     areas in plot_regions.
@@ -1187,6 +1192,10 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             Path to top data directory, used to read inventory data files.
         fix_y_axes (bool):
             If True, uses a consistent y axis for all plots.
+        add_prior_unc (bool):
+            If True, plots prior uncertainty as shaded area.
+        set_global_leg (bool):
+            If True, plots one single legend instead of one legend per subplot.
     Returns:
         fig (figure): 
             A plot per country/region.
@@ -1250,10 +1259,11 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                     ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index],
                                     alpha=0.3,color=model_colors[m][0])
                 
-                ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                    ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index],
-                                    ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index],
-                                    alpha=0.1,color=model_colors[m][0])
+                if add_prior_unc:
+                    ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+                                        ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index],
+                                        ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index],
+                                        alpha=0.1,color=model_colors[m][0])
                 
                 min_x.append(np.min(ds_all[m].time.values).astype('datetime64[M]'))
                 max_x.append(np.max(ds_all[m].time.values).astype('datetime64[M]'))
@@ -1304,10 +1314,11 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 
                     sigma_region_flux_total_prior = np.sqrt(sigma2_region_flux_total_prior)
 
-                    ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                         region_flux_total_prior - sigma_region_flux_total_prior,
-                                         region_flux_total_prior + sigma_region_flux_total_prior,
-                                         alpha=0.1,color=model_colors[m][0])
+                    if add_prior_unc:
+                        ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+                                            region_flux_total_prior - sigma_region_flux_total_prior,
+                                            region_flux_total_prior + sigma_region_flux_total_prior,
+                                            alpha=0.1,color=model_colors[m][0])
 
                     # Compute posterior uncertainty from covariance matrix
                     try:
@@ -1352,13 +1363,14 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             else:
                 ncol = 2
         '''
-        leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
-        if plot_inventory == True:
-            for l in leg.legendHandles[:-1]:
-                l.set_linewidth(3.0)
-        else:
-            for l in leg.legendHandles:
-                l.set_linewidth(3.0)
+        if set_global_leg == False:
+            leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
+            if plot_inventory == True:
+                for l in leg.legendHandles[:-1]:
+                    l.set_linewidth(3.0)
+            else:
+                for l in leg.legendHandles:
+                    l.set_linewidth(3.0)
                 
         ax[a,b].set_title(f'{country}')
         ax[a,b].grid(visible=True,which='major',alpha=0.4)
@@ -1372,6 +1384,19 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             a += 1
         else:
             b += 1
+
+    if set_global_leg:
+        handles, labels = ax[0,0].get_legend_handles_labels()
+        ncol=len(ds_all.keys())
+        if plot_inventory == True:
+            ncol=ncol+1
+        leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,bbox_to_anchor=(0.5, 1.07))
+        if plot_inventory == True:
+            for l in leg.legendHandles[:-1]:
+                l.set_linewidth(3.0)
+        else:
+            for l in leg.legendHandles:
+                l.set_linewidth(3.0)
 
     for a in range(2):
         for b in range(n_cols):
