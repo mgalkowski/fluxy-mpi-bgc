@@ -1363,7 +1363,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             else:
                 ncol = 2
         '''
-        if ~set_global_leg:
+        if set_global_leg == False:
             leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
             if plot_inventory == True:
                 for l in leg.legendHandles[:-1]:
