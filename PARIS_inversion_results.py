@@ -58,6 +58,8 @@ if os.path.exists(filename) == False:
 
 with open(filename, "r") as f:
     s_data = load(f)
+    
+print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
 
 #####################################################################
 
