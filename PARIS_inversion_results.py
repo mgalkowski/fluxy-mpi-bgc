@@ -238,8 +238,20 @@ def read_flux(data_dir,species,models,model_filenames):
                 ds_all[m] = in_ds
                 print('Done!')
         except:
-            print(f'Failed!')
-            print(f'Cannot find {m} file for {species}. This model will not be plotted')
+            try:
+                if (model_filenames[m].split('_')[-1] == 'std*'):
+                    alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
+                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{model_species[m0][species]}_{period[m0][species]}.nc'))
+                    print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
+                    with xr.open_dataset(filepath[0]) as in_ds:
+                        ds_all[m] = in_ds
+                    print('Done!')
+                else:
+                    print(f'Failed!')
+                    print(f'Cannot find {m} file for {species}. This model will not be plotted')
+            except:
+                print(f'Failed!')
+                print(f'Cannot find {m} file for {species}. This model will not be plotted')
     
     return ds_all
 
@@ -346,7 +358,18 @@ def read_mf(data_dir,species,models,model_filenames):
                 ds_all[m] = in_ds
             print('Done!')
         except:
-            print(f'Cannot find {m} file for {species}.')
+            try:
+                if (model_filenames[m].split('_')[-1] == 'std*'):
+                    alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
+                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{model_species[m0][species]}_{period[m0][species]}_concentrations.nc'))
+                    print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
+                    with xr.open_dataset(filepath[0]) as in_ds:
+                        ds_all[m] = in_ds
+                    print('Done!')
+                else:
+                    print(f'Cannot find {m} file for {species}.')
+            except:
+                print(f'Cannot find {m} file for {species}.')
             
     return ds_all
 
