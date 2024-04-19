@@ -181,7 +181,7 @@ countrycodes_dict = {'IRELAND':'IRL',
                      'AUSTRIA':'AUT',
                      'ITALY':'ITA',
                      'BELGIUM': 'BEL',
-                     'LUXEMBURG': 'LUX'}
+                     'LUXEMBOURG': 'LUX'}
 
 regions_dict = {'BELUX':'BEL-LUX',
                 'BENELUX':'BEL-LUX-NLD',
@@ -238,8 +238,20 @@ def read_flux(data_dir,species,models,model_filenames):
                 ds_all[m] = in_ds
                 print('Done!')
         except:
-            print(f'Failed!')
-            print(f'Cannot find {m} file for {species}. This model will not be plotted')
+            try:
+                if (model_filenames[m].split('_')[-1] == 'std*'):
+                    alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
+                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{model_species[m0][species]}_{period[m0][species]}.nc'))
+                    print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
+                    with xr.open_dataset(filepath[0]) as in_ds:
+                        ds_all[m] = in_ds
+                    print('Done!')
+                else:
+                    print(f'Failed!')
+                    print(f'Cannot find {m} file for {species}. This model will not be plotted')
+            except:
+                print(f'Failed!')
+                print(f'Cannot find {m} file for {species}. This model will not be plotted')
     
     return ds_all
 
@@ -346,7 +358,18 @@ def read_mf(data_dir,species,models,model_filenames):
                 ds_all[m] = in_ds
             print('Done!')
         except:
-            print(f'Cannot find {m} file for {species}.')
+            try:
+                if (model_filenames[m].split('_')[-1] == 'std*'):
+                    alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
+                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{model_species[m0][species]}_{period[m0][species]}_concentrations.nc'))
+                    print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
+                    with xr.open_dataset(filepath[0]) as in_ds:
+                        ds_all[m] = in_ds
+                    print('Done!')
+                else:
+                    print(f'Cannot find {m} file for {species}.')
+            except:
+                print(f'Cannot find {m} file for {species}.')
             
     return ds_all
 
@@ -1225,7 +1248,30 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                             np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
                             label='Inventory 2023',zorder=0)
             except:
-                print(f'No inventory data available for {country}')
+                try:
+                    region_search = regions_dict[country]
+                    country_list = region_search.split('-')
+
+                    inv_c_index = [0]*len(country_list)
+                    inv_c_value = np.zeros(len(inv_ds.time.values))
+
+                    try:
+                        for i,var in enumerate(country_list):
+                            inv_key = [k for k, code in countrycodes_dict.items() if code == var]
+                            inv_c_index[i] = np.where(inv_ds['country'].values == inv_key[0])[0][0]
+                            inv_c_value = inv_c_value + inv_ds['inventory'].values[:,inv_c_index[i]]
+
+                        ax[a,b].bar(inv_ds.time.values,inv_c_value/units_scaling['intem'][species],
+                                    np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
+                                    label='Inventory 2023',zorder=0)
+
+                        print(f'No inventory data available for {country}. Considering sum of individual countries: {region_search}')
+
+                    except:
+                        print(f'No inventory data available for {inv_key[0]}. Inventory data will not be plotted for {country}.')
+
+                except:
+                    print(f'No inventory data available for {country}')
         
         for m in ds_all.keys():
             
@@ -1271,7 +1317,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             except:
                 try:
                     region_search = regions_dict[country]
-                    print(f'WARNING: {country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
+                    print(f'{country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
 
                     country_list = region_search.split('-')
 
@@ -1335,7 +1381,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                     alpha=0.3,color=model_colors[m][0])
 
                     except:
-                        print(f'ERROR: Covariance matrix is not available for {m}.')
+                        print(f'WARNING: Covariance matrix is not available for {m}. A posteriori uncertainty of {country} emissions will not be plotted.')
 
                     min_x.append(np.min(ds_all[m].time.values).astype('datetime64[M]'))
                     max_x.append(np.max(ds_all[m].time.values).astype('datetime64[M]'))
