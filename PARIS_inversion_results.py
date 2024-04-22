@@ -9,163 +9,12 @@ from matplotlib.dates import YearLocator, MonthLocator
 from matplotlib.ticker import NullFormatter
 import pprint
 import cartopy
-
-species_print = {'ch4':'CH$_4$',
-                 'hfc134a':'HFC-134a',
-                 'hfc143a':'HFC-143a',
-                 'hfc125':'HFC-125',
-                 'hfc32':'HFC-32',
-                 'hfc227ea':'HFC-227ea',
-                 'pfc218':'PFC-218',
-                 'sf6':'SF$_6$',
-                 'n2o':'N$_2$O'}
-
-period = {'intem':{'ch4':'monthly',
-                   'hfc134a':'yearly',
-                   'hfc143a':'yearly',
-                   'hfc125':'yearly',
-                   'hfc32':'yearly',
-                   'hfc227ea':'yearly',
-                   'pfc218':'yearly',
-                   'sf6':'monthly',
-                   'n2o':'monthly'},
-          'rhime':{'ch4':'monthly',
-                   'hfc134a':'yearly',
-                   'hfc143a':'yearly',
-                   'hfc125':'yearly',
-                   'hfc32':'yearly',
-                   'hfc227ea':'yearly',
-                   'pfc218':'yearly',
-                   'sf6':'monthly',
-                   'n2o':'monthly'},
-          'elris':{'ch4':'monthly',
-                   'hfc134a':'yearly',
-                   'hfc143a':'yearly',
-                   'hfc125':'yearly',
-                   'hfc32':'yearly',
-                   'hfc227ea':'yearly',
-                   'pfc218':'yearly',
-                   'sf6':'yearly',
-                   'n2o':'monthly'}}
-
-units_scaling = {'intem':{'ch4':1e9,
-                        'hfc134a':1e6,
-                        'hfc143a':1e6,
-                        'hfc125':1e6,
-                        'hfc32':1e6,
-                        'hfc227ea':1e6,
-                        'pfc218':1e6,
-                        'sf6':1e6,
-                        'n2o':1e6},
-                'rhime':{'ch4':1e12,
-                        'hfc134a':1e6,
-                        'hfc143a':1e6,
-                        'hfc125':1e6,
-                        'hfc32':1e6,
-                        'hfc227ea':1e6,
-                        'pfc218':1e6,
-                        'sf6':1e9,
-                        'n2o':1e9},
-                'elris':{'ch4':1e9,
-                            'hfc134a':1e6,
-                            'hfc143a':1e6,
-                            'hfc125':1e6,
-                            'hfc32':1e6,
-                            'hfc227ea':1e6,
-                            'pfc218':1e6,
-                            'sf6':1e6,
-                            'n2o':1e6}}
-
-units_print = {'ch4':'T',
-                 'hfc134a':'G',
-                 'hfc143a':'G',
-                 'hfc125':'G',
-                 'hfc32':'G',
-                 'hfc227ea':'G',
-                 'pfc218':'G',
-                 'sf6':'G',
-                 'n2o':'G'}
-
-dt_units = {'intem':{'ch4':'datetime64[M]',
-            'hfc134a':'datetime64[Y]',
-            'hfc143a':'datetime64[Y]',
-            'hfc125':'datetime64[Y]',
-            'hfc32':'datetime64[Y]',
-            'hfc227ea':'datetime64[Y]',
-            'pfc218':'datetime64[Y]',
-            'sf6':'datetime64[M]',
-            'n2o':'datetime64[M]'},
-                'rhime':{'ch4':'datetime64[M]',
-            'hfc134a':'datetime64[Y]',
-            'hfc143a':'datetime64[Y]',
-            'hfc125':'datetime64[Y]',
-            'hfc32':'datetime64[Y]',
-            'hfc227ea':'datetime64[Y]',
-            'pfc218':'datetime64[Y]',
-            'sf6':'datetime64[M]',
-            'n2o':'datetime64[M]'},
-                'elris':{'ch4':'datetime64[M]',
-            'hfc134a':'datetime64[Y]',
-            'hfc143a':'datetime64[Y]',
-            'hfc125':'datetime64[Y]',
-            'hfc32':'datetime64[Y]',
-            'hfc227ea':'datetime64[Y]',
-            'pfc218':'datetime64[Y]',
-            'sf6':'datetime64[Y]',
-            'n2o':'datetime64[M]'}}
-
-mf_units_scaling = {'ch4':1e-9,
-                    'hfc134a':1e-12,
-                    'hfc143a':1e-12,
-                    'hfc125':1e-12,
-                    'hfc32':1e-12,
-                    'hfc227ea':1e-12,
-                    'pfc218':1e-12,
-                    'sf6':1e-12,
-                    'n2o':1e-12}
-
-mf_units_print = {'ch4':'ppb',
-                  'hfc134a':'ppt',
-                  'hfc143a':'ppt',
-                  'hfc125':'ppt',
-                  'hfc32':'ppt',
-                  'hfc227ea':'ppt',
-                  'pfc218':'ppt',
-                  'sf6':'ppt',
-                  'n2o':'ppt'}
+from json import load
 
 model_colors = {'intem':[['darkslateblue','dodgerblue'],
                          ['black','grey']],
                 'rhime':[['darkgreen','green']],
                 'elris':[['purple','mediumpurple']]}
-
-model_species = {'intem':{'ch4':'ch4',
-                          'hfc134a':'hfc134a',
-                          'hfc143a':'hfc143a',
-                          'hfc125':'hfc125',
-                          'hfc32':'hfc32',
-                          'hfc227ea':'hfc227ea',
-                          'pfc218':'pfc218',
-                          'sf6':'sf6',
-                          'n2o':'n2o'},
-                'rhime':{'ch4':'ch4',
-                          'hfc134a':'hfc134a',
-                          'hfc143a':'hfc143a',
-                          'hfc125':'hfc125',
-                          'hfc32':'hfc32',
-                          'hfc227ea':'hfc227ea',
-                          'pfc218':'pfc218',
-                          'sf6':'sf6',
-                          'n2o':'n2o'},
-                'elris':{'ch4':'CH4',
-                          'hfc134a':'HFC_134a',
-                          'hfc143a':'HFC_143a',
-                          'hfc125':'HFC_125',
-                          'hfc32':'HFC_32',
-                          'hfc227ea':'HFC_227ea',
-                          'pfc218':'PFC_218',
-                          'sf6':'SF6',
-                          'n2o':'N2O'}}
 
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
@@ -200,6 +49,18 @@ annotate_coords = {0:[0.7,0.80],
 font = {'size':12}
 plt.rc('font', **font)
 
+### read in species info file
+
+filename = os.path.join(os.getcwd(),'species_info.json')
+
+if os.path.exists(filename) == False:
+    print('ERROR: Cannot find species_info.json file. Check that this exists in the same directory as your notebook.')
+
+with open(filename, "r") as f:
+    s_data = load(f)
+    
+print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
+
 #####################################################################
 
 def read_flux(data_dir,species,models,model_filenames):
@@ -232,7 +93,7 @@ def read_flux(data_dir,species,models,model_filenames):
         model_dir = model_filenames[m].split('_')[0]
         
         try:
-            filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{model_filenames[m]}_{model_species[m0][species]}_{period[m0][species]}.nc'))
+            filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{model_filenames[m]}_{s_data[species]["model_species"][m0]}_{s_data[species]["period"]}.nc'))
             print(f'Reading data from: {filepath[0]}')
             with xr.open_dataset(filepath[0]) as in_ds:
                 ds_all[m] = in_ds
@@ -241,7 +102,7 @@ def read_flux(data_dir,species,models,model_filenames):
             try:
                 if (model_filenames[m].split('_')[-1] == 'std*'):
                     alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
-                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{model_species[m0][species]}_{period[m0][species]}.nc'))
+                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{s_data[species]["model_species"][m0]}_{s_data[species]["period"]}.nc'))
                     print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
                     with xr.open_dataset(filepath[0]) as in_ds:
                         ds_all[m] = in_ds
@@ -303,16 +164,16 @@ def slice_flux(ds_all,start_date,end_date,
             print(f'Skipping {m}')
             
         if scale_units == True:
-            print(f'Scaling {m} units by {units_scaling[m0][species]}')
+            print(f'Scaling {m} units by {s_data[species]["units_scaling"][m0]}')
             if ds_all[m] is not None:
                 var_names = [k for k in ds_all[m].keys() if k not in skip_var]
                 for v in var_names:
-                    ds_all[m][v].values = ds_all[m][v].values/units_scaling[m0][species]
+                    ds_all[m][v].values = ds_all[m][v].values/s_data[species]["units_scaling"][m0]
 
                 cov_var = 'covariance_country_flux_total_posterior'
                 if cov_var in ds_all[m].keys():
-                    ds_all[m][cov_var].values = ds_all[m][cov_var].values/units_scaling[m0][species]**2
-                    print(f'Scaling covariance units in {m} by {units_scaling[m0][species]**2}')
+                    ds_all[m][cov_var].values = ds_all[m][cov_var].values/s_data[species]["units_scaling"][m0]**2
+                    print(f'Scaling covariance units in {m} by {s_data[species]["units_scaling"][m0]**2}')
 
             # fix for flux scaling issue in ELRIS - to be removed once fixed in .nc files
             if 'elris_old' in m:
@@ -352,7 +213,7 @@ def read_mf(data_dir,species,models,model_filenames):
         
         print(f'\nAttempting to read data from {m}')
         try:
-            filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{model_filenames[m]}_{model_species[m0][species]}_{period[m0][species]}_concentrations.nc'))
+            filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{model_filenames[m]}_{s_data[species]["model_species"][m0]}_{s_data[species]["period"]}_concentrations.nc'))
             print(f'Reading data from: {filepath[0]}')
             with xr.open_dataset(filepath[0]) as in_ds:
                 ds_all[m] = in_ds
@@ -361,7 +222,7 @@ def read_mf(data_dir,species,models,model_filenames):
             try:
                 if (model_filenames[m].split('_')[-1] == 'std*'):
                     alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
-                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{model_species[m0][species]}_{period[m0][species]}_concentrations.nc'))
+                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{s_data[species]["model_species"][m0]}_{s_data[species]["period"]}_concentrations.nc'))
                     print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
                     with xr.open_dataset(filepath[0]) as in_ds:
                         ds_all[m] = in_ds
@@ -444,11 +305,11 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
                 print(f'No {m} obs found between {start_date} and {end_date}')
                 
         if scale_units == True:
-            print(f'Scaling {m} units by {mf_units_scaling[species]}')
+            print(f'Scaling {m} units by {s_data[species]["mf_units_scaling"]}')
             if ds_all[m] is not None:
                 var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav']]
                 for v in var_names:
-                    ds_all[m][v] = ds_all[m][v]/mf_units_scaling[species]
+                    ds_all[m][v] = ds_all[m][v]/s_data[species]["mf_units_scaling"]
       
         if baseline_site is not None:
             print('Masking timeseries to only include baseline times')
@@ -720,7 +581,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
         max_mf.append(ax.get_ylim()[1])
         
         ax.set_title(model_labels[m])
-        ax.set_ylabel(f'{species_print[species]} {site} ({mf_units_print[species]})')
+        ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
         leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
         try:
             for l in leg.legend_handles:
@@ -904,7 +765,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
     max_mf.append(ax.get_ylim()[1])
     
     ax.set_title(model_labels[m])
-    ax.set_ylabel(f'{species_print[species]} {site} ({mf_units_print[species]})')
+    ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
     leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
     try:
         for l in leg.legend_handles:
@@ -1079,7 +940,7 @@ def plot_obs_diff(ds_all,species,site,model_labels,
     max_mf.append(ax.get_ylim()[1])
     
     ax.set_title(model_labels[m])
-    ax.set_ylabel(f'{species_print[species]} {site} ({mf_units_print[species]})')
+    ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
     leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
     try:
         for l in leg.legend_handles:
@@ -1180,7 +1041,7 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
         for l in leg.legendHandles:
             l.set_linewidth(3.0)
 
-    fig.suptitle((f'{species_print[species]} Modelled mole fraction statistical fit to obs')+
+    fig.suptitle((f'{s_data[species]["species_print"]} Modelled mole fraction statistical fit to obs')+
                  f' \n{start_date} to {end_date}')
     
     
@@ -1225,7 +1086,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
     """
     
     if plot_inventory == True:
-        with xr.open_dataset(os.path.join(data_dir,'inventory',f'UNFCCC_inventory_{model_species["intem"][species]}.nc')) as f:
+        with xr.open_dataset(os.path.join(data_dir,'inventory',f'UNFCCC_inventory_{s_data[species]["model_species"]["intem"]}.nc')) as f:
             inv_ds = f
 
     a,b = 0,0
@@ -1244,7 +1105,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
         if plot_inventory == True:
             try:
                 inv_c_index = np.where(inv_ds['country'].values == country)[0][0]
-                ax[a,b].bar(inv_ds.time.values,inv_ds['inventory'].values[:,inv_c_index]/units_scaling['intem'][species],
+                ax[a,b].bar(inv_ds.time.values,inv_ds['inventory'].values[:,inv_c_index]/s_data[species]["units_scaling"]["intem"],
                             np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
                             label='Inventory 2023',zorder=0)
             except:
@@ -1261,7 +1122,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                             inv_c_index[i] = np.where(inv_ds['country'].values == inv_key[0])[0][0]
                             inv_c_value = inv_c_value + inv_ds['inventory'].values[:,inv_c_index[i]]
 
-                        ax[a,b].bar(inv_ds.time.values,inv_c_value/units_scaling['intem'][species],
+                        ax[a,b].bar(inv_ds.time.values,inv_c_value/s_data[species]["units_scaling"]["intem"],
                                     np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
                                     label='Inventory 2023',zorder=0)
 
@@ -1392,7 +1253,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                                     
         #format each subplot
         
-        ax[a,b].set_ylabel(f'{species_print[species]} ({units_print[species]}g y$^{{-1}}$)')
+        ax[a,b].set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$)')
         ax[a,b].set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
                         np.max(max_x)+np.timedelta64(1,'M')])
 
@@ -1549,10 +1410,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
         try:
         
             if len(ds_all[m].time.values) == 1:
-                time_out = to_datetime(ds_all[m].time.values[0].astype(dt_units[m0][species])).strftime('%d/%m/%Y')
+                time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
             else:
-                time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(dt_units[m0][species])).strftime("%d/%m/%Y")} - '+
-                            f'{to_datetime(ds_all[m].time.values[-1].astype(dt_units[m0][species])).strftime("%d/%m/%Y")}')
+                time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")} - '+
+                            f'{to_datetime(ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")}')
 
             if n_cols == 1:
                 ax0 = ax[0]
@@ -1596,10 +1457,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     cbar.set_clim(fluxlim[species])
 
     color_bar1 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[0,...],shrink=0.9,pad=0.005)
-    color_bar1.set_label(f'Prior mean {species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar1.set_label(f'Prior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     color_bar2 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[1,...],shrink=0.9,pad=0.005)
-    color_bar2.set_label(f'Posterior mean {species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar2.set_label(f'Posterior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     #difference colorbar
     levels_diff = np.linspace(difflim[species][0],difflim[species][1])
@@ -1608,7 +1469,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     cbar_diff.set_clim(difflim[species])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,...],shrink=0.9,pad=0.005)
-    color_bar3.set_label(f'Prior - posterior {species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar3.set_label(f'Prior - posterior {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
     
     return fig
 
@@ -1697,10 +1558,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels):
         
         if i == 0:
             if len(ds_all[m].time.values) == 1:
-                time_out = to_datetime(ds_all[m].time.values[0].astype(dt_units[m0][species])).strftime('%d/%m/%Y')
+                time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
             else:
-                time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(dt_units[m0][species])).strftime("%d/%m/%Y")} - '+
-                            f'{to_datetime(ds_all[m].time.values[-1].astype(dt_units[m0][species])).strftime("%d/%m/%Y")}')
+                time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")} - '+
+                            f'{to_datetime(ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")}')
         
             ax[0].pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
@@ -1735,10 +1596,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels):
     cbar.set_clim(fluxlim[species])
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[0],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[1],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     #difference colorbar
     levels_diff = np.linspace(difflim[species][0],difflim[species][1])
@@ -1747,6 +1608,6 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels):
     cbar_diff.set_clim(difflim[species])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='horizontal',extend='both',ax=ax[2],shrink=0.9,pad=0.01)
-    color_bar3.set_label(f'{species_print[species]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
     
     return fig
