@@ -102,7 +102,7 @@ def read_flux(data_dir,species,models,model_filenames):
             try:
                 if (model_filenames[m].split('_')[-1] == 'std*'):
                     alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
-                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{model_species[m0][species]}_{period[m0][species]}.nc'))
+                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{s_data[species]["model_species"][m0]}_{s_data[species]["period"]}.nc'))
                     print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
                     with xr.open_dataset(filepath[0]) as in_ds:
                         ds_all[m] = in_ds
@@ -222,7 +222,7 @@ def read_mf(data_dir,species,models,model_filenames):
             try:
                 if (model_filenames[m].split('_')[-1] == 'std*'):
                     alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
-                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{model_species[m0][species]}_{period[m0][species]}_concentrations.nc'))
+                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{s_data[species]["model_species"][m0]}_{s_data[species]["period"]}_concentrations.nc'))
                     print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
                     with xr.open_dataset(filepath[0]) as in_ds:
                         ds_all[m] = in_ds
@@ -1122,7 +1122,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                             inv_c_index[i] = np.where(inv_ds['country'].values == inv_key[0])[0][0]
                             inv_c_value = inv_c_value + inv_ds['inventory'].values[:,inv_c_index[i]]
 
-                        ax[a,b].bar(inv_ds.time.values,inv_c_value/units_scaling['intem'][species],
+                        ax[a,b].bar(inv_ds.time.values,inv_c_value/s_data[species]["units_scaling"]["intem"],
                                     np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
                                     label='Inventory 2023',zorder=0)
 
