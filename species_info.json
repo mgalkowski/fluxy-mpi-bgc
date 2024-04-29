@@ -84,15 +84,15 @@
         "mf_units_print":"ppt"
         },    
 
-    "hfc227ae":{
-        "species_print":"HFC-227ae",
+    "hfc227ea":{
+        "species_print":"HFC-227ea",
         "period":"yearly",
         "units_scaling":{"intem":1e6,
                         "rhime":1e6,
                         "elris":1e6},
-        "model_species":{"intem":"hfc227ae",
-                        "rhime":"hfc227ae",
-                        "elris":"HFC_227ae"},
+        "model_species":{"intem":"hfc227ea",
+                        "rhime":"hfc227ea",
+                        "elris":"HFC_227ea"},
         "units_print":"G",
         "dt_units":{"intem":"datetime64[Y]",
                     "rhime":"datetime64[Y]",
