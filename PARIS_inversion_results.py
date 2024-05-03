@@ -34,11 +34,13 @@ countrycodes_dict = {'IRELAND':'IRL',
 
 regions_dict = {'BELUX':'BEL-LUX',
                 'BENELUX':'BEL-LUX-NLD',
-                'CW_EU':'AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVK',
+                'CW_EU':'AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVN',
                 'EU_GRP2':'AUT-BEL-CHE-DEU-DNK-FRA-GBR-IRL-ITA-LUX-NLD',
                 'NW_EU':'BEL-DEU-DNK-FRA-GBR-IRL-LUX-NLD',
                 'NW_EU2':'BEL-DEU-FRA-GBR-IRL-LUX-NLD',
                 'NW_EU_CONTINENT':'BEL-DEU-FRA-LUX-NLD'}
+
+regions_dict_old = {'CW_EU':'AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVK'}
 
 countrycodes_dict.update(regions_dict)
 
@@ -492,20 +494,26 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                 if len(include) == 1:
                     ax.scatter(ds_all[m].time.values,
                                ds_all[m]['Yobs'].values,
-                               color=model_colors[m][var_colors[var]],label=f'Obs ({model_labels[m]})',s=8,alpha=0.8)
-
+                               color=model_colors[m][var_colors[var]],
+                               label=f'Obs ({model_labels[m]})',s=8,alpha=0.8,marker='s')
+                    
                     if add_unc:
-                        ax.fill_between(ds_all[m].time.values,
-                                        ds_all[m]['Yobs'].values - ds_all[m]['uYobs'].values,
-                                        ds_all[m]['Yobs'].values + ds_all[m]['uYobs'].values,
-                                        color=model_colors[m][var_colors[var]],alpha=0.2)
+                        ax.errorbar(ds_all[m].time.values,
+                                    ds_all[m]['Yobs'].values,
+                                    ds_all[m]['uYobs'].values,
+                                    color=model_colors[m][var_colors[var]],alpha=0.4,fmt='none')
                 else:
-                    #ax.plot(ds_all[m].time.values,
-                    #            ds_all[m]['Yobs'].values,
-                    #            color='dimgrey',label=f'Obs ({model_labels[m]})')
+                    
                     ax.scatter(ds_all[m].time.values,
                                 ds_all[m]['Yobs'].values,
-                                color='grey',label=f'Obs ({model_labels[m]})',s=8,alpha=0.8)
+                                color='black',label=f'Obs ({model_labels[m]})',s=8,alpha=0.8,
+                                marker='s')
+                    
+                    if add_unc:
+                        ax.errorbar(ds_all[m].time.values,
+                                    ds_all[m]['Yobs'].values,
+                                    ds_all[m]['uYobs'].values,
+                                        color='black',alpha=0.4,fmt='none')
 
             elif var == 'uYmod':
                 uYmod = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
@@ -514,17 +522,17 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                            color=model_colors[m][var_colors[var]],label=f'{model_labels[m]} {var_labels[var]}',s=8,alpha=0.8)
 
             else:
-                #ax.plot(ds_all[m].time.values,
-                #        ds_all[m][var].values,
-                #        color=model_colors[m][var_colors[var]],alpha=0.8,
-                #        linewidth=2.,
-                #        label=f'{model_labels[m]} {var_labels[var]}')
-                
-                ax.scatter(ds_all[m].time.values,
+                ax.plot(ds_all[m].time.values,
                         ds_all[m][var].values,
-                        color=model_colors[m][var_colors[var]],alpha=0.5,
-                        s=8,
+                        color=model_colors[m][var_colors[var]],alpha=0.8,
+                        linewidth=2.,
                         label=f'{model_labels[m]} {var_labels[var]}')
+                
+                #ax.scatter(ds_all[m].time.values,
+                #        ds_all[m][var].values,
+                #        color=model_colors[m][var_colors[var]],alpha=0.5,
+                #        s=8,
+                #        label=f'{model_labels[m]} {var_labels[var]}')
                 
 
                 if (var == 'Yapost') and add_unc:
@@ -585,10 +593,10 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
         leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
         try:
             for l in leg.legend_handles:
-                l.set_linewidth(3.0)
+                l.set_linewidth(5.0)
         except:
             for l in leg.legendHandles:
-                l.set_linewidth(3.0)
+                l.set_linewidth(5.0)
         
         if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
             ax.xaxis.set_minor_locator(MonthLocator())
@@ -769,10 +777,10 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
     leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
     try:
         for l in leg.legend_handles:
-            l.set_linewidth(3.0)
+            l.set_linewidth(5.0)
     except:
         for l in leg.legendHandles:
-            l.set_linewidth(3.0)
+            l.set_linewidth(5.0)
     
     if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
         ax.xaxis.set_minor_locator(MonthLocator())
@@ -944,10 +952,10 @@ def plot_obs_diff(ds_all,species,site,model_labels,
     leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
     try:
         for l in leg.legend_handles:
-            l.set_linewidth(3.0)
+            l.set_linewidth(5.0)
     except:
         for l in leg.legendHandles:
-            l.set_linewidth(3.0)
+            l.set_linewidth(5.0)
     
     if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
         ax.xaxis.set_minor_locator(MonthLocator())
@@ -1036,10 +1044,10 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
     leg = ax[0].legend(ncol=2,borderpad=.2,columnspacing=1.0)
     try:
         for l in leg.legend_handles:
-            l.set_linewidth(3.0)
+            l.set_linewidth(5.0)
     except:
         for l in leg.legendHandles:
-            l.set_linewidth(3.0)
+            l.set_linewidth(5.0)
 
     fig.suptitle((f'{s_data[species]["species_print"]} Modelled mole fraction statistical fit to obs')+
                  f' \n{start_date} to {end_date}')
@@ -1138,19 +1146,24 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             
             m0 = m.split('_')[0]
             
+            if m0 == 'intem':
+                c_key = 'countrynumber'
+            elif m0 == 'rhime':
+                c_key = 'country'
+            elif m0 == 'elris':
+                c_key = 'country'
+            
             try:
                 
-                country_search = countrycodes_dict[country]
+                # fix for error in CW_EU definition in counrtycodes_dict and older InTEM netCDF files
+                try:
+                    country_search = countrycodes_dict[country]
+                    country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
                 
-                if m0 == 'intem':
-                    c_key = 'countrynumber'
-                elif m0 == 'rhime':
-                    c_key = 'country'
-                elif m0 == 'elris':
-                    c_key = 'country'
-                
-                country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
-                
+                except:
+                    country_search = regions_dict_old[country]
+                    country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
+                    
                 ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
                             ds_all[m]['country_flux_total_posterior'].values[:,country_index],
                             label=model_labels[m],color=model_colors[m][0])
@@ -1428,13 +1441,13 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
                             np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0),cmap=cmap,
                             vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
 
-            ax0.set_title(f'{model_labels[m]} prior')
+            ax0.set_title(f'{model_labels[m]}: prior')
             
             ax1.pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0),cmap=cmap,
                             vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
 
-            ax1.set_title(f'{model_labels[m]} posterior')
+            ax1.set_title(f'{model_labels[m]}: posterior')
             
             flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0)
             flux_diff[np.where(flux_diff) == np.nan] = 0.
@@ -1443,7 +1456,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
                             flux_diff,
                             cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='flat')
 
-            ax2.set_title(f'{model_labels[m]} posterior - prior')
+            ax2.set_title(f'{model_labels[m]}: posterior - prior')
                 
         except:
             print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
@@ -1469,7 +1482,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     cbar_diff.set_clim(difflim[species])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,...],shrink=0.9,pad=0.005)
-    color_bar3.set_label(f'Prior - posterior {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar3.set_label(f'Posterior - prior {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
     
     return fig
 
