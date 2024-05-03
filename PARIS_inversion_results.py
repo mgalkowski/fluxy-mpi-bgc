@@ -1475,7 +1475,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
     cbar_diff.set_clim(difflim[species])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,...],shrink=0.9,pad=0.005)
-    color_bar3.set_label(f'Prior - posterior {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar3.set_label(f'Posterior - prior {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
     
     return fig
 
