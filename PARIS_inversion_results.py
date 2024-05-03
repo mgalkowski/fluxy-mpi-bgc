@@ -494,19 +494,26 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                 if len(include) == 1:
                     ax.scatter(ds_all[m].time.values,
                                ds_all[m]['Yobs'].values,
-                               color='black',label=f'Obs ({model_labels[m]})',s=8,alpha=0.8,
-                               marker='s')
+                               color=model_colors[m][var_colors[var]],
+                               label=f'Obs ({model_labels[m]})',s=8,alpha=0.8,marker='s')
+                    
+                    if add_unc:
+                        ax.errorbar(ds_all[m].time.values,
+                                    ds_all[m]['Yobs'].values,
+                                    ds_all[m]['uYobs'].values,
+                                    color=model_colors[m][var_colors[var]],alpha=0.4,fmt='none')
+                else:
+                    
+                    ax.scatter(ds_all[m].time.values,
+                                ds_all[m]['Yobs'].values,
+                                color='black',label=f'Obs ({model_labels[m]})',s=8,alpha=0.8,
+                                marker='s')
                     
                     if add_unc:
                         ax.errorbar(ds_all[m].time.values,
                                     ds_all[m]['Yobs'].values,
                                     ds_all[m]['uYobs'].values,
                                         color='black',alpha=0.4,fmt='none')
-                else:
-                    ax.scatter(ds_all[m].time.values,
-                                ds_all[m]['Yobs'].values,
-                                color='black',label=f'Obs ({model_labels[m]})',s=8,alpha=0.8,
-                                marker='s')
 
             elif var == 'uYmod':
                 uYmod = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
