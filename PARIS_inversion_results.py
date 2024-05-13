@@ -1124,20 +1124,28 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                     inv_c_index = [0]*len(country_list)
                     inv_c_value = np.zeros(len(inv_ds.time.values))
 
-                    try:
-                        for i,var in enumerate(country_list):
+                    print(f'No inventory data available for {country}. Considering sum of individual countries: {region_search}')
+
+                    for i,var in enumerate(country_list):
+                        try:
                             inv_key = [k for k, code in countrycodes_dict.items() if code == var]
                             inv_c_index[i] = np.where(inv_ds['country'].values == inv_key[0])[0][0]
-                            inv_c_value = inv_c_value + inv_ds['inventory'].values[:,inv_c_index[i]]
+                            inv_c_temp = inv_ds['inventory'].values[:,inv_c_index[i]]
+                            if np.isnan(inv_c_temp[0]):
+                                inv_c_temp = np.zeros(len(inv_ds.time.values))
+                                print(f'WARNING: Inventory data for {inv_key[0]} is NaN. Inventory value for {country} will not include {inv_key[0]} contributions.')
+
+                            inv_c_value = inv_c_value + inv_c_temp
+
+                        except:
+                            try:
+                                print(f'WARNING: No inventory data available for {inv_key[0]}. Inventory value for {country} will not include {inv_key[0]} contributions.')
+                            except:
+                                print(f'ERROR: {var} does not exist in country dictionary!')
 
                         ax[a,b].bar(inv_ds.time.values,inv_c_value/s_data[species]["units_scaling"]["intem"],
                                     np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
                                     label='Inventory 2023',zorder=0)
-
-                        print(f'No inventory data available for {country}. Considering sum of individual countries: {region_search}')
-
-                    except:
-                        print(f'No inventory data available for {inv_key[0]}. Inventory data will not be plotted for {country}.')
 
                 except:
                     print(f'No inventory data available for {country}')
