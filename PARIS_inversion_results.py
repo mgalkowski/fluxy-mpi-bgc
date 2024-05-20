@@ -30,7 +30,16 @@ countrycodes_dict = {'IRELAND':'IRL',
                      'AUSTRIA':'AUT',
                      'ITALY':'ITA',
                      'BELGIUM': 'BEL',
-                     'LUXEMBOURG': 'LUX'}
+                     'LUXEMBOURG': 'LUX',
+                     'HUNGARY':'HUN',
+                     'SWEDEN':'SWE',
+                     'POLAND':'POL',
+                     'CZECHIA':'CZE',
+                     'CROATIA':'HRV',
+                     'SLOVAKIA':'SKV',
+                     'FINLAND':'FIN',
+                     'SLOVENIA':'SVN',
+                     'GREECE':'GRC'}
 
 regions_dict = {'BELUX':'BEL-LUX',
                 'BENELUX':'BEL-LUX-NLD',
@@ -1342,7 +1351,8 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 
 #####################################################################
 
-def plot_spatial_flux(ds_all,species,plot_area,model_labels):
+def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
+                      cmap_diff=None,c_border=None):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
@@ -1362,14 +1372,24 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
         model_labels (dict of str):
             Models and corresponding strings used to describe the model in the 
             plot legend.
+        cmap (str):
+            Colour map for flux plots.
+        cmap_diff (str):
+            Colour map for difference plots.
+        c_border (str):
+            Colour for flux plot country borders.
     Returns:
         fig (figure): 
             A plot of spatial flux posterior and prior mean/mode and a plot 
             of the absolute difference between these, for each model.
     """
     
-    cmap = 'viridis' #'Blues'
-    cmap_diff = 'coolwarm'
+    if cmap == None:
+        cmap = 'viridis' #'Blues'
+    if cmap_diff == None:
+        cmap_diff = 'coolwarm'
+    if c_border == None:
+        c_border = 'floralwhite'
     
     n_cols = len(ds_all.keys())
     
@@ -1412,7 +1432,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
             if i == 2:
                 border_color = 'dimgrey'
             else:
-                border_color = 'floralwhite'
+                border_color = c_border
 
             if n_cols == 1:
                 ax_var = ax[i]
@@ -1498,7 +1518,8 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels):
 
 #####################################################################
 
-def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels):
+def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
+                                 cmap=None,cmap_diff=None,c_border=None):
     """
     Plots posterior fluxes and the difference between these
     for two models.
@@ -1520,14 +1541,24 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels):
         model_labels (dict of str):
             Models and corresponding strings used to describe the model in the 
             plot legend.
+        cmap (str):
+            Colour map for flux plots.
+        cmap_diff (str):
+            Colour map for difference plots.
+        c_border (str):
+            Colour for flux plot country borders.
     Returns:
         fig (figure): 
             A plot of spatial flux posterior from two models a plot 
             of the absolute difference between these.
     """
     
-    cmap = 'viridis' #'Blues'
-    cmap_diff = 'coolwarm'
+    if cmap == None:
+        cmap = 'viridis' #'Blues'
+    if cmap_diff == None:
+        cmap_diff = 'coolwarm'
+    if c_border == None:
+        c_border = 'floralwhite'
     
     n_cols = len(ds_all.keys())
     
@@ -1566,7 +1597,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels):
         if i == 2:
             border_color = 'dimgrey'
         else:
-            border_color = 'floralwhite'
+            border_color = c_border
         ax[i].add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
         ax[i].coastlines(resolution='50m',color=border_color,linewidth=1.)
         ax[i].set_extent(region_limits[plot_area])
