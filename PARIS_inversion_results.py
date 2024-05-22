@@ -36,10 +36,12 @@ countrycodes_dict = {'IRELAND':'IRL',
                      'POLAND':'POL',
                      'CZECHIA':'CZE',
                      'CROATIA':'HRV',
-                     'SLOVAKIA':'SKV',
+                     'SLOVAKIA':'SVK',
                      'FINLAND':'FIN',
                      'SLOVENIA':'SVN',
-                     'GREECE':'GRC'}
+                     'GREECE':'GRC',
+                     'SPAIN':'ESP',
+                     'PORTUGAL':'PRT'}
 
 regions_dict = {'BELUX':'BEL-LUX',
                 'BENELUX':'BEL-LUX-NLD',
@@ -1176,7 +1178,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                             inv_key = [k for k, code in countrycodes_dict.items() if code == var]
                             inv_c_index[i] = np.where(inv_ds['country'].values == inv_key[0])[0][0]
                             inv_c_temp = inv_ds['inventory'].values[:,inv_c_index[i]]
-                            if np.isnan(inv_c_temp[0]):
+                            if np.any(np.isnan(inv_c_temp) == True):
                                 inv_c_temp = np.zeros(len(inv_ds.time.values))
                                 print(f'WARNING: Inventory data for {inv_key[0]} is NaN. Inventory value for {country} will not include {inv_key[0]} contributions.')
 
@@ -1188,9 +1190,9 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                             except:
                                 print(f'ERROR: {var} does not exist in country dictionary!')
 
-                        ax[a,b].bar(inv_ds.time.values,inv_c_value/s_data[species]["units_scaling"]["intem"],
-                                    np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
-                                    label='Inventory 2023',zorder=0)
+                    ax[a,b].bar(inv_ds.time.values,inv_c_value/s_data[species]["units_scaling"]["intem"],
+                                np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
+                                label='Inventory 2023',zorder=0)
 
                 except:
                     print(f'No inventory data available for {country}')
