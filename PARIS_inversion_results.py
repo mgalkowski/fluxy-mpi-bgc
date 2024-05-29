@@ -612,7 +612,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                         print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead.')
 
                     else:
-                        print(f'ERROR: variable {var} not found in {m}!')
+                        print(f'ERROR: variable {var} not found in {m} or deprecated!')
 
                 if (var == 'Yapost') and add_unc:
                     ax.fill_between(ds_all[m].time.values,
@@ -751,6 +751,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                   'Ybias':0,
                   'YaprioriOUTER':1,
                   'YapostOUTER':0,
+                  'Yobs':0,
                   'uYobs_repeatability':0,
                   'uYobs_variability':0,
                   'uYmod':0,
@@ -804,7 +805,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                             ds_all[m][var].values,
                             color=model_colors[m][var_colors[var]],alpha=0.5,
                             label=f'{model_labels[m]} {var_labels[var]}',
-                            linewidth=2,s=8)
+                            linewidth=2,s=5)
 
                 except:
                     # handle old ncdf files
@@ -812,19 +813,21 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                         uYmod = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
                         ax.scatter(ds_all[m].time.values,
                                    uYmod,
-                                   color=model_colors[m][var_colors[var]],label=f'{model_labels[m]} {var_labels[var]}',s=8,alpha=0.8)
+                                   color=model_colors[m][var_colors[var]],
+                                   label=f'{model_labels[m]} {var_labels[var]}',
+                                   linewidth=2,s=5,alpha=0.5)
                         print(f'WARNING: uYmod is not present in {m}. This quantity is being computed from qYmod.')
 
                     elif var == 'uYobs_repeatability':
                         ax.scatter(ds_all[m].time.values,
-                                ds_all[m]['uYobs'].values,
-                                color=model_colors[m][var_colors[var]],alpha=0.8,
-                                linewidth=2.,
-                                label=f'{model_labels[m]} {var_labels[var]}')
+                                   ds_all[m]['uYobs'].values,
+                                   color=model_colors[m][var_colors[var]],
+                                   label=f'{model_labels[m]} {var_labels[var]}',
+                                   linewidth=2.,s=5,alpha=0.5)
                         print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead.')
 
                     else:
-                        print(f'ERROR: variable {var} not found in {m}!')
+                        print(f'ERROR: variable {var} not found in {m} or deprecated!')
 
                 if (var == 'Yapost') and add_unc:
                     ax.fill_between(ds_all[m].time.values,
@@ -1022,7 +1025,7 @@ def plot_obs_diff(ds_all,species,site,model_labels,
                     print(f'ERROR: {models[0]} and {models[1]} have different definitions of uYobs!')
 
             else:
-                print(f'ERROR: variable {var} not found in {models[0]} or {models[1]}!')
+                print(f'ERROR: variable {var} not found or deprecated in {models[0]} or {models[1]}!')
 
         #if var == 'Yapost':
         #    ax.fill_between(ds_all[m].time.values,
