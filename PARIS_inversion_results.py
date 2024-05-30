@@ -879,7 +879,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
     min_mf.append(ax.get_ylim()[0])
     max_mf.append(ax.get_ylim()[1])
     
-    ax.set_title(model_labels[m])
+    ax.set_title('All models')
     ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
     leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
     try:
@@ -1080,7 +1080,7 @@ def plot_obs_diff(ds_all,species,site,model_labels,
     min_mf.append(ax.get_ylim()[0])
     max_mf.append(ax.get_ylim()[1])
     
-    ax.set_title(model_labels[m])
+    ax.set_title(f'{model_labels[models[0]]} - {model_labels[models[1]]}')
     ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
     leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
     try:
