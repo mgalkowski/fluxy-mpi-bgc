@@ -1297,9 +1297,13 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             try:
                 
                 # fix for error in CW_EU definition in counrtycodes_dict and older InTEM netCDF files
-                try:
-                    country_search = countrycodes_dict[country]
-                    country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
+                try:          
+                    # fix for RHIME which reports regions emissions with the regions_dict key names
+                    try:
+                        country_search = countrycodes_dict[country]
+                        country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
+                    except:
+                        country_index = np.where(ds_all[m][c_key].values.astype(str) == country)[0][0]
                 
                 except:
                     country_search = regions_dict_old[country]
