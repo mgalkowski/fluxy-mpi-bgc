@@ -1911,11 +1911,11 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                 ax_var.set_extent(region_limits[plot_area])
 
     # Plot fields
-    for n in range(n_lines):
-        for i,m in enumerate(ds_all.keys()):
+    for i in range(n_lines):
+        for j,m in enumerate(ds_all.keys()):
 
             #   Time window start/end indexes
-            t0 = n*dt
+            t0 = i*dt
             t1 = t0 + dt - 1
 
             lon = ds_all[m].longitude.values
@@ -1943,14 +1943,14 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                     ax.set_title(f'{model_labels[m]}: {var_labels[var][0]}')
                 else:
                     if n_cols == 1:
-                        iax = n
-                        ax_var = ax[iax]
-                    elif n_lines == 1:
                         iax = i
                         ax_var = ax[iax]
+                    elif n_lines == 1:
+                        iax = j
+                        ax_var = ax[iax]
                     else:
-                        iax = n
-                        ax_var = ax[iax,i]
+                        iax = i
+                        ax_var = ax[iax,j]
 
                     ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
                     ax_var.set_title(f'{model_labels[m]}: {var_labels[var][0]}')
@@ -1970,7 +1970,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
         elif n_lines == 1:
             color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,ax=ax[:],shrink=0.9,pad=0.005)
         else:
-            color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,ax=ax[n,...],shrink=0.9,pad=0.005)
+            color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,ax=ax[i,...],shrink=0.9,pad=0.005)
 
         color_bar.set_label(f'{var_labels[var][1]} {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
