@@ -1833,9 +1833,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
             averaged over the number of time steps specified in dt.
     """
 
-    var_labels = {'flux_total_prior':['prior','Prior mean'],
-                  'flux_total_posterior':['posterior','Posterior mean'],
-                  'posterior_prior_diff':['posterior - prior','Posterior-prior']}
+    var_labels = {'flux_total_prior':'Prior mean',
+                  'flux_total_posterior':'Posterior mean',
+                  'posterior_prior_diff':'Posterior-prior'}
 
     fluxlim = {'ch4':[0,1e-7],
         'hfc134a':[0,1e-11],
@@ -1940,7 +1940,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
 
                 if n_cols == 1 and n_lines == 1:
                     ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
-                    ax.set_title(f'{model_labels[m]}: {var_labels[var][0]}')
+                    ax.set_title(f'{model_labels[m]}\n{time_out}')
                 else:
                     if n_cols == 1:
                         iax = i
@@ -1952,26 +1952,30 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                         iax = i
                         ax_var = ax[iax,j]
 
+                    if i == 0:
+                        plot_title = f'{model_labels[m]}\n{time_out}'
+                    else:
+                        plot_title = f'{time_out}'
                     ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
-                    ax_var.set_title(f'{model_labels[m]}: {var_labels[var][0]}')
+                    ax_var.set_title(plot_title)
 
             except:
                 print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
                 print(f'Skipping plotting {m}.')
 
-        #flux colorbar
-        cbar = plt.cm.ScalarMappable(cmap=cmap)
-        levels = np.linspace(lim[0],lim[1])
-        cbar.set_array(levels)
-        cbar.set_clim(lim)
+    #flux colorbar
+    cbar = plt.cm.ScalarMappable(cmap=cmap)
+    levels = np.linspace(lim[0],lim[1])
+    cbar.set_array(levels)
+    cbar.set_clim(lim)
 
-        if n_cols == 1 and n_lines == 1:
-            color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,shrink=0.9,pad=0.005)
-        elif n_lines == 1:
-            color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,ax=ax[:],shrink=0.9,pad=0.005)
-        else:
-            color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,ax=ax[i,...],shrink=0.9,pad=0.005)
+    if n_cols == 1 and n_lines == 1:
+        color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,shrink=0.9,pad=0.005)
+    elif n_lines == 1:
+        color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,ax=ax[:],shrink=0.9,pad=0.005)
+    else:
+        color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,ax=ax.ravel().tolist(),shrink=0.9,pad=0.005)
 
-        color_bar.set_label(f'{var_labels[var][1]} {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     return fig
