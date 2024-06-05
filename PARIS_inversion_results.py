@@ -1825,8 +1825,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
         var (str):
             Variable to be plotted; options for 'flux_total_prior',
             'flux_total_posterior', 'posterior_prior_diff'
-        dt (int):
-            number of time steps to use in the averaging
+        dt (int or list of int):
+            number of time steps to use in the averaging for all models;
+            if dt is a list of int, one value per model must be provided
     Returns:
         fig (figure):
             A plot of spatial flux of the variable specified in var
@@ -1878,12 +1879,25 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
 
     # Figure size
     n_cols = len(ds_all.keys())
-    n_lines = len(ds_all[list(ds_all)[0]].time)//dt # closest integer
 
-    if n_lines == 0:
-        dt = len(ds_all[list(ds_all)[0]].time)
-        n_lines = 1
-        print('WARNING: dt is greater than the number of timestamps. The average will be performed over the full time window.')
+    if type(dt) != list:
+        dt = [dt]*n_cols
+    else:
+        print('WARNING: dt was specified manually for each model.'
+                'The code will not cross-check if they corresponds to equal time windows.'
+                'Please make sure the values are consistent between the models.')
+
+    if len(dt) != n_cols:
+        print('ERROR: size of dt is not equal to number of models!')
+    else:
+        nt = np.zeros(n_cols)
+        for j,m in enumerate(ds_all.keys()):
+            nt[j] = len(ds_all[m].time)//dt[j]   # closest integer
+
+        n_lines = int(np.min(nt)) # only time intervals that are common to all models
+
+        if n_lines == 0:
+            print('ERROR: dt is greater than the number of timestamps for at least one of the models.')
 
     # Create figure
     fig,ax = plt.subplots(n_lines,n_cols,constrained_layout=True,figsize=(n_cols*5,n_lines*3),
@@ -1915,8 +1929,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
         for j,m in enumerate(ds_all.keys()):
 
             #   Time window start/end indexes
-            t0 = i*dt
-            t1 = t0 + dt - 1
+            t0 = i*dt[j]
+            t1 = t0 + dt[j] - 1
 
             lon = ds_all[m].longitude.values
             lat = ds_all[m].latitude.values
@@ -1925,7 +1939,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
 
             try:
                 # Find timestamps for caption
-                if len(ds_all[m].time) == 1 or dt == 1:
+                if len(ds_all[m].time) == 1 or dt[j] == 1:
                     time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
                 else:
                     time_out = (f'{to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")} - '+
