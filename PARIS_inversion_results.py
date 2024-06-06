@@ -1900,7 +1900,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
             print('ERROR: dt is greater than the number of timestamps for at least one of the models.')
 
     # Create figure
-    fig,ax = plt.subplots(n_lines,n_cols,constrained_layout=True,figsize=(n_cols*5,n_lines*3),
+    fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
 
     # Add map
@@ -1983,13 +1983,28 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
     cbar.set_array(levels)
     cbar.set_clim(lim)
 
+    # Size of color bar
+    f_height = 0.9
+    f_bottom = (1-f_height)/2
+    f_width = 0.04/n_cols
+    f_left = 0.95
+
     if n_cols == 1 and n_lines == 1:
-        color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,shrink=0.9,pad=0.005)
+        cbar_ax = fig.add_axes([1, f_bottom, f_width, f_height])
+        color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
     elif n_lines == 1:
-        color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,ax=ax[:],shrink=0.9,pad=0.005)
+        cbar_ax = fig.add_axes([f_left, f_bottom, f_width, f_height])
+        color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
     else:
-        color_bar = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend=extend,ax=ax.ravel().tolist(),shrink=0.9,pad=0.005)
+        # Size of color bar
+        f_height = 0.95*2/n_lines
+        f_bottom = (1-f_height)/2
+        if n_cols == 1: f_left = 1
+
+        cbar_ax = fig.add_axes([f_left, f_bottom, f_width, f_height])
+        color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
 
     color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    fig.subplots_adjust(left=0.05, right=0.9, top=0.95, bottom=0.05, wspace=0.04, hspace=0.12)
 
     return fig
