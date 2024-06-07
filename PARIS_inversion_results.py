@@ -1583,9 +1583,17 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             if len(ds_all[m].time.values) == 1:
                 time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
             else:
-                time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")} - '+
-                            f'{to_datetime(ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")}')
-
+                start_print = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")
+                if s_data[species]["dt_units"][m0] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif s_data[species]["dt_units"][m0] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                else:
+                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                          'correct dates for higher frequency inversions.')
+                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                time_out = (f'{start_print} - {end_print}')
+                
             if n_cols == 1:
                 ax0 = ax[0]
                 ax1 = ax[1]
@@ -1744,8 +1752,16 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
             if len(ds_all[m].time.values) == 1:
                 time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
             else:
-                time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")} - '+
-                            f'{to_datetime(ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")}')
+                start_print = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")
+                if s_data[species]["dt_units"][m0] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif s_data[species]["dt_units"][m0] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                else:
+                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                          'correct dates for higher frequency inversions.')
+                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                time_out = (f'{start_print} - {end_print}')
         
             ax[0].pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
@@ -1937,45 +1953,52 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
 
             m0 = m.split('_')[0]
 
-            try:
-                # Find timestamps for caption
-                if len(ds_all[m].time) == 1 or dt[j] == 1:
-                    time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
+            #try:
+            # Find timestamps for caption
+            if len(ds_all[m].time) == 1 or dt[j] == 1:
+                time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
+            else:
+                start_print = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")
+                if s_data[species]["dt_units"][m0] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[t1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif s_data[species]["dt_units"][m0] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[t1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
                 else:
-                    time_out = (f'{to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")} - '+
-                                f'{to_datetime(ds_all[m].time.values[t1].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")}')
+                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                          'correct dates for higher frequency inversions.')
+                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                time_out = (f'{start_print} - {end_print}')
 
+            if var == 'posterior_prior_diff':
+                var_plot = np.mean(ds_all[m]['flux_total_posterior'][t0:t1+1,:-1,:-1],axis=0)-np.mean(ds_all[m]['flux_total_prior'][t0:t1+1,:-1,:-1],axis=0)
+                var_plot[np.where(var_plot) == np.nan] = 0.
+            else:
+                var_plot = np.mean(ds_all[m][var][t0:t1+1,:-1,:-1],axis=0)
 
-                if var == 'posterior_prior_diff':
-                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][t0:t1+1,:-1,:-1],axis=0)-np.mean(ds_all[m]['flux_total_prior'][t0:t1+1,:-1,:-1],axis=0)
-                    var_plot[np.where(var_plot) == np.nan] = 0.
+            if n_cols == 1 and n_lines == 1:
+                ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
+                ax.set_title(f'{model_labels[m]}\n{time_out}')
+            else:
+                if n_cols == 1:
+                    iax = i
+                    ax_var = ax[iax]
+                elif n_lines == 1:
+                    iax = j
+                    ax_var = ax[iax]
                 else:
-                    var_plot = np.mean(ds_all[m][var][t0:t1+1,:-1,:-1],axis=0)
+                    iax = i
+                    ax_var = ax[iax,j]
 
-                if n_cols == 1 and n_lines == 1:
-                    ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
-                    ax.set_title(f'{model_labels[m]}\n{time_out}')
+                if i == 0:
+                    plot_title = f'{model_labels[m]}\n{time_out}'
                 else:
-                    if n_cols == 1:
-                        iax = i
-                        ax_var = ax[iax]
-                    elif n_lines == 1:
-                        iax = j
-                        ax_var = ax[iax]
-                    else:
-                        iax = i
-                        ax_var = ax[iax,j]
+                    plot_title = f'{time_out}'
+                ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
+                ax_var.set_title(plot_title)
 
-                    if i == 0:
-                        plot_title = f'{model_labels[m]}\n{time_out}'
-                    else:
-                        plot_title = f'{time_out}'
-                    ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
-                    ax_var.set_title(plot_title)
-
-            except:
-                print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
-                print(f'Skipping plotting {m}.')
+            #except:
+            #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
+            #    print(f'Skipping plotting {m}.')
 
     #flux colorbar
     cbar = plt.cm.ScalarMappable(cmap=cmap)
@@ -2004,7 +2027,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
         cbar_ax = fig.add_axes([f_left, f_bottom, f_width, f_height])
         color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
 
-    color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]} (mol m$^{{-2}}$ s$^{{-1}}$)')
     fig.subplots_adjust(left=0.05, right=0.9, top=0.95, bottom=0.05, wspace=0.04, hspace=0.12)
 
     return fig
