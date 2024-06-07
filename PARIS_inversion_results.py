@@ -1480,7 +1480,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 #####################################################################
 
 def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
-                      cmap_diff=None,c_border=None):
+                      cmap_diff=None,c_border=None,period_override=None):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
@@ -1506,11 +1506,25 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             Colour map for difference plots.
         c_border (str):
             Colour for flux plot country borders.
+        period_override (list of str, optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
     Returns:
         fig (figure): 
             A plot of spatial flux posterior and prior mean/mode and a plot 
             of the absolute difference between these, for each model.
     """
+    
+    period_all = {}
+    
+    for i,m in enumerate(ds_all.keys()):
+        m0 = m.split('_')[0]
+        if period_override[i] == 'monthly':
+            period_all[m] = 'datetime64[M]'
+        elif period_override[i] == 'yearly':
+            period_all[m] = 'datetime64[Y]'
+        else:
+            period_all[m] = s_data[species]["dt_units"][m0]
     
     if cmap == None:
         cmap = 'viridis' #'Blues'
@@ -1583,11 +1597,11 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             if len(ds_all[m].time.values) == 1:
                 time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
             else:
-                start_print = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")
-                if s_data[species]["dt_units"][m0] == 'datetime64[Y]':
-                    end_period = ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
-                elif s_data[species]["dt_units"][m0] == 'datetime64[M]':
-                    end_period = ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                if period_all[m] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif period_all[m] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
                 else:
                     print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
                           'correct dates for higher frequency inversions.')
@@ -1655,7 +1669,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 #####################################################################
 
 def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
-                                 cmap=None,cmap_diff=None,c_border=None):
+                                 cmap=None,cmap_diff=None,c_border=None,period_override=None):
     """
     Plots posterior fluxes and the difference between these
     for two models.
@@ -1683,11 +1697,28 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
             Colour map for difference plots.
         c_border (str):
             Colour for flux plot country borders.
+        period_override (list of str, optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
     Returns:
         fig (figure): 
             A plot of spatial flux posterior from two models a plot 
             of the absolute difference between these.
     """
+    
+    period_all = {}
+    
+    for i,m in enumerate(ds_all.keys()):
+        m0 = m.split('_')[0]
+        if period_override is not None:
+            if period_override[i] == 'monthly':
+                period_all[m] = 'datetime64[M]'
+            elif period_override[i] == 'yearly':
+                period_all[m] = 'datetime64[Y]'
+            else:
+                period_all[m] = s_data[species]["dt_units"][m0]
+        else:
+            period_all[m] = s_data[species]["dt_units"][m0]
     
     if cmap == None:
         cmap = 'viridis' #'Blues'
@@ -1750,13 +1781,13 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         
         if i == 0:
             if len(ds_all[m].time.values) == 1:
-                time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
+                time_out = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime('%d/%m/%Y')
             else:
-                start_print = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")
-                if s_data[species]["dt_units"][m0] == 'datetime64[Y]':
-                    end_period = ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
-                elif s_data[species]["dt_units"][m0] == 'datetime64[M]':
-                    end_period = ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                if period_all[m] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif period_all[m] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
                 else:
                     print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
                           'correct dates for higher frequency inversions.')
@@ -1817,7 +1848,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
 def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                                     cmap='viridis',c_border='floralwhite',
                                     var='flux_total_posterior',
-                                    dt=1):
+                                    dt=1,period_override=None):
     """
     Plots posterior fluxes, prior fluxes or difference between these
     for all models and specific time intervals.
@@ -1844,11 +1875,28 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
         dt (int or list of int):
             number of time steps to use in the averaging for all models;
             if dt is a list of int, one value per model must be provided
+        period_override (list of str, optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
     Returns:
         fig (figure):
             A plot of spatial flux of the variable specified in var
             averaged over the number of time steps specified in dt.
     """
+
+    period_all = {}
+    
+    for i,m in enumerate(ds_all.keys()):
+        m0 = m.split('_')[0]
+        if period_override is not None:
+            if period_override[i] == 'monthly':
+                period_all[m] = 'datetime64[M]'
+            elif period_override[i] == 'yearly':
+                period_all[m] = 'datetime64[Y]'
+            else:
+                period_all[m] = s_data[species]["dt_units"][m0]
+        else:
+            period_all[m] = s_data[species]["dt_units"][m0]
 
     var_labels = {'flux_total_prior':'Prior mean',
                   'flux_total_posterior':'Posterior mean',
@@ -1958,11 +2006,11 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
             if len(ds_all[m].time) == 1 or dt[j] == 1:
                 time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
             else:
-                start_print = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")
-                if s_data[species]["dt_units"][m0] == 'datetime64[Y]':
-                    end_period = ds_all[m].time.values[t1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
-                elif s_data[species]["dt_units"][m0] == 'datetime64[M]':
-                    end_period = ds_all[m].time.values[t1].astype(s_data[species]["dt_units"][m0]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                if period_all[m] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif period_all[m] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
                 else:
                     print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
                           'correct dates for higher frequency inversions.')
