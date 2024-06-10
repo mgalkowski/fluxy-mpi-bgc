@@ -457,6 +457,25 @@ def stats_mf(ds_all):
     
     return pearson,nrmse
 
+def extract_site_info(sites):
+    """
+    Uses info from site_info.json to create a dictionary
+    of sites with latitude and longitudes.
+    """
+    
+    site_info_filename = os.path.join(os.getcwd(),'site_info.json')
+
+    with open(site_info_filename, "r") as f:
+        site_data = load(f)
+        
+    site_info = {}
+    
+    for s in sites:
+        site_info[s] = {'latitude':site_data[s][list(site_data[s].keys())[0]]['latitude'],
+                        'longitude':site_data[s][list(site_data[s].keys())[0]]['longitude']}
+    
+    return site_info
+
 #####################################################################
 
 def plot_obs_modelled_separate(ds_all,species,site,model_labels,
@@ -1193,7 +1212,8 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
 def plot_country_flux(ds_all,species,plot_regions,model_labels,
                       model_colors,
                       plot_inventory=True,data_dir=None,fix_y_axes=False,
-                      add_prior_unc=False, set_global_leg=False):
+                      add_prior_unc=False, set_global_leg=False,
+                      country_codes_as_titles=None):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
     areas in plot_regions.
@@ -1221,6 +1241,8 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             If True, plots prior uncertainty as shaded area.
         set_global_leg (bool):
             If True, plots one single legend instead of one legend per subplot.
+        country_codes_as_titles (bool)
+            If True, uses list of country codes as titles, instead of the region names.
     Returns:
         fig (figure): 
             A plot per country/region.
@@ -1429,15 +1451,19 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 ncol = 2
         '''
         if set_global_leg == False:
-            leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
+            leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,
+                                 loc='lower right')
             if plot_inventory == True:
                 for l in leg.legendHandles[:-1]:
                     l.set_linewidth(3.0)
             else:
                 for l in leg.legendHandles:
                     l.set_linewidth(3.0)
-                
-        ax[a,b].set_title(f'{country}')
+        
+        if country_codes_as_titles == True:
+            ax[a,b].set_title(f'{country}\n{region_search}')
+        else:        
+            ax[a,b].set_title(f'{country}')
         ax[a,b].grid(visible=True,which='major',alpha=0.4)
         ax[a,b].xaxis.set_minor_locator(MonthLocator())
         ax[a,b].xaxis.set_minor_formatter(NullFormatter())
@@ -1480,7 +1506,8 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 #####################################################################
 
 def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
-                      cmap_diff=None,c_border=None,period_override=None):
+                      cmap_diff=None,c_border=None,period_override=None,
+                      plot_site_locations=False):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
@@ -1509,6 +1536,8 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
         period_override (list of str, optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
+        plot_site_locations (bool):
+            If True, adds triangles with site locations to spatial plot.
     Returns:
         fig (figure): 
             A plot of spatial flux posterior and prior mean/mode and a plot 
@@ -1519,10 +1548,11 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
     
     for i,m in enumerate(ds_all.keys()):
         m0 = m.split('_')[0]
-        if period_override[i] == 'monthly':
-            period_all[m] = 'datetime64[M]'
-        elif period_override[i] == 'yearly':
-            period_all[m] = 'datetime64[Y]'
+        if period_override is not None:
+            if period_override[i] == 'monthly':
+                period_all[m] = 'datetime64[M]'
+            elif period_override[i] == 'yearly':
+                period_all[m] = 'datetime64[Y]'
         else:
             period_all[m] = s_data[species]["dt_units"][m0]
     
@@ -1535,7 +1565,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
     
     n_cols = len(ds_all.keys())
     
-    fluxlim = {'ch4':[0,1e-7],
+    fluxlim = {'ch4':[0,5e-8],
         'hfc134a':[0,1e-11],
         'hfc143a':[0,5e-12],
         'hfc125':[0,1e-11],
@@ -1546,7 +1576,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
         'sf6':[0,2e-13],
         'n2o':[0,1e-9]}
 
-    difflim = {'ch4':[-1e-7,1e-7],
+    difflim = {'ch4':[-2e-8,2e-8],
             'hfc134a':[-1e-11,1e-11],
             'hfc143a':[-5e-12,5e-12],
             'hfc125':[-1e-11,1e-11],
@@ -1565,6 +1595,26 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
+    
+    
+    # find site info in netcdf attrs. if none present, use site info from first model with this 
+    # data available
+    sites_info = {}
+    if plot_site_locations == True:
+        for i,m in enumerate(ds_all.keys()):
+            try:
+                sites_test = ds_all[m].sites.replace("'","").replace(']','').replace('[','').replace(' ','').split(',')
+                sites_info[m] = extract_site_info(sites_test)
+            except:
+                sites_info[m] = None
+                
+        for i,m in enumerate(ds_all.keys()):
+            if sites_info[m] == None:
+                for j,m2 in enumerate(sites_info.keys()):
+                    if sites_info[m2] != None:
+                        print(f'No sites data available in {m} attrs, so using site data from {m2}')
+                        sites_info[m] = sites_info[m2]
+                    break
 
     fig,ax = plt.subplots(3,n_cols,constrained_layout=True,figsize=(n_cols*5,9),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
@@ -1604,7 +1654,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                     end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
                 else:
                     print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
-                          'correct dates for higher frequency inversions.')
+                            'correct dates for higher frequency inversions.')
                 end_print = to_datetime(end_period).strftime("%d/%m/%Y")
                 time_out = (f'{start_print} - {end_print}')
                 
@@ -1637,9 +1687,19 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                             cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='flat')
 
             ax2.set_title(f'{model_labels[m]}: posterior - prior')
+            
+            if plot_site_locations == True:
+                
+                for s in sites_info[m]:
+                    ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=20,zorder=2,alpha=0.8)
+                    ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=20,zorder=2,alpha=0.8)
+                    ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=20,zorder=2,alpha=0.8)
                 
         except:
-            print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
+            print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
             print(f'Skipping plotting {m}.')
 
 
@@ -1669,7 +1729,8 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 #####################################################################
 
 def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
-                                 cmap=None,cmap_diff=None,c_border=None,period_override=None):
+                                 cmap=None,cmap_diff=None,c_border=None,period_override=None,
+                                 plot_site_locations=False):
     """
     Plots posterior fluxes and the difference between these
     for two models.
@@ -1700,6 +1761,8 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         period_override (list of str, optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
+        plot_site_locations (bool):
+            If True, adds triangles with site locations to spatial plot.
     Returns:
         fig (figure): 
             A plot of spatial flux posterior from two models a plot 
@@ -1848,7 +1911,8 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
 def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                                     cmap='viridis',c_border='floralwhite',
                                     var='flux_total_posterior',
-                                    dt=1,period_override=None):
+                                    dt=1,period_override=None,
+                                    plot_site_locations=False):
     """
     Plots posterior fluxes, prior fluxes or difference between these
     for all models and specific time intervals.
@@ -1878,6 +1942,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
         period_override (list of str, optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
+        plot_site_locations (bool):
+            If True, adds triangles with site locations to spatial plot.
     Returns:
         fig (figure):
             A plot of spatial flux of the variable specified in var
