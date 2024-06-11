@@ -1480,7 +1480,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 #####################################################################
 
 def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
-                      cmap_diff=None,c_border=None):
+                      cmap_diff=None,c_border=None,period_override=None):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
@@ -1506,11 +1506,25 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             Colour map for difference plots.
         c_border (str):
             Colour for flux plot country borders.
+        period_override (list of str, optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
     Returns:
         fig (figure): 
             A plot of spatial flux posterior and prior mean/mode and a plot 
             of the absolute difference between these, for each model.
     """
+    
+    period_all = {}
+    
+    for i,m in enumerate(ds_all.keys()):
+        m0 = m.split('_')[0]
+        if period_override[i] == 'monthly':
+            period_all[m] = 'datetime64[M]'
+        elif period_override[i] == 'yearly':
+            period_all[m] = 'datetime64[Y]'
+        else:
+            period_all[m] = s_data[species]["dt_units"][m0]
     
     if cmap == None:
         cmap = 'viridis' #'Blues'
@@ -1583,9 +1597,17 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             if len(ds_all[m].time.values) == 1:
                 time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
             else:
-                time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")} - '+
-                            f'{to_datetime(ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")}')
-
+                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                if period_all[m] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif period_all[m] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                else:
+                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                          'correct dates for higher frequency inversions.')
+                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                time_out = (f'{start_print} - {end_print}')
+                
             if n_cols == 1:
                 ax0 = ax[0]
                 ax1 = ax[1]
@@ -1647,7 +1669,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 #####################################################################
 
 def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
-                                 cmap=None,cmap_diff=None,c_border=None):
+                                 cmap=None,cmap_diff=None,c_border=None,period_override=None):
     """
     Plots posterior fluxes and the difference between these
     for two models.
@@ -1675,11 +1697,28 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
             Colour map for difference plots.
         c_border (str):
             Colour for flux plot country borders.
+        period_override (list of str, optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
     Returns:
         fig (figure): 
             A plot of spatial flux posterior from two models a plot 
             of the absolute difference between these.
     """
+    
+    period_all = {}
+    
+    for i,m in enumerate(ds_all.keys()):
+        m0 = m.split('_')[0]
+        if period_override is not None:
+            if period_override[i] == 'monthly':
+                period_all[m] = 'datetime64[M]'
+            elif period_override[i] == 'yearly':
+                period_all[m] = 'datetime64[Y]'
+            else:
+                period_all[m] = s_data[species]["dt_units"][m0]
+        else:
+            period_all[m] = s_data[species]["dt_units"][m0]
     
     if cmap == None:
         cmap = 'viridis' #'Blues'
@@ -1742,10 +1781,18 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         
         if i == 0:
             if len(ds_all[m].time.values) == 1:
-                time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
+                time_out = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime('%d/%m/%Y')
             else:
-                time_out = (f'{to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")} - '+
-                            f'{to_datetime(ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0])).strftime("%d/%m/%Y")}')
+                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                if period_all[m] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif period_all[m] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                else:
+                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                          'correct dates for higher frequency inversions.')
+                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                time_out = (f'{start_print} - {end_print}')
         
             ax[0].pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
@@ -1794,4 +1841,241 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
     color_bar3 = fig.colorbar(cbar_diff,orientation='horizontal',extend='both',ax=ax[2],shrink=0.9,pad=0.01)
     color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
     
+    return fig
+
+#####################################################################
+
+def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
+                                    cmap='viridis',c_border='floralwhite',
+                                    var='flux_total_posterior',
+                                    dt=1,period_override=None):
+    """
+    Plots posterior fluxes, prior fluxes or difference between these
+    for all models and specific time intervals.
+
+    Args:
+        ds_all (dictionary of datasets):
+            xarray datasets of fluxes, scaled and sliced between
+            chosen dates.
+        species (str):
+            Gas species, e.g. 'ch4'.
+        plot_area (str):
+            Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
+            'ITALY','SWITZERLAND','NWEU','CWEU','EUROPE'.
+        model_labels (dict of str):
+            Models and corresponding strings used to describe the model in the
+            plot legend.
+        cmap (str):
+            Colour map for flux plots.
+        c_border (str):
+            Colour for flux plot country borders.
+        var (str):
+            Variable to be plotted; options for 'flux_total_prior',
+            'flux_total_posterior', 'posterior_prior_diff'
+        dt (int or list of int):
+            number of time steps to use in the averaging for all models;
+            if dt is a list of int, one value per model must be provided
+        period_override (list of str, optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
+    Returns:
+        fig (figure):
+            A plot of spatial flux of the variable specified in var
+            averaged over the number of time steps specified in dt.
+    """
+
+    period_all = {}
+    
+    for i,m in enumerate(ds_all.keys()):
+        m0 = m.split('_')[0]
+        if period_override is not None:
+            if period_override[i] == 'monthly':
+                period_all[m] = 'datetime64[M]'
+            elif period_override[i] == 'yearly':
+                period_all[m] = 'datetime64[Y]'
+            else:
+                period_all[m] = s_data[species]["dt_units"][m0]
+        else:
+            period_all[m] = s_data[species]["dt_units"][m0]
+
+    var_labels = {'flux_total_prior':'Prior mean',
+                  'flux_total_posterior':'Posterior mean',
+                  'posterior_prior_diff':'Posterior-prior'}
+
+    fluxlim = {'ch4':[0,1e-7],
+        'hfc134a':[0,1e-11],
+        'hfc143a':[0,5e-12],
+        'hfc125':[0,1e-11],
+        'hfc32':[0,1e-11],
+        'hfc23':[0,1e-12],
+        'hfc227ea':[0,1e-12],
+        'pfc218':[0,5e-14],
+        'sf6':[0,2e-13],
+        'n2o':[0,1e-9]}
+
+    difflim = {'ch4':[-1e-7,1e-7],
+            'hfc134a':[-1e-11,1e-11],
+            'hfc143a':[-5e-12,5e-12],
+            'hfc125':[-1e-11,1e-11],
+            'hfc32':[-1e-11,1e-11],
+            'hfc23':[-1e-12,1e-12],
+            'hfc227ea':[-1e-12,1e-12],
+            'pfc218':[-5e-14,5e-14],
+            'sf6':[-5e-13,5e-13],
+            'n2o':[-1e-9,1e-9]}
+
+    region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
+                    'FRANCE':[-6,9,42,52],
+                    'GERMANY':[2,18,45,60],
+                    'ITALY':[6,19,36,48],
+                    'SWITZERLAND':[5.5,11,45,49],
+                    'NWEU':[-11,11,45,62],
+                    'CWEU':[-12,27,37,66],
+                    'EUROPE':[-98,40,10,80]}
+
+    # Define variable specific settings
+    if var == 'posterior_prior_diff':
+        lim = difflim[species]
+        extend ='both'
+    else:
+        lim = fluxlim[species]
+        extend = 'max'
+
+    # Figure size
+    n_cols = len(ds_all.keys())
+
+    if type(dt) != list:
+        dt = [dt]*n_cols
+    else:
+        print('WARNING: dt was specified manually for each model.'
+                'The code will not cross-check if they corresponds to equal time windows.'
+                'Please make sure the values are consistent between the models.')
+
+    if len(dt) != n_cols:
+        print('ERROR: size of dt is not equal to number of models!')
+    else:
+        nt = np.zeros(n_cols)
+        for j,m in enumerate(ds_all.keys()):
+            nt[j] = len(ds_all[m].time)//dt[j]   # closest integer
+
+        n_lines = int(np.min(nt)) # only time intervals that are common to all models
+
+        if n_lines == 0:
+            print('ERROR: dt is greater than the number of timestamps for at least one of the models.')
+
+    # Create figure
+    fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3),
+                   subplot_kw={'projection':cartopy.crs.PlateCarree()})
+
+    # Add map
+    for i in range(n_lines):
+        for j in range(n_cols):
+
+            if n_cols == 1 and n_lines == 1:
+                ax.add_feature(cartopy.feature.BORDERS,edgecolor=c_border,linewidth=1.)
+                ax.coastlines(resolution='50m',color=c_border,linewidth=1.)
+                ax.set_extent(region_limits[plot_area])
+
+            else:
+                if n_cols == 1:
+                    ax_var = ax[i]
+                elif n_lines == 1:
+                    ax_var = ax[j]
+                else:
+                    ax_var = ax[i,j]
+
+                ax_var.add_feature(cartopy.feature.BORDERS,edgecolor=c_border,linewidth=1.)
+                ax_var.coastlines(resolution='50m',color=c_border,linewidth=1.)
+                ax_var.set_extent(region_limits[plot_area])
+
+    # Plot fields
+    for i in range(n_lines):
+        for j,m in enumerate(ds_all.keys()):
+
+            #   Time window start/end indexes
+            t0 = i*dt[j]
+            t1 = t0 + dt[j] - 1
+
+            lon = ds_all[m].longitude.values
+            lat = ds_all[m].latitude.values
+
+            m0 = m.split('_')[0]
+
+            #try:
+            # Find timestamps for caption
+            if len(ds_all[m].time) == 1 or dt[j] == 1:
+                time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
+            else:
+                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                if period_all[m] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif period_all[m] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                else:
+                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                          'correct dates for higher frequency inversions.')
+                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                time_out = (f'{start_print} - {end_print}')
+
+            if var == 'posterior_prior_diff':
+                var_plot = np.mean(ds_all[m]['flux_total_posterior'][t0:t1+1,:-1,:-1],axis=0)-np.mean(ds_all[m]['flux_total_prior'][t0:t1+1,:-1,:-1],axis=0)
+                var_plot[np.where(var_plot) == np.nan] = 0.
+            else:
+                var_plot = np.mean(ds_all[m][var][t0:t1+1,:-1,:-1],axis=0)
+
+            if n_cols == 1 and n_lines == 1:
+                ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
+                ax.set_title(f'{model_labels[m]}\n{time_out}')
+            else:
+                if n_cols == 1:
+                    iax = i
+                    ax_var = ax[iax]
+                elif n_lines == 1:
+                    iax = j
+                    ax_var = ax[iax]
+                else:
+                    iax = i
+                    ax_var = ax[iax,j]
+
+                if i == 0:
+                    plot_title = f'{model_labels[m]}\n{time_out}'
+                else:
+                    plot_title = f'{time_out}'
+                ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
+                ax_var.set_title(plot_title)
+
+            #except:
+            #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
+            #    print(f'Skipping plotting {m}.')
+
+    #flux colorbar
+    cbar = plt.cm.ScalarMappable(cmap=cmap)
+    levels = np.linspace(lim[0],lim[1])
+    cbar.set_array(levels)
+    cbar.set_clim(lim)
+
+    # Size of color bar
+    f_height = 0.9
+    f_bottom = (1-f_height)/2
+    f_width = 0.04/n_cols
+    f_left = 0.95
+
+    if n_cols == 1 and n_lines == 1:
+        cbar_ax = fig.add_axes([1, f_bottom, f_width, f_height])
+        color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
+    elif n_lines == 1:
+        cbar_ax = fig.add_axes([f_left, f_bottom, f_width, f_height])
+        color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
+    else:
+        # Size of color bar
+        f_height = 0.95*2/n_lines
+        f_bottom = (1-f_height)/2
+        if n_cols == 1: f_left = 1
+
+        cbar_ax = fig.add_axes([f_left, f_bottom, f_width, f_height])
+        color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
+
+    color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]} (mol m$^{{-2}}$ s$^{{-1}}$)')
+    fig.subplots_adjust(left=0.05, right=0.9, top=0.95, bottom=0.05, wspace=0.04, hspace=0.12)
+
     return fig
