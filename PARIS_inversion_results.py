@@ -1707,11 +1707,11 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                 
                 for s in sites_info[m]:
                     ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=20,zorder=2,alpha=0.8)
+                                edgecolor='black',marker='o',s=30,zorder=2)
                     ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=20,zorder=2,alpha=0.8)
+                                edgecolor='black',marker='o',s=30,zorder=2)
                     ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=20,zorder=2,alpha=0.8)
+                                edgecolor='black',marker='o',s=30,zorder=2)
                 
         except:
             print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
@@ -1834,6 +1834,23 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
                     'GERMANY':[2,18,45,60],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66]}
+    
+    sites_info = {}
+    if plot_site_locations == True:
+        for i,m in enumerate(ds_all.keys()):
+            try:
+                sites_test = ds_all[m].sites.replace("'","").replace(']','').replace('[','').replace(' ','').split(',')
+                sites_info[m] = extract_site_info(sites_test)
+            except:
+                sites_info[m] = None
+                
+        for i,m in enumerate(ds_all.keys()):
+            if sites_info[m] == None:
+                for j,m2 in enumerate(sites_info.keys()):
+                    if sites_info[m2] != None:
+                        print(f'No sites data available in {m} attrs, so using site data from {m2}')
+                        sites_info[m] = sites_info[m2]
+                    break
 
     fig,ax = plt.subplots(1,3,constrained_layout=True,figsize=(n_cols*5,9),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
@@ -1886,6 +1903,16 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
                             vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
 
             ax[1].set_title(f'{model_labels[m]}\nPosterior mean')
+            
+        if plot_site_locations == True:
+                
+            for s in sites_info[m]:
+                ax[0].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                            edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                ax[1].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                            edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                            edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
         
     flux_diff = (np.mean(ds_all[all_keys[1]]['flux_total_posterior'].values[:,:-1,:-1],axis=0)-
                  np.mean(ds_all[all_keys[0]]['flux_total_posterior'].values[:,:-1,:-1],axis=0))
@@ -2044,6 +2071,23 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
         if n_lines == 0:
             print('ERROR: dt is greater than the number of timestamps for at least one of the models.')
 
+    sites_info = {}
+    if plot_site_locations == True:
+        for i,m in enumerate(ds_all.keys()):
+            try:
+                sites_test = ds_all[m].sites.replace("'","").replace(']','').replace('[','').replace(' ','').split(',')
+                sites_info[m] = extract_site_info(sites_test)
+            except:
+                sites_info[m] = None
+                
+        for i,m in enumerate(ds_all.keys()):
+            if sites_info[m] == None:
+                for j,m2 in enumerate(sites_info.keys()):
+                    if sites_info[m2] != None:
+                        print(f'No sites data available in {m} attrs, so using site data from {m2}')
+                        sites_info[m] = sites_info[m2]
+                    break
+
     # Create figure
     fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
@@ -2124,6 +2168,12 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                     plot_title = f'{time_out}'
                 ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
                 ax_var.set_title(plot_title)
+                
+            if plot_site_locations == True:
+                
+                for s in sites_info[m]:
+                    ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
 
             #except:
             #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
