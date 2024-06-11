@@ -59,6 +59,11 @@ annotate_coords = {0:[0.7,0.80],
                    1:[0.7,0.60],
                    2:[0.7,0.40]}
 
+# population from 2018 to 2023 (at Jan 1 each year)
+bel_pop = np.array([11.399,11.455,11.522,11.555,11.618,11.723])
+lux_pop = np.array([0.602,0.614,0.626,0.635,0.645,0.661])
+bel_pop_r = np.round(np.mean(bel_pop/(bel_pop+lux_pop)),3)
+
 font = {'size':12}
 plt.rc('font', **font)
 
@@ -1317,44 +1322,52 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 c_key = 'country'
             
             try:
-                
-                # fix for error in CW_EU definition in counrtycodes_dict and older InTEM netCDF files
+                # fix for error in CW_EU definition in countrycodes_dict and older InTEM netCDF files
                 try:          
                     # fix for RHIME which reports regions emissions with the regions_dict key names
                     try:
-                        country_search = countrycodes_dict[country]
+                        if m0 == 'intem' and country == 'BELGIUM':
+                            country_search = 'BEL-LUX'
+                            print(f'\nNOTE: InTEM does not estimate separate BELGIUM emissions.')
+                            print(f'So a population ratio of {bel_pop_r} is being used to scale InTEM\'s total BELGIUM+LUXEMBOUG estimate.\n')
+                            r = bel_pop_r
+                        else:
+                            country_search = countrycodes_dict[country]
+                            r = 1.
                         country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
                     except:
                         country_index = np.where(ds_all[m][c_key].values.astype(str) == country)[0][0]
+                        r = 1.
                 
                 except:
                     country_search = regions_dict_old[country]
                     country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
+                    r = 1.
                     
                 ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
-                            ds_all[m]['country_flux_total_posterior'].values[:,country_index],
+                            ds_all[m]['country_flux_total_posterior'].values[:,country_index]*r,
                             label=model_labels[m],color=model_colors[m][0])
                 
                 ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
-                            ds_all[m]['country_flux_total_prior'].values[:,country_index],
+                            ds_all[m]['country_flux_total_prior'].values[:,country_index]*r,
                             label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
                 
                 max_cf.append(ax[a,b].get_ylim()[1])
                 
                 ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                    ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index],
-                                    ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index],
+                                    ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index]*r,
+                                    ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r,
                                     alpha=0.3,color=model_colors[m][0])
                 
                 if add_prior_unc:
                     ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                        ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index],
-                                        ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index],
+                                        ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r,
+                                        ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r,
                                         alpha=0.1,color=model_colors[m][0])
                 
                 min_x.append(np.min(ds_all[m].time.values).astype('datetime64[M]'))
                 max_x.append(np.max(ds_all[m].time.values).astype('datetime64[M]'))
-        
+            
             except:
                 try:
                     region_search = regions_dict[country]
@@ -1430,7 +1443,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 except:
                     print(f'ERROR: Either start and end dates are incorrect or there is no {country} emissions in {m}.')
                     print(f'Skipping plotting {m}.')
-                                                    
+                                        
         #format each subplot
         
         ax[a,b].set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$)')
@@ -1451,8 +1464,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 ncol = 2
         '''
         if set_global_leg == False:
-            leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,
-                                 loc='lower right')
+            leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
             if plot_inventory == True:
                 for l in leg.legendHandles[:-1]:
                     l.set_linewidth(3.0)
@@ -1461,7 +1473,10 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                     l.set_linewidth(3.0)
         
         if country_codes_as_titles == True:
-            ax[a,b].set_title(f'{country}\n{region_search}')
+            try:
+                ax[a,b].set_title(f'{country}\n{region_search}')
+            except:
+                ax[a,b].set_title(f'{country}')
         else:        
             ax[a,b].set_title(f'{country}')
         ax[a,b].grid(visible=True,which='major',alpha=0.4)
