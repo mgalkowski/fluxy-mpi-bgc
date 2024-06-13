@@ -1393,8 +1393,8 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                       model_colors,
                       plot_inventory=True,data_dir=None,fix_y_axes=False,
                       add_prior_unc=False, set_global_leg=False,
-                      country_codes_as_titles=None,include_separate=True,
-                      include_combined=False):
+                      country_codes_as_titles=None,plot_separate=True,
+                      plot_combined=False):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
     areas in plot_regions.
@@ -1424,9 +1424,9 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             If True, plots one single legend instead of one legend per subplot.
         country_codes_as_titles (bool)
             If True, uses list of country codes as titles, instead of the region names.
-        include_separate (bool):
+        plot_separate (bool):
             If True, plots model results as separate lines.
-        include_combined (bool):
+        plot_combined (bool):
             If True, plots combined average results from all models.
     Returns:
         fig (figure): 
@@ -1467,7 +1467,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
         
             if region_time is not None:
         
-                if include_combined == True:
+                if plot_combined == True:
             
                     if j == 0:
                         all_region_flux_total_posterior = region_flux_total_posterior
@@ -1489,7 +1489,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                                                                                     region_flux_total_posterior_upper[t]-region_flux_total_posterior[t]])),
                                                                             size=1000) for t in range(region_time.shape[0])])
                             
-                if include_separate == True:
+                if plot_separate == True:
                     
                     ax[a,b].plot(region_time,
                                 region_flux_total_posterior,
@@ -1515,7 +1515,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 max_x.append(np.max(region_time).astype('datetime64[M]'))
                 max_cf.append(ax[a,b].get_ylim()[1])
                 
-        if include_combined == True:
+        if plot_combined == True:
             
             if i == 0:
                 print('\nNOTE: This currently assumes that posterior PDFs are Gaussian. The average percentile is used '+
