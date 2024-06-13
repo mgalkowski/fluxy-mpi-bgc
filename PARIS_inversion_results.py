@@ -1240,21 +1240,21 @@ def extract_region_flux(ds_all,m,m0,country):
                     r = bel_pop_r
                 else:
                     country_search = countrycodes_dict[country]
-                    r = 1.
+                    r = 1
                 country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
             
             # fix for RHIME which reports regions emissions with the regions_dict key names
             except:
                 
                 country_index = np.where(ds_all[m][c_key].values.astype(str) == country)[0][0]
-                r = 1.
+                r = 1
                 
         # fix for error in CW_EU definition in countrycodes_dict and older InTEM netCDF files  
         except:
             
             country_search = regions_dict_old[country]
             country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
-            r = 1.
+            r = 1
             
         region_time = ds_all[m].time.values
         region_flux_total_posterior = ds_all[m]['country_flux_total_posterior'].values[:,country_index]*r
@@ -1484,10 +1484,10 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                         all_region_flux_total_upper = np.vstack((all_region_flux_total_upper,
                                                                 region_flux_total_posterior_upper))
                         
-                    post_pdfs[m] = np.array([np.random.default_rng().normal(loc=ds_all[m]['country_flux_total_posterior'].values[t,country_index]*r,
-                                                                                scale=ds_all[m]['percentile_country_flux_total_posterior'].values[t,model_q_indices[m0][1],country_index]*r-
-                                                                                        ds_all[m]['country_flux_total_posterior'].values[t,country_index]*r,
-                                                                                size=1000) for t in range(ds_all[m].time.shape[0])])
+                    post_pdfs[m] = np.array([np.random.default_rng().normal(loc=region_flux_total_posterior[t],
+                                                                            scale=np.mean(np.array([region_flux_total_posterior[t]-region_flux_total_posterior_lower[t],
+                                                                                                    region_flux_total_posterior_upper[t]-region_flux_total_posterior[t]])),
+                                                                            size=1000) for t in range(region_time.shape[0])])
                             
                 if include_separate == True:
                     
@@ -1516,6 +1516,11 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 max_cf.append(ax[a,b].get_ylim()[1])
                 
         if include_combined == True:
+            
+            if i == 0:
+                print('\nNOTE: This currently assumes that posterior PDFs are Gaussian. The average percentile is used '+
+                    'to estimate an approximate standard deviation.\n')
+            
             mean_country_flux_total_posterior = np.mean(all_region_flux_total_posterior,axis=0)
             mean_country_flux_total_prior = np.mean(all_region_flux_total_prior,axis=0)
             mean_country_flux_total_lower = np.mean(all_region_flux_total_lower,axis=0)
