@@ -1213,165 +1213,6 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
     return fig
 
 #####################################################################
-
-def plot_country_flux(ds_all,species,plot_regions,model_labels,
-                      model_colors,
-                      plot_inventory=True,data_dir=None,fix_y_axes=False,
-                      add_prior_unc=False, set_global_leg=False,
-                      country_codes_as_titles=None):
-    """
-    Timeseries plot of prior and posterior country fluxes, from list of 
-    areas in plot_regions.
-    
-    Args:
-        ds_all (dictionary of datasets):
-            xarray datasets of fluxes, scaled and sliced between 
-            chosen dates.
-        species (str): 
-            Gas species, e.g. 'ch4'.
-        plot_regions (list of str):
-            Country or regions to plot, e.g. ['UNITED KINGDOM','SWITZERLAND']
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the 
-            plot legend.
-        model_colors (dict of str):
-            Models and corresponding colours used to plot the model.
-        plot_inventory (bool):
-            If True, plots inventory flux estimates as bars in each plot.
-        data_dir (str): 
-            Path to top data directory, used to read inventory data files.
-        fix_y_axes (bool):
-            If True, uses a consistent y axis for all plots.
-        add_prior_unc (bool):
-            If True, plots prior uncertainty as shaded area.
-        set_global_leg (bool):
-            If True, plots one single legend instead of one legend per subplot.
-        country_codes_as_titles (bool)
-            If True, uses list of country codes as titles, instead of the region names.
-    Returns:
-        fig (figure): 
-            A plot per country/region.
-    """
-
-    a,b = 0,0
-    max_cf = []
-    min_x = []
-    max_x = []
-
-    n_cols = math.ceil(len(plot_regions)/2)
-    if n_cols <= 1:
-        n_cols = 2
-        
-    fig,ax = plt.subplots(2,n_cols,figsize=(n_cols*6,8),constrained_layout=True)
-
-    for i,country in enumerate(plot_regions):
-        
-        if plot_inventory == True:
-            
-            inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species)
-            
-            if inventory_flux is not None:
-                ax[a,b].bar(inventory_time,inventory_flux,
-                            np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
-                            label='Inventory 2023',zorder=0)
-        
-        for m in ds_all.keys():
-            
-            m0 = m.split('_')[0]
-                
-            region_time,region_flux_total_posterior,region_flux_total_prior,\
-            region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
-            region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_all,m,m0,country)
-        
-            if region_time is not None:
-                ax[a,b].plot(region_time,
-                            region_flux_total_posterior,
-                            label=model_labels[m],color=model_colors[m][0])
-                
-                ax[a,b].plot(region_time,
-                            region_flux_total_prior,
-                            label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
-                
-                
-                ax[a,b].fill_between(region_time,
-                                    region_flux_total_posterior_lower,
-                                    region_flux_total_posterior_upper,
-                                    alpha=0.3,color=model_colors[m][0])
-            
-                if add_prior_unc:
-                    ax[a,b].fill_between(region_time,
-                                        region_flux_total_prior_lower,
-                                        region_flux_total_prior_upper,
-                                        alpha=0.1,color=model_colors[m][0])
-            
-                min_x.append(np.min(region_time).astype('datetime64[M]'))
-                max_x.append(np.max(region_time).astype('datetime64[M]'))
-                max_cf.append(ax[a,b].get_ylim()[1])
-                                        
-        #format each subplot
-        
-        ax[a,b].set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$)')
-        ax[a,b].set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
-                        np.max(max_x)+np.timedelta64(1,'M')])
-
-        ncol = 2
-        if set_global_leg == False:
-            leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
-            if plot_inventory == True:
-                for l in leg.legendHandles[:-1]:
-                    l.set_linewidth(3.0)
-            else:
-                for l in leg.legendHandles:
-                    l.set_linewidth(3.0)
-        
-        if country_codes_as_titles == True:
-            try:
-                ax[a,b].set_title(f'{country}\n{region_search}')
-            except:
-                ax[a,b].set_title(f'{country}')
-        else:        
-            ax[a,b].set_title(f'{country}')
-        ax[a,b].grid(visible=True,which='major',alpha=0.4)
-        ax[a,b].xaxis.set_minor_locator(MonthLocator())
-        ax[a,b].xaxis.set_minor_formatter(NullFormatter())
-        ax[a,b].xaxis.set_major_locator(YearLocator())
-        
-        #increase row and column counts
-        if (b - (n_cols-1)) == 0:
-            b = 0
-            a += 1
-        else:
-            b += 1
-
-    if set_global_leg:
-        handles, labels = ax[0,0].get_legend_handles_labels()
-        ncol=len(ds_all.keys())
-        if plot_inventory == True:
-            ncol=ncol+1
-        leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,bbox_to_anchor=(0.5, 1.07))
-        if plot_inventory == True:
-            for l in leg.legendHandles[:-1]:
-                l.set_linewidth(3.0)
-        else:
-            for l in leg.legendHandles:
-                l.set_linewidth(3.0)
-
-    for a in range(2):
-        for b in range(n_cols):
-            if fix_y_axes == True:
-                ax[a,b].set_ylim([0,(np.max(max_cf)+(0.1*np.max(max_cf)))])  
-            elif type(fix_y_axes) == list:
-                ax[a,b].set_ylim(fix_y_axes)
-            
-            elif fix_y_axes == False:
-                ax[a,b].set_ylim(bottom=0)  
-
-    print('NOTE: If all the data is not within axis limits, adjust the set_ylim parameter')
-    
-    return fig
-
-#####################################################################
-
 def extract_region_flux(ds_all,m,m0,country):
     """
     Finds the index of a chosen region name and extracts the country flux
@@ -1548,14 +1389,15 @@ def extract_region_inventory_flux(country,data_dir,species):
 
 #####################################################################
 
-def plot_country_flux_combined(ds_all,species,plot_regions,model_labels,
+def plot_country_flux(ds_all,species,plot_regions,model_labels,
                       model_colors,
                       plot_inventory=True,data_dir=None,fix_y_axes=False,
                       add_prior_unc=False, set_global_leg=False,
-                      country_codes_as_titles=None,plot_individual=True):
+                      country_codes_as_titles=None,include_separate=True,
+                      include_combined=False):
     """
-    Timeseries plot of prior and posterior country fluxes, combined results
-    from all model estimates.
+    Timeseries plot of prior and posterior country fluxes, from list of 
+    areas in plot_regions.
     
     Args:
         ds_all (dictionary of datasets):
@@ -1582,17 +1424,14 @@ def plot_country_flux_combined(ds_all,species,plot_regions,model_labels,
             If True, plots one single legend instead of one legend per subplot.
         country_codes_as_titles (bool)
             If True, uses list of country codes as titles, instead of the region names.
-        plot_individual (bool):
-            If True, plots both the average result from all models AND the individual 
-            results from each model.
+        include_separate (bool):
+            If True, plots model results as separate lines.
+        include_combined (bool):
+            If True, plots combined average results from all models.
     Returns:
         fig (figure): 
             A plot per country/region.
     """
-    
-    if plot_inventory == True:
-        with xr.open_dataset(os.path.join(data_dir,'inventory',f'UNFCCC_inventory_{s_data[species]["model_species"]["intem"]}.nc')) as f:
-            inv_ds = f
 
     a,b = 0,0
     max_cf = []
@@ -1608,274 +1447,117 @@ def plot_country_flux_combined(ds_all,species,plot_regions,model_labels,
     for i,country in enumerate(plot_regions):
         
         if plot_inventory == True:
-            try:
-                inv_c_index = np.where(inv_ds['country'].values == country)[0][0]
-                ax[a,b].bar(inv_ds.time.values,inv_ds['inventory'].values[:,inv_c_index]/s_data[species]["units_scaling"]["intem"],
+            
+            inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species)
+            
+            if inventory_flux is not None:
+                ax[a,b].bar(inventory_time,inventory_flux,
                             np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
                             label='Inventory 2023',zorder=0)
-            except:
-                try:
-                    region_search = regions_dict[country]
-                    country_list = region_search.split('-')
-
-                    inv_c_index = [0]*len(country_list)
-                    inv_c_value = np.zeros(len(inv_ds.time.values))
-
-                    print(f'No inventory data available for {country}. Considering sum of individual countries: {region_search}')
-
-                    for i,var in enumerate(country_list):
-                        try:
-                            inv_key = [k for k, code in countrycodes_dict.items() if code == var]
-                            inv_c_index[i] = np.where(inv_ds['country'].values == inv_key[0])[0][0]
-                            inv_c_temp = inv_ds['inventory'].values[:,inv_c_index[i]]
-                            if np.any(np.isnan(inv_c_temp) == True):
-                                inv_c_temp = np.zeros(len(inv_ds.time.values))
-                                print(f'WARNING: Inventory data for {inv_key[0]} is NaN. Inventory value for {country} will not include {inv_key[0]} contributions.')
-
-                            inv_c_value = inv_c_value + inv_c_temp
-
-                        except:
-                            try:
-                                print(f'WARNING: No inventory data available for {inv_key[0]}. Inventory value for {country} will not include {inv_key[0]} contributions.')
-                            except:
-                                print(f'ERROR: {var} does not exist in country dictionary!')
-
-                    ax[a,b].bar(inv_ds.time.values,inv_c_value/s_data[species]["units_scaling"]["intem"],
-                                np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
-                                label='Inventory 2023',zorder=0)
-
-                except:
-                    print(f'No inventory data available for {country}')
         
-        pdf_post = {}
+        post_pdfs = {}
         
         for j,m in enumerate(ds_all.keys()):
             
             m0 = m.split('_')[0]
-            
-            if m0 == 'intem':
-                c_key = 'countrynumber'
-            elif m0 == 'rhime':
-                c_key = 'country'
-            elif m0 == 'elris':
-                c_key = 'country'
-            
-            try:
-                # fix for error in CW_EU definition in countrycodes_dict and older InTEM netCDF files
-                try:          
-                    # fix for RHIME which reports regions emissions with the regions_dict key names
-                    try:
-                        if m0 == 'intem' and country == 'BELGIUM':
-                            country_search = 'BEL-LUX'
-                            print(f'\nNOTE: InTEM does not estimate separate BELGIUM emissions.')
-                            print(f'So a population ratio of {bel_pop_r} is being used to scale InTEM\'s total BELGIUM+LUXEMBOURG estimate.\n')
-                            r = bel_pop_r
-                        else:
-                            country_search = countrycodes_dict[country]
-                            r = 1.
-                        country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
-                    except:
-                        country_index = np.where(ds_all[m][c_key].values.astype(str) == country)[0][0]
-                        r = 1.
                 
-                except:
-                    country_search = regions_dict_old[country]
-                    country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
-                    r = 1.
-                
-                min_x.append(np.min(ds_all[m].time.values).astype('datetime64[M]'))
-                max_x.append(np.max(ds_all[m].time.values).astype('datetime64[M]'))
-
-                if j == 0:
-                    all_country_flux_total_posterior = ds_all[m]['country_flux_total_posterior'].values[:,country_index]*r
-                    all_country_flux_total_prior = ds_all[m]['country_flux_total_prior'].values[:,country_index]*r
-                    all_country_flux_total_lower = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index]*r
-                    all_country_flux_total_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
+            region_time,region_flux_total_posterior,region_flux_total_prior,\
+            region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
+            region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_all,m,m0,country)
+        
+            if region_time is not None:
+        
+                if include_combined == True:
+            
+                    if j == 0:
+                        all_region_flux_total_posterior = region_flux_total_posterior
+                        all_region_flux_total_prior = region_flux_total_prior
+                        all_region_flux_total_lower = region_flux_total_posterior_lower
+                        all_region_flux_total_upper = region_flux_total_posterior_upper
+                    else:
+                        all_region_flux_total_posterior = np.vstack((all_region_flux_total_posterior,
+                                                                    region_flux_total_posterior))
+                        all_region_flux_total_prior = np.vstack((all_region_flux_total_prior,
+                                                                region_flux_total_prior))
+                        all_region_flux_total_lower = np.vstack((all_region_flux_total_lower,
+                                                                region_flux_total_posterior_lower))
+                        all_region_flux_total_upper = np.vstack((all_region_flux_total_upper,
+                                                                region_flux_total_posterior_upper))
+                        
+                    post_pdfs[m] = np.array([np.random.default_rng().normal(loc=ds_all[m]['country_flux_total_posterior'].values[t,country_index]*r,
+                                                                                scale=ds_all[m]['percentile_country_flux_total_posterior'].values[t,model_q_indices[m0][1],country_index]*r-
+                                                                                        ds_all[m]['country_flux_total_posterior'].values[t,country_index]*r,
+                                                                                size=1000) for t in range(ds_all[m].time.shape[0])])
+                            
+                if include_separate == True:
                     
-                else:
-                    all_country_flux_total_posterior = np.vstack((all_country_flux_total_posterior,
-                                                                    ds_all[m]['country_flux_total_posterior'].values[:,country_index]*r))
-                    all_country_flux_total_prior = np.vstack((all_country_flux_total_prior,
-                                                                    ds_all[m]['country_flux_total_prior'].values[:,country_index]*r))
-                    all_country_flux_total_lower = np.vstack((all_country_flux_total_lower,
-                                                                ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index]*r))
-                    all_country_flux_total_upper = np.vstack((all_country_flux_total_upper,
-                                                                ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r))
-                    
-                pdf_post[m] = np.array([np.random.default_rng().normal(loc=ds_all[m]['country_flux_total_posterior'].values[t,country_index]*r,
-                                                                        scale=ds_all[m]['percentile_country_flux_total_posterior'].values[t,model_q_indices[m0][1],country_index]*r-
-                                                                                ds_all[m]['country_flux_total_posterior'].values[t,country_index]*r,
-                                                                        size=1000) for t in range(ds_all[m].time.shape[0])])
-                    
-                if plot_individual == True:
-                    
-                    ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
-                                ds_all[m]['country_flux_total_posterior'].values[:,country_index]*r,
+                    ax[a,b].plot(region_time,
+                                region_flux_total_posterior,
                                 label=model_labels[m],color=model_colors[m][0])
                     
-                    ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
-                                ds_all[m]['country_flux_total_prior'].values[:,country_index]*r,
+                    ax[a,b].plot(region_time,
+                                region_flux_total_prior,
                                 label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
                     
-                    max_cf.append(ax[a,b].get_ylim()[1])
                     
-                    ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                        ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index]*r,
-                                        ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r,
+                    ax[a,b].fill_between(region_time,
+                                        region_flux_total_posterior_lower,
+                                        region_flux_total_posterior_upper,
                                         alpha=0.3,color=model_colors[m][0])
-                    
+                
                     if add_prior_unc:
-                        ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                            ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r,
-                                            ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r,
+                        ax[a,b].fill_between(region_time,
+                                            region_flux_total_prior_lower,
+                                            region_flux_total_prior_upper,
                                             alpha=0.1,color=model_colors[m][0])
-                     
-            except:
-                try:
-                    region_search = regions_dict[country]
-                    print(f'{country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
-
-                    country_list = region_search.split('-')
-
-                    if m0 == 'intem':
-                        c_key = 'countrynumber'
-                    elif m0 == 'rhime':
-                        c_key = 'country'
-                    elif m0 == 'elris':
-                        c_key = 'country'
-
-                    country_index_vec = np.zeros(len(ds_all[m][c_key]))
-                    sigma2_region_flux_total_prior = 0
-                    region_flux_total_posterior = 0
-                    region_flux_total_prior = 0
-
-                    # Compute sum of prior/posterior emissions and prior uncertainty
-                    for var in country_list:
-                        try:
-                            country_index = np.where(ds_all[m][c_key].values.astype(str) == var)[0][0]
-                            country_index_vec[country_index] = 1
-
-                            region_flux_total_posterior = region_flux_total_posterior + ds_all[m]['country_flux_total_posterior'].values[:,country_index]
-                            region_flux_total_prior     = region_flux_total_prior + ds_all[m]['country_flux_total_prior'].values[:,country_index]
-
-                            sigma_country_prior = ds_all[m]['country_flux_total_prior'].values[:,country_index] - ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]
-                            sigma2_region_flux_total_prior = sigma2_region_flux_total_prior + sigma_country_prior**2
-
-                        except:
-                            print(f'WARNING: {var} emissions are not present in {m}. This country will be neglected in {country} emissions.')
-                            sigma2_region_flux_total_prior = np.zeros(ds_all[m].time.values.shape[0])
-                            
-                    if plot_individual == True:
-
-                        ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
-                                    region_flux_total_posterior,
-                                    label=model_labels[m],color=model_colors[m][0])
-
-                        ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
-                                    region_flux_total_prior,
-                                    label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
-
-                        max_cf.append(ax[a,b].get_ylim()[1])
-
-                        sigma_region_flux_total_prior = np.sqrt(sigma2_region_flux_total_prior)
-
-                        if add_prior_unc:
-                            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                                region_flux_total_prior - sigma_region_flux_total_prior,
-                                                region_flux_total_prior + sigma_region_flux_total_prior,
-                                                alpha=0.1,color=model_colors[m][0])
-
-                    # Compute posterior uncertainty from covariance matrix
-                    try:
-                        sigma2 = np.zeros(np.shape(ds_all[m]['covariance_country_flux_total_posterior'])[0])
-
-                        for i in range(len(sigma2)):
-                            sigma2[i] = country_index_vec.dot(ds_all[m]['covariance_country_flux_total_posterior'].values[i,:,:].dot(country_index_vec))
-
-                        sigma_region_flux_total_posterior = np.sqrt(sigma2)
-                        
-                        if plot_individual == True:
-
-                            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                        region_flux_total_posterior - sigma_region_flux_total_posterior,
-                                        region_flux_total_posterior + sigma_region_flux_total_posterior,
-                                        alpha=0.3,color=model_colors[m][0])
-
-                    except:
-                        print(f'WARNING: Covariance matrix is not available for {m}. A posteriori uncertainty of {country} emissions will not be plotted.')
-                        sigma_region_flux_total_posterior = np.zeros(ds_all[m].time.values.shape[0])
-                        
-                    if j == 0:
-                        all_country_flux_total_posterior = region_flux_total_posterior
-                        all_country_flux_total_prior = region_flux_total_prior
-                        all_country_flux_total_lower = region_flux_total_posterior - sigma_region_flux_total_posterior
-                        all_country_flux_total_upper = region_flux_total_posterior + sigma_region_flux_total_posterior
-                        
-                    else:
-                        all_country_flux_total_posterior = np.vstack((all_country_flux_total_posterior,
-                                                                    region_flux_total_posterior))
-                        all_country_flux_total_prior = np.vstack((all_country_flux_total_prior,
-                                                                    region_flux_total_prior))
-                        all_country_flux_total_lower = np.vstack((all_country_flux_total_lower,
-                                                                region_flux_total_posterior - sigma_region_flux_total_posterior))
-                        all_country_flux_total_upper = np.vstack((all_country_flux_total_upper,
-                                                                region_flux_total_posterior + sigma_region_flux_total_posterior))
-                            
-                    pdf_post[m] = np.array([np.random.default_rng().normal(loc=region_flux_total_posterior[t],
-                                                                       scale=sigma_region_flux_total_posterior[t],
-                                                                       size=1000) for t in range(region_flux_total_posterior.shape[0])])
-
-                    min_x.append(np.min(ds_all[m].time.values).astype('datetime64[M]'))
-                    max_x.append(np.max(ds_all[m].time.values).astype('datetime64[M]'))
-                    
-                    n_models += 1
-
-                except:
-                    print(f'ERROR: Either start and end dates are incorrect or there is no {country} emissions in {m}.')
-                    print(f'Skipping plotting {m}.')
-                                                                           
-        mean_country_flux_total_posterior = np.mean(all_country_flux_total_posterior,axis=0)
-        mean_country_flux_total_prior = np.mean(all_country_flux_total_prior,axis=0)
-        mean_country_flux_total_lower = np.mean(all_country_flux_total_lower,axis=0)
-        mean_country_flux_total_upper = np.mean(all_country_flux_total_upper,axis=0)
-        min_country_flux_total_lower = np.min(all_country_flux_total_lower,axis=0)
-        max_country_flux_total_upper = np.max(all_country_flux_total_upper,axis=0)
+                
+                min_x.append(np.min(region_time).astype('datetime64[M]'))
+                max_x.append(np.max(region_time).astype('datetime64[M]'))
+                max_cf.append(ax[a,b].get_ylim()[1])
+                
+        if include_combined == True:
+            mean_country_flux_total_posterior = np.mean(all_region_flux_total_posterior,axis=0)
+            mean_country_flux_total_prior = np.mean(all_region_flux_total_prior,axis=0)
+            mean_country_flux_total_lower = np.mean(all_region_flux_total_lower,axis=0)
+            mean_country_flux_total_upper = np.mean(all_region_flux_total_upper,axis=0)
+            min_country_flux_total_lower = np.min(all_region_flux_total_lower,axis=0)
+            max_country_flux_total_upper = np.max(all_region_flux_total_upper,axis=0)
+            
+            for j,m in enumerate(ds_all.keys()):
+                if j == 0:
+                    pdf_all = np.array([np.random.choice(post_pdfs[m][t,:],500) for t in range(post_pdfs[m].shape[0])])
+                else:
+                    pdf_all = np.hstack((pdf_all,
+                                        np.array([np.random.choice(post_pdfs[m][t,:],500) for t in range(post_pdfs[m].shape[0])])))
         
-        for j,m in enumerate(ds_all.keys()):
-            if j == 0:
-                pdf_all = np.array([np.random.choice(pdf_post[m][t,:],500) for t in range(pdf_post[m].shape[0])])
-            else:
-                pdf_all = np.hstack((pdf_all,
-                                    np.array([np.random.choice(pdf_post[m][t,:],500) for t in range(pdf_post[m].shape[0])])))
-        
-        pdf_mean = np.mean(pdf_all,axis=1)
-        pdf_std = np.std(pdf_all,axis=1)
-        
-        ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+            pdf_mean = np.mean(pdf_all,axis=1)
+            pdf_std = np.std(pdf_all,axis=1)
+                                        
+            ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
                             mean_country_flux_total_posterior,
                             label='Mean posterior',color='black')
-        ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
-                            mean_country_flux_total_prior,
-                            label='Mean prior',color='black',linestyle='dashed')
-        
-        ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                        min_country_flux_total_lower,
-                                        max_country_flux_total_upper,
-                                        alpha=0.3,color='black',label='Min/max of post uncertainty')
-        
-        ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
-                            pdf_mean,
-                            label='Mean of sampled post PDFs',color='dodgerblue')
-        ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                        pdf_mean-pdf_std,
-                                        pdf_mean+pdf_std,
-                                        alpha=0.3,color='dodgerblue',label='Std dev of sampled post PDFs')
-        
-        ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
-                                        mean_country_flux_total_lower,
-                                        mean_country_flux_total_upper,
-                                        alpha=0.3,color='yellow',label='Mean of post uncertainty')
+            ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+                                mean_country_flux_total_prior,
+                                label='Mean prior',color='black',linestyle='dashed')
             
+            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+                                            min_country_flux_total_lower,
+                                            max_country_flux_total_upper,
+                                            alpha=0.3,color='black',label='Min/max of post uncertainty')
+            
+            ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+                                pdf_mean,
+                                label='Mean of sampled post PDFs',color='dodgerblue')
+            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+                                            pdf_mean-pdf_std,
+                                            pdf_mean+pdf_std,
+                                            alpha=0.3,color='dodgerblue',label='Std dev of sampled post PDFs')
+            
+            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+                                            mean_country_flux_total_lower,
+                                            mean_country_flux_total_upper,
+                                            alpha=0.3,color='yellow',label='Mean of post uncertainty')
+                                        
         #format each subplot
         
         ax[a,b].set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$)')
@@ -1883,18 +1565,6 @@ def plot_country_flux_combined(ds_all,species,plot_regions,model_labels,
                         np.max(max_x)+np.timedelta64(1,'M')])
 
         ncol = 2
-        '''
-        if len(ds_all.keys()) == 3:
-            if plot_inventory == True:
-                ncol = 2
-            else:
-                ncol = 3
-        else:
-            if plot_inventory == True:
-                ncol = 3
-            else:
-                ncol = 2
-        '''
         if set_global_leg == False:
             leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
             if plot_inventory == True:
@@ -1906,7 +1576,7 @@ def plot_country_flux_combined(ds_all,species,plot_regions,model_labels,
         
         if country_codes_as_titles == True:
             try:
-                ax[a,b].set_title(f'{country}\n{region_search}')
+                ax[a,b].set_title(f'{country}\n{regions_dict[country]}')
             except:
                 ax[a,b].set_title(f'{country}')
         else:        
