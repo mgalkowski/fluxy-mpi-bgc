@@ -1600,7 +1600,11 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 
     if set_global_leg:
         handles, labels = ax[0,0].get_legend_handles_labels()
-        ncol=len(ds_all.keys())
+        ncol=0
+        if plot_separate:
+            ncol=len(ds_all.keys())
+        if plot_combined:
+            ncol=ncol+3
         if plot_inventory == True:
             ncol=ncol+1
         leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,bbox_to_anchor=(0.5, 1.07))
