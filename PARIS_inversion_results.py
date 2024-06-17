@@ -665,10 +665,15 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
             if make_diff:
                 var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
             else:
-                if var == 'uYmod':
-                    var_plot = uYmod
-                else:
+                try:
                     var_plot = ds_all[m][var].values
+                except:
+                    if var == 'uYmod':
+                        var_plot = uYmod
+                    elif var == 'uYobs_repeatability':
+                        var_plot = ds_all[m]['uYobs'].values
+                    else:
+                        continue
 
             var_mean = np.round(np.nanmean(var_plot),2)
             var_sd = np.round(np.nanstd(var_plot),2)
@@ -881,10 +886,15 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
             if make_diff:
                 var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
             else:
-                if var == 'uYmod':
-                    var_plot = uYmod
-                else:
+                try:
                     var_plot = ds_all[m][var].values
+                except:
+                    if var == 'uYmod':
+                        var_plot = uYmod
+                    elif var == 'uYobs_repeatability':
+                        var_plot = ds_all[m]['uYobs'].values
+                    else:
+                        continue
 
             var_mean = np.round(np.nanmean(var_plot),2)
             var_sd = np.round(np.nanstd(var_plot),2)
@@ -1082,10 +1092,15 @@ def plot_obs_diff(ds_all,species,site,model_labels,
             if make_diff:
                 var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
             else:
-                if var == 'uYmod':
-                    var_plot = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
-                else:
+                try:
                     var_plot = ds_all[m][var].values
+                except:
+                    if var == 'uYmod':
+                        var_plot = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
+                    elif var == 'uYobs_repeatability':
+                        var_plot = ds_all[m]['uYobs'].values
+                    else:
+                        continue
             
             var_mean = np.round(np.nanmean(var_plot),2)
             var_sd = np.round(np.nanstd(var_plot),2)
