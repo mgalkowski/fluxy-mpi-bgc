@@ -1733,6 +1733,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
@@ -1958,8 +1959,12 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
+                    'ITALY':[6,19,36,48],
+                    'SWITZERLAND':[5.5,11,45,49],
+                    'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
-                    'CWEU':[-12,27,37,66]}
+                    'CWEU':[-12,27,37,66],
+                    'EUROPE':[-98,40,10,80]}
     
     sites_info = {}
     if plot_site_locations == True:
@@ -2163,6 +2168,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
