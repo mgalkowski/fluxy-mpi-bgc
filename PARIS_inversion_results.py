@@ -10,6 +10,7 @@ from matplotlib.ticker import NullFormatter
 import pprint
 import cartopy
 from json import load
+import inspect
 
 model_colors = {'intem':[['darkslateblue','dodgerblue'],
                          ['black','grey']],
@@ -19,6 +20,10 @@ model_colors = {'intem':[['darkslateblue','dodgerblue'],
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
                    'elris':[0,1]}
+
+point_source_dict = {'paris':[2.340430,48.860050],
+                     'london':[-0.127799,51.507593],
+                 'nw_england':[-2.796870,53.774820]}
 
 countrycodes_dict = {'IRELAND':'IRL',
                      'UK':'GBR',
@@ -1633,7 +1638,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 
 def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
-                      plot_site_locations=False):
+                      plot_site_locations=False,plot_point_markers=None):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
@@ -1664,6 +1669,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             Must be the same length as models, e.g. ['monthly',None,'yearly']
         plot_site_locations (bool):
             If True, adds triangles with site locations to spatial plot.
+        plot_point_markers (list of str or list of lat/lon):
+            List of names of points to plot over larger point sources or lat/lon locations.
+            See point_markers_dict for a list of options.
+            e.g. ['paris','nw_england',[50.,5.]]
     Returns:
         fig (figure): 
             A plot of spatial flux posterior and prior mean/mode and a plot 
@@ -1759,7 +1768,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 
             ax_var.add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
             ax_var.coastlines(resolution='50m',color=border_color,linewidth=1.)
-            ax_var.set_extent(region_limits[plot_area])
+            if type(plot_area) == str:
+                ax_var.set_extent(region_limits[plot_area])
+            elif type(plot_area) == list:    
+                ax_var.set_extent(plot_area)
 
     for i,m in enumerate(ds_all.keys()):
         
@@ -1827,8 +1839,24 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
         except:
             print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
             print(f'Skipping plotting {m}.')
-
-
+            
+        if plot_point_markers is not None:
+            if i == 0:
+                print(f'\nPlotting markers for: {plot_point_markers}')
+                print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
+            for p in plot_point_markers:
+                if type(p) == list:
+                    ax0.scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+                    ax1.scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+                    ax2.scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+                elif type(p) == str:
+                    if p not in point_source_dict.keys():
+                        print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
+                    else:
+                        ax0.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                        ax1.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                        ax2.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                        
     #flux colorbar
     levels = np.linspace(fluxlim[species][0],fluxlim[species][1])
     cbar = plt.cm.ScalarMappable(cmap=cmap)
@@ -1856,7 +1884,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 
 def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
-                                 plot_site_locations=False):
+                                 plot_site_locations=False,plot_point_markers=None):
     """
     Plots posterior fluxes and the difference between these
     for two models.
@@ -1889,6 +1917,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
             Must be the same length as models, e.g. ['monthly',None,'yearly']
         plot_site_locations (bool):
             If True, adds triangles with site locations to spatial plot.
+        plot_point_markers (list of str or list of lat/lon):
+            List of names of points to plot over larger point sources or lat/lon locations.
+            See point_markers_dict for a list of options.
+            e.g. ['paris','nw_england',[50.,5.]]
     Returns:
         fig (figure): 
             A plot of spatial flux posterior from two models a plot 
@@ -2035,6 +2067,22 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
 
     ax[2].set_title(f'{model_labels[all_keys[1]]} - {model_labels[all_keys[0]]}\nAbsolute difference')
 
+    if plot_point_markers is not None:
+        print(f'\nPlotting markers for: {plot_point_markers}')
+        print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
+        for p in plot_point_markers:
+            if type(p) == list:
+                ax[0].scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+                ax[1].scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+                ax[2].scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+            elif type(p) == str:
+                if p not in point_source_dict.keys():
+                    print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
+                else:
+                    ax[0].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                    ax[1].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                    ax[2].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                        
 
     #flux colorbar
     levels = np.linspace(fluxlim[species][0],fluxlim[species][1])
@@ -2065,7 +2113,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                                     cmap='viridis',c_border='floralwhite',
                                     var='flux_total_posterior',
                                     dt=1,period_override=None,
-                                    plot_site_locations=False):
+                                    plot_site_locations=False,plot_point_markers=False):
     """
     Plots posterior fluxes, prior fluxes or difference between these
     for all models and specific time intervals.
@@ -2097,6 +2145,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
             Must be the same length as models, e.g. ['monthly',None,'yearly']
         plot_site_locations (bool):
             If True, adds triangles with site locations to spatial plot.
+        plot_point_markers (list of str or list of lat/lon):
+            List of names of points to plot over larger point sources or lat/lon locations.
+            See point_markers_dict for a list of options.
+            e.g. ['paris','nw_england',[50.,5.]]
     Returns:
         fig (figure):
             A plot of spatial flux of the variable specified in var
@@ -2237,58 +2289,71 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
 
             m0 = m.split('_')[0]
 
-            #try:
-            # Find timestamps for caption
-            if len(ds_all[m].time) == 1 or dt[j] == 1:
-                time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
-            else:
-                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
-                if period_all[m] == 'datetime64[Y]':
-                    end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
-                elif period_all[m] == 'datetime64[M]':
-                    end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+            try:
+                # Find timestamps for caption
+                if len(ds_all[m].time) == 1 or dt[j] == 1:
+                    time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
                 else:
-                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
-                          'correct dates for higher frequency inversions.')
-                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
-                time_out = (f'{start_print} - {end_print}')
+                    start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                    if period_all[m] == 'datetime64[Y]':
+                        end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                    elif period_all[m] == 'datetime64[M]':
+                        end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                    else:
+                        print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                            'correct dates for higher frequency inversions.')
+                    end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                    time_out = (f'{start_print} - {end_print}')
 
-            if var == 'posterior_prior_diff':
-                var_plot = np.mean(ds_all[m]['flux_total_posterior'][t0:t1+1,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][t0:t1+1,:,:],axis=0)
-                var_plot[np.where(var_plot) == np.nan] = 0.
-            else:
-                var_plot = np.mean(ds_all[m][var][t0:t1+1,:,:],axis=0)
-
-            if n_cols == 1 and n_lines == 1:
-                ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
-                ax.set_title(f'{model_labels[m]}\n{time_out}')
-            else:
-                if n_cols == 1:
-                    iax = i
-                    ax_var = ax[iax]
-                elif n_lines == 1:
-                    iax = j
-                    ax_var = ax[iax]
+                if var == 'posterior_prior_diff':
+                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][t0:t1+1,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][t0:t1+1,:,:],axis=0)
+                    var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
-                    iax = i
-                    ax_var = ax[iax,j]
+                    var_plot = np.mean(ds_all[m][var][t0:t1+1,:,:],axis=0)
 
-                if i == 0:
-                    plot_title = f'{model_labels[m]}\n{time_out}'
+                if n_cols == 1 and n_lines == 1:
+                    ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                    ax.set_title(f'{model_labels[m]}\n{time_out}')
                 else:
-                    plot_title = f'{time_out}'
-                ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
-                ax_var.set_title(plot_title)
-                
-            if plot_site_locations == True:
-                
-                for s in sites_info[m]:
-                    ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                    if n_cols == 1:
+                        iax = i
+                        ax_var = ax[iax]
+                    elif n_lines == 1:
+                        iax = j
+                        ax_var = ax[iax]
+                    else:
+                        iax = i
+                        ax_var = ax[iax,j]
 
-            #except:
-            #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
-            #    print(f'Skipping plotting {m}.')
+                    if i == 0:
+                        plot_title = f'{model_labels[m]}\n{time_out}'
+                    else:
+                        plot_title = f'{time_out}'
+                    ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                    ax_var.set_title(plot_title)
+                    
+                if plot_site_locations == True:
+                    
+                    for s in sites_info[m]:
+                        ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                    edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                    
+                if plot_point_markers is not None:
+                    if i == 0:
+                        print(f'\nPlotting markers for: {plot_point_markers}')
+                        print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
+                    for p in plot_point_markers:
+                        if type(p) == list:
+                            ax_var.scatter(p[0],p[1],color='black',marker='o',s=2,zorder=2)
+                        elif type(p) == str:
+                            if p not in point_source_dict.keys():
+                                print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
+                            else:
+                                ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=2,zorder=2)
+
+            except:
+                print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
+                print(f'Skipping plotting {m}.')
 
     #flux colorbar
     cbar = plt.cm.ScalarMappable(cmap=cmap)
