@@ -46,7 +46,8 @@ countrycodes_dict = {'IRELAND':'IRL',
                      'SLOVENIA':'SVN',
                      'GREECE':'GRC',
                      'SPAIN':'ESP',
-                     'PORTUGAL':'PRT'}
+                     'PORTUGAL':'PRT',
+                     'NORWAY':'NOR'}
 
 regions_dict = {'BELUX':'BEL-LUX',
                 'BENELUX':'BEL-LUX-NLD',
