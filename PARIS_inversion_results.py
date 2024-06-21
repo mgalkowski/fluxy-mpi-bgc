@@ -2247,25 +2247,26 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
         extend = 'max'
 
     # Figure size
-    n_cols = len(ds_all.keys())
-
+    #n_cols = len(ds_all.keys())
+    n_lines = len(ds_all.keys())
+    
     if type(dt) != list:
-        dt = [dt]*n_cols
+        dt = [dt]*n_lines
     else:
         print('WARNING: dt was specified manually for each model.'
                 'The code will not cross-check if they corresponds to equal time windows.'
                 'Please make sure the values are consistent between the models.')
 
-    if len(dt) != n_cols:
+    if len(dt) != n_lines:
         print('ERROR: size of dt is not equal to number of models!')
     else:
-        nt = np.zeros(n_cols)
+        nt = np.zeros(n_lines)
         for j,m in enumerate(ds_all.keys()):
             nt[j] = len(ds_all[m].time)//dt[j]   # closest integer
 
-        n_lines = int(np.min(nt)) # only time intervals that are common to all models
+        n_cols = int(np.min(nt)) # only time intervals that are common to all models
 
-        if n_lines == 0:
+        if n_cols == 0:
             print('ERROR: dt is greater than the number of timestamps for at least one of the models.')
 
     sites_info = {}
@@ -2286,7 +2287,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                     break
 
     # Create figure
-    fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3),
+    fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3.25),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
 
     # Add map
@@ -2311,7 +2312,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                 ax_var.set_extent(region_limits[plot_area])
 
     # Plot fields
-    for i in range(n_lines):
+    for i in range(n_cols):
         for j,m in enumerate(ds_all.keys()):
 
             #   Time window start/end indexes
@@ -2323,71 +2324,68 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
 
             m0 = m.split('_')[0]
 
-            try:
-                # Find timestamps for caption
-                if len(ds_all[m].time) == 1 or dt[j] == 1:
-                    time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
+            #try:
+            # Find timestamps for caption
+            if len(ds_all[m].time) == 1 or dt[j] == 1:
+                time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
+            else:
+                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                if period_all[m] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif period_all[m] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
                 else:
-                    start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
-                    if period_all[m] == 'datetime64[Y]':
-                        end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
-                    elif period_all[m] == 'datetime64[M]':
-                        end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
-                    else:
-                        print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
-                            'correct dates for higher frequency inversions.')
-                    end_print = to_datetime(end_period).strftime("%d/%m/%Y")
-                    time_out = (f'{start_print} - {end_print}')
+                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                        'correct dates for higher frequency inversions.')
+                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                time_out = (f'{start_print} - {end_print}')
 
-                if var == 'posterior_prior_diff':
-                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][t0:t1+1,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][t0:t1+1,:,:],axis=0)
-                    var_plot[np.where(var_plot) == np.nan] = 0.
+            if var == 'posterior_prior_diff':
+                var_plot = np.mean(ds_all[m]['flux_total_posterior'][t0:t1+1,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][t0:t1+1,:,:],axis=0)
+                var_plot[np.where(var_plot) == np.nan] = 0.
+            else:
+                var_plot = np.mean(ds_all[m][var][t0:t1+1,:,:],axis=0)
+
+            if n_cols == 1 and n_lines == 1:
+                ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                ax.set_title(f'{model_labels[m]}\n{time_out}')
+            else:
+                if n_lines == 1:
+                    iax = i
+                    ax_var = ax[iax]
+                elif n_cols == 1:
+                    iax = j
+                    ax_var = ax[iax]
                 else:
-                    var_plot = np.mean(ds_all[m][var][t0:t1+1,:,:],axis=0)
+                    ax_var = ax[j,i]
 
-                if n_cols == 1 and n_lines == 1:
-                    ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
-                    ax.set_title(f'{model_labels[m]}\n{time_out}')
-                else:
-                    if n_cols == 1:
-                        iax = i
-                        ax_var = ax[iax]
-                    elif n_lines == 1:
-                        iax = j
-                        ax_var = ax[iax]
-                    else:
-                        iax = i
-                        ax_var = ax[iax,j]
+                plot_title = f'{model_labels[m]}\n{time_out}'
 
-                    if i == 0:
-                        plot_title = f'{model_labels[m]}\n{time_out}'
-                    else:
-                        plot_title = f'{time_out}'
-                    ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
-                    ax_var.set_title(plot_title)
-                    
-                if plot_site_locations == True:
-                    
-                    for s in sites_info[m]:
-                        ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                    edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
-                    
-                if plot_point_markers is not None:
-                    if i == 0:
-                        print(f'\nPlotting markers for: {plot_point_markers}')
-                        print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
-                    for p in plot_point_markers:
-                        if type(p) == list:
-                            ax_var.scatter(p[0],p[1],color='black',marker='o',s=2,zorder=2)
-                        elif type(p) == str:
-                            if p not in point_source_dict.keys():
-                                print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
-                            else:
-                                ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=2,zorder=2)
+                ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                ax_var.set_title(plot_title)
+                
+            if plot_site_locations == True:
+                
+                for s in sites_info[m]:
+                    ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                
+            if plot_point_markers is not None:
+                if i == 0:
+                    print(f'\nPlotting markers for: {plot_point_markers}')
+                    print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
+                for p in plot_point_markers:
+                    if type(p) == list:
+                        ax_var.scatter(p[0],p[1],color='black',marker='o',s=2,zorder=2)
+                    elif type(p) == str:
+                        if p not in point_source_dict.keys():
+                            print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
+                        else:
+                            ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=2,zorder=2)
 
-            except:
-                print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
-                print(f'Skipping plotting {m}.')
+            #except:
+            #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
+            #    print(f'Skipping plotting {m}.')
 
     #flux colorbar
     cbar = plt.cm.ScalarMappable(cmap=cmap)
@@ -2398,8 +2396,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
     # Size of color bar
     f_height = 0.9
     f_bottom = (1-f_height)/2
-    f_width = 0.04/n_cols
-    f_left = 0.95
+    f_width = 0.02
+    f_left = 0.94
 
     if n_cols == 1 and n_lines == 1:
         cbar_ax = fig.add_axes([1, f_bottom, f_width, f_height])
