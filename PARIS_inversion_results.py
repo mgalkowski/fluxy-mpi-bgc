@@ -494,7 +494,8 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                                model_colors,
                              include=['Yobs','Yapriori','Yapost'],
                              diff_include=['Yapriori','Yapost'],
-                             add_unc=True):
+                             add_unc=True,
+                             y_lim=None):
     """
     Timeseries plots of observations and modelled mole fractions or 
     baselines from each model.
@@ -522,6 +523,8 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
             same options as above.
         add_unc (bool):
             if True, plot uncertainty bar on Yobs and Yapost timeseries.
+        y_lim (list of float, optional):
+            Mix/max y axis limits to apply to all plots.
     Returns:
         fig (figure): 
             A timeseries and histogram plot for each model included.
@@ -679,7 +682,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                 else:
                     var_plot = ds_all[m][var].values
 
-            if np.nanmean(var_plot) < 0.01:
+            if np.nanmean(var_plot) <= 0.01:
                 var_mean = np.round(np.nanmean(var_plot),5)
                 var_sd = np.round(np.nanstd(var_plot),5)
             else:
@@ -721,10 +724,14 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
         else:
             ax.xaxis.set_major_locator(MonthLocator())
                     
-    for i in range(len(models)):
-        ax_all[i].set_ylim([min(min_mf)-(0.02*min(min_mf)),
-                            max(max_mf)+(0.05*max(max_mf))])
-        
+    if y_lim == None:    
+        for i in range(len(models)):
+            ax_all[i].set_ylim([min(min_mf)-(0.02*min(min_mf)),
+                                max(max_mf)+(0.05*max(max_mf))])
+    else:
+        for i in range(len(models)):
+            ax_all[i].set_ylim(y_lim)
+            
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim')
     print('NOTE: If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
     
@@ -736,7 +743,8 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                                model_colors,
                                include=['Yapost'],
                                diff_include=['Yapost'],
-                               add_unc=True):
+                               add_unc=True,
+                               y_lim=None):
     """
     Timeseries plots of observations and modelled mole fractions or 
     baselines from each model, all on one plot.
@@ -764,6 +772,8 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
             same options as above.
         add_unc (bool):
             if True, plot uncertainty bar on Yobs and Yapost timeseries.
+        y_lim (list of float, optional):
+            Mix/max y axis limits to apply to all plots.
     Returns:
         fig (figure): 
             One timeseries and histogram plot containing data from all models.
@@ -899,7 +909,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                 else:
                     var_plot = ds_all[m][var].values
 
-            if np.nanmean(var_plot) < 0.01:
+            if np.nanmean(var_plot) <= 0.01:
                 var_mean = np.round(np.nanmean(var_plot),5)
                 var_sd = np.round(np.nanstd(var_plot),5)
             else:
@@ -937,8 +947,11 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
     else:
         ax.xaxis.set_major_locator(MonthLocator())
         
-    ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
-                            max(max_mf)+(0.05*max(max_mf))])
+    if y_lim is None:
+        ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
+                                max(max_mf)+(0.05*max(max_mf))])
+    else:
+        ax.set_ylim(y_lim)
         
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim')
     print('NOTE: If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
@@ -950,7 +963,8 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
 def plot_obs_diff(ds_all,species,site,model_labels,
                                model_colors,
                                include=['Yapost'],
-                               diff_include=['Yapost']):
+                               diff_include=['Yapost'],
+                               y_lim=None):
     """
     Plot of the absolute difference between variables from two models.
     Also includes a histogram for each model, showing the difference between
@@ -978,6 +992,8 @@ def plot_obs_diff(ds_all,species,site,model_labels,
         diff_include (list of str):
             Variables included in the 'obs - variable' difference histogram, 
             same options as above.
+        y_lim (list of float, optional):
+            Mix/max y axis limits to apply to all plots.
     Returns:
         fig (figure): 
             A timeseries and histogram plot for each model included.
@@ -1104,7 +1120,7 @@ def plot_obs_diff(ds_all,species,site,model_labels,
                 else:
                     var_plot = ds_all[m][var].values
             
-            if np.nanmean(var_plot) < 0.01:
+            if np.nanmean(var_plot) <= 0.01:
                 var_mean = np.round(np.nanmean(var_plot),5)
                 var_sd = np.round(np.nanstd(var_plot),5)
             else:
@@ -1142,8 +1158,11 @@ def plot_obs_diff(ds_all,species,site,model_labels,
     else:
         ax.xaxis.set_major_locator(MonthLocator())
         
-    ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
-                            max(max_mf)+(0.05*max(max_mf))])
+    if y_lim is None:
+        ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
+                                max(max_mf)+(0.05*max(max_mf))])
+    else:
+        ax.set_ylim(y_lim)
         
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim')
     print('NOTE: If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
