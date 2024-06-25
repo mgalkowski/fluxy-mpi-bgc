@@ -127,7 +127,7 @@ def read_flux(data_dir,species,models,model_filenames,period_override=None):
         m0 = m.split('_')[0]
         
         model_dir = model_filenames[m].split('_')[0]
-        
+
         try:
             filepath = glob.glob(os.path.join(data_dir,model_dir,species,
                                               f'{model_filenames[m]}_{s_data[species]["model_species"][m0]}_{period_all[m]}.nc'))
@@ -1705,28 +1705,6 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
         c_border = 'floralwhite'
     
     n_cols = len(ds_all.keys())
-    
-    fluxlim = {'ch4':[0,5e-8],
-        'hfc134a':[0,1e-11],
-        'hfc143a':[0,5e-12],
-        'hfc125':[0,1e-11],
-        'hfc32':[0,1e-11],
-        'hfc23':[0,1e-12],
-        'hfc227ea':[0,1e-12],
-        'pfc218':[0,5e-14],
-        'sf6':[0,2e-13],
-        'n2o':[0,1e-9]}
-
-    difflim = {'ch4':[-2e-8,2e-8],
-            'hfc134a':[-1e-11,1e-11],
-            'hfc143a':[-5e-12,5e-12],
-            'hfc125':[-1e-11,1e-11],
-            'hfc32':[-1e-11,1e-11],
-            'hfc23':[-1e-12,1e-12],
-            'hfc227ea':[-1e-12,1e-12],
-            'pfc218':[-5e-14,5e-14],
-            'sf6':[-5e-13,5e-13],
-            'n2o':[-1e-9,1e-9]}
 
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
@@ -1811,13 +1789,13 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 
             ax0.pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0),cmap=cmap,
-                            vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='flat')
 
             ax0.set_title(f'{model_labels[m]}: prior')
             
             ax1.pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0),cmap=cmap,
-                            vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='flat')
 
             ax1.set_title(f'{model_labels[m]}: posterior')
             
@@ -1826,7 +1804,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             
             ax2.pcolormesh(lon,lat,
                             flux_diff,
-                            cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='flat')
+                            cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='flat')
 
             ax2.set_title(f'{model_labels[m]}: posterior - prior')
             
@@ -1846,10 +1824,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 
 
     #flux colorbar
-    levels = np.linspace(fluxlim[species][0],fluxlim[species][1])
+    levels = np.linspace(s_data[species]['fluxlim'][0],s_data[species]['fluxlim'][1])
     cbar = plt.cm.ScalarMappable(cmap=cmap)
     cbar.set_array(levels)
-    cbar.set_clim(fluxlim[species])
+    cbar.set_clim(s_data[species]['fluxlim'])
 
     color_bar1 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[0,...],shrink=0.9,pad=0.005)
     color_bar1.set_label(f'Prior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
@@ -1858,10 +1836,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
     color_bar2.set_label(f'Posterior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     #difference colorbar
-    levels_diff = np.linspace(difflim[species][0],difflim[species][1])
+    levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
     cbar_diff = plt.cm.ScalarMappable(cmap=cmap_diff)
     cbar_diff.set_array(levels_diff)
-    cbar_diff.set_clim(difflim[species])
+    cbar_diff.set_clim(s_data[species]['difflim'])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,...],shrink=0.9,pad=0.005)
     color_bar3.set_label(f'Posterior - prior {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
@@ -1933,28 +1911,6 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         c_border = 'floralwhite'
     
     n_cols = len(ds_all.keys())
-    
-    fluxlim = {'ch4':[0,1e-7],
-        'hfc134a':[0,1e-11],
-        'hfc143a':[0,5e-12],
-        'hfc125':[0,1e-11],
-        'hfc32':[0,1e-11],
-        'hfc23':[0,1e-12],
-        'hfc227ea':[0,1e-12],
-        'pfc218':[0,5e-14],
-        'sf6':[0,2e-13],
-        'n2o':[0,1e-9]}
-
-    difflim = {'ch4':[-1e-7,1e-7],
-            'hfc134a':[-1e-11,1e-11],
-            'hfc143a':[-5e-12,5e-12],
-            'hfc125':[-1e-11,1e-11],
-            'hfc32':[-1e-11,1e-11],
-            'hfc23':[-1e-12,1e-12],
-            'hfc227ea':[-1e-12,1e-12],
-            'pfc218':[-5e-14,5e-14],
-            'sf6':[-5e-13,5e-13],
-            'n2o':[-1e-9,1e-9]}
 
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
@@ -2022,7 +1978,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         
             ax[0].pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='nearest',
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest',
                             )
 
             ax[0].set_title(f'{model_labels[m]}\nPosterior mean')
@@ -2031,7 +1987,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
             
             ax[1].pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0),cmap=cmap,
-                            vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='flat')
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='flat')
 
             ax[1].set_title(f'{model_labels[m]}\nPosterior mean')
             
@@ -2051,16 +2007,16 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
     
     ax[2].pcolormesh(lon,lat,
                     flux_diff,
-                    cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='nearest')
+                    cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
 
     ax[2].set_title(f'{model_labels[all_keys[1]]} - {model_labels[all_keys[0]]}\nAbsolute difference')
 
 
     #flux colorbar
-    levels = np.linspace(fluxlim[species][0],fluxlim[species][1])
+    levels = np.linspace(s_data[species]['fluxlim'][0],s_data[species]['fluxlim'][1])
     cbar = plt.cm.ScalarMappable(cmap=cmap)
     cbar.set_array(levels)
-    cbar.set_clim(fluxlim[species])
+    cbar.set_clim(s_data[species]['fluxlim'])
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[0],shrink=0.9,pad=0.01)
     color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
@@ -2069,10 +2025,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
     color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     #difference colorbar
-    levels_diff = np.linspace(difflim[species][0],difflim[species][1])
+    levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
     cbar_diff = plt.cm.ScalarMappable(cmap=cmap_diff)
     cbar_diff.set_array(levels_diff)
-    cbar_diff.set_clim(difflim[species])
+    cbar_diff.set_clim(s_data[species]['difflim'])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='horizontal',extend='both',ax=ax[2],shrink=0.9,pad=0.01)
     color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
@@ -2141,28 +2097,6 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                   'flux_total_posterior':'Posterior mean',
                   'posterior_prior_diff':'Posterior-prior'}
 
-    fluxlim = {'ch4':[0,1e-7],
-        'hfc134a':[0,1e-11],
-        'hfc143a':[0,5e-12],
-        'hfc125':[0,1e-11],
-        'hfc32':[0,1e-11],
-        'hfc23':[0,1e-12],
-        'hfc227ea':[0,1e-12],
-        'pfc218':[0,5e-14],
-        'sf6':[0,2e-13],
-        'n2o':[0,1e-9]}
-
-    difflim = {'ch4':[-1e-7,1e-7],
-            'hfc134a':[-1e-11,1e-11],
-            'hfc143a':[-5e-12,5e-12],
-            'hfc125':[-1e-11,1e-11],
-            'hfc32':[-1e-11,1e-11],
-            'hfc23':[-1e-12,1e-12],
-            'hfc227ea':[-1e-12,1e-12],
-            'pfc218':[-5e-14,5e-14],
-            'sf6':[-5e-13,5e-13],
-            'n2o':[-1e-9,1e-9]}
-
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
@@ -2175,10 +2109,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
 
     # Define variable specific settings
     if var == 'posterior_prior_diff':
-        lim = difflim[species]
+        lim = s_data[species]['difflim']
         extend ='both'
     else:
-        lim = fluxlim[species]
+        lim = s_data[species]['fluxlim']
         extend = 'max'
 
     # Figure size
