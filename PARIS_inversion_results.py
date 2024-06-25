@@ -213,10 +213,10 @@ def slice_flux(ds_all,start_date,end_date,
                     print(f'Scaling covariance units in {m} by {s_data[species]["units_scaling"][m0]**2}')
 
             # fix for flux scaling issue in ELRIS - to be removed once fixed in .nc files
-            if 'elris_old' in m:
-                for v in elris_scale:
-                    ds_all[m][v].values = ds_all[m][v].values/1e12
-                    print('Old ELRIS file! Applying additional scaling correction.')
+            #if 'elris_old' in m:
+            #    for v in elris_scale:
+            #        ds_all[m][v].values = ds_all[m][v].values/1e12
+            #        print('Old ELRIS file! Applying additional scaling correction.')
         
     return ds_all
 
@@ -1615,7 +1615,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 
     if set_global_leg:
         handles, labels = ax[0,0].get_legend_handles_labels()
-        ncol=0
+        ncol=0   
         if plot_separate:
             ncol=len(ds_all.keys())
         if plot_combined:
@@ -1787,8 +1787,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                 ax1 = ax[1,i]
                 ax2 = ax[2,i]
 
-            ax0.pcolormesh(lon,lat,
-                            np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0),cmap=cmap,
+            ax0.pcolormesh(lon,lat,np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0),cmap=cmap,
                             vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='flat')
 
             ax0.set_title(f'{model_labels[m]}: prior')
@@ -1799,7 +1798,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 
             ax1.set_title(f'{model_labels[m]}: posterior')
             
-            flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:-1,:-1],axis=0)
+            flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
             flux_diff[np.where(flux_diff) == np.nan] = 0.
             
             ax2.pcolormesh(lon,lat,
@@ -2001,8 +2000,8 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
                 ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
                             edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
         
-    flux_diff = (np.mean(ds_all[all_keys[1]]['flux_total_posterior'].values[:,:-1,:-1],axis=0)-
-                 np.mean(ds_all[all_keys[0]]['flux_total_posterior'].values[:,:-1,:-1],axis=0))
+    flux_diff = (np.mean(ds_all[all_keys[1]]['flux_total_posterior'].values[:,:,:],axis=0)-
+                 np.mean(ds_all[all_keys[0]]['flux_total_posterior'].values[:,:,:],axis=0))
     flux_diff[np.where(flux_diff) == np.nan] = 0.
     
     ax[2].pcolormesh(lon,lat,
@@ -2209,13 +2208,13 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                 time_out = (f'{start_print} - {end_print}')
 
             if var == 'posterior_prior_diff':
-                var_plot = np.mean(ds_all[m]['flux_total_posterior'][t0:t1+1,:-1,:-1],axis=0)-np.mean(ds_all[m]['flux_total_prior'][t0:t1+1,:-1,:-1],axis=0)
+                var_plot = np.mean(ds_all[m]['flux_total_posterior'][t0:t1+1,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][t0:t1+1,:,:],axis=0)
                 var_plot[np.where(var_plot) == np.nan] = 0.
             else:
-                var_plot = np.mean(ds_all[m][var][t0:t1+1,:-1,:-1],axis=0)
+                var_plot = np.mean(ds_all[m][var][t0:t1+1,:,:],axis=0)
 
             if n_cols == 1 and n_lines == 1:
-                ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
+                ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
                 ax.set_title(f'{model_labels[m]}\n{time_out}')
             else:
                 if n_cols == 1:
@@ -2232,7 +2231,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                     plot_title = f'{model_labels[m]}\n{time_out}'
                 else:
                     plot_title = f'{time_out}'
-                ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='flat')
+                ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
                 ax_var.set_title(plot_title)
                 
             if plot_site_locations == True:
