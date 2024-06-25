@@ -1391,15 +1391,30 @@ def extract_region_flux(ds_all,m,m0,country):
             region_flux_total_prior_lower,region_flux_total_prior_upper)
     
 #####################################################################
-def extract_region_inventory_flux(country,data_dir,species):
+def extract_region_inventory_flux(country,data_dir,species,
+                                  inventory_year=None):
     """
     Extracts inventory flux values for regions that exists,
     or calculates total inventory flux values for aggregated regions.
     """
     
-    with xr.open_dataset(os.path.join(data_dir,'inventory',f'UNFCCC_inventory_{s_data[species]["model_species"]["intem"]}.nc')) as f:
-        inv_ds = f
-    
+    if inventory_year == None:
+        
+        try:
+            with xr.open_dataset(sorted(glob.glob(os.path.join(data_dir,'inventory',f'UNFCCC_inventory_{species}_*.nc')))[-1]) as f:
+                inv_ds = f
+        except:
+            with xr.open_dataset(os.path.join(data_dir,'inventory',f'UNFCCC_inventory_{s_data[species]["model_species"]["intem"]}.nc')) as f:
+                inv_ds = f
+            
+    else:
+        try:
+            with xr.open_dataset(sorted(glob.glob(os.path.join(data_dir,'inventory',f'UNFCCC_inventory_{species}_{inventory_year}.nc')))[-1]) as f:
+                    inv_ds = f
+        except:
+            print(f'No {species} inventory data available for year {inventory_year}.')
+            inventory_flux = None
+            inventory_time = None
     try:
         inv_c_index = np.where(inv_ds['country'].values == country)[0][0]
         inventory_flux = inv_ds['inventory'].values[:,inv_c_index]/s_data[species]["units_scaling"]["intem"]
@@ -1447,7 +1462,8 @@ def extract_region_inventory_flux(country,data_dir,species):
 
 def plot_country_flux(ds_all,species,plot_regions,model_labels,
                       model_colors,
-                      plot_inventory=True,data_dir=None,fix_y_axes=False,
+                      plot_inventory=True,inventory_years=None,
+                      data_dir=None,fix_y_axes=False,
                       add_prior_unc=False, set_global_leg=False,
                       country_codes_as_titles=None,plot_separate=True,
                       plot_combined=False):
@@ -1470,6 +1486,9 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             Models and corresponding colours used to plot the model.
         plot_inventory (bool):
             If True, plots inventory flux estimates as bars in each plot.
+        inventory_years (list of str, optional):
+            List of inventory data from different years to include. If None, only plots 
+            the most recent inventory data.
         data_dir (str): 
             Path to top data directory, used to read inventory data files.
         fix_y_axes (bool):
@@ -1504,12 +1523,21 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
         
         if plot_inventory == True:
             
-            inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species)
+            inv_colours = ['grey','black']
             
-            if inventory_flux is not None:
-                ax[a,b].bar(inventory_time,inventory_flux,
-                            np.timedelta64(340, 'D'),color='white',edgecolor='black',align='edge',
-                            label='Inventory 2023',zorder=0)
+            if inventory_years == None:
+                search_years = sorted(glob.glob(os.path.join(data_dir,'inventory',f'UNFCCC_inventory_{species}_*.nc')))
+                inventory_years = [search_years[-1][-7:-3]]
+            
+            for y,i_year in enumerate(inventory_years):
+            
+                inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,
+                                                                              inventory_year=i_year)
+                
+                if inventory_flux is not None:
+                    ax[a,b].bar(inventory_time,inventory_flux,
+                                np.timedelta64(340, 'D'),color='white',edgecolor=inv_colours[y],align='edge',
+                                label=f'Inventory {i_year}',zorder=0)
         
         post_pdfs = {}
         
@@ -1665,7 +1693,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             ncol=ncol+1
         leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,bbox_to_anchor=(0.5, 1.07))
         if plot_inventory == True:
-            for l in leg.legendHandles[:-1]:
+            for l in leg.legendHandles:
                 l.set_linewidth(3.0)
         else:
             for l in leg.legendHandles:
