@@ -133,7 +133,7 @@ def read_flux(data_dir,species,models,model_filenames,period_override=None):
         m0 = m.split('_')[0]
         
         model_dir = model_filenames[m].split('_')[0]
-        
+
         try:
             filepath = glob.glob(os.path.join(data_dir,model_dir,species,
                                               f'{model_filenames[m]}_{s_data[species]["model_species"][m0]}_{period_all[m]}.nc'))
@@ -678,10 +678,15 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
             if make_diff:
                 var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
             else:
-                if var == 'uYmod':
-                    var_plot = uYmod
-                else:
+                try:
                     var_plot = ds_all[m][var].values
+                except:
+                    if var == 'uYmod':
+                        var_plot = uYmod
+                    elif var == 'uYobs_repeatability':
+                        var_plot = ds_all[m]['uYobs'].values
+                    else:
+                        continue
 
             if np.nanmean(var_plot) <= 0.01:
                 var_mean = np.round(np.nanmean(var_plot),5)
@@ -905,10 +910,15 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
             if make_diff:
                 var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
             else:
-                if var == 'uYmod':
-                    var_plot = uYmod
-                else:
+                try:
                     var_plot = ds_all[m][var].values
+                except:
+                    if var == 'uYmod':
+                        var_plot = uYmod
+                    elif var == 'uYobs_repeatability':
+                        var_plot = ds_all[m]['uYobs'].values
+                    else:
+                        continue
 
             if np.nanmean(var_plot) <= 0.01:
                 var_mean = np.round(np.nanmean(var_plot),5)
@@ -1116,10 +1126,15 @@ def plot_obs_diff(ds_all,species,site,model_labels,
             if make_diff:
                 var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
             else:
-                if var == 'uYmod':
-                    var_plot = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
-                else:
+                try:
                     var_plot = ds_all[m][var].values
+                except:
+                    if var == 'uYmod':
+                        var_plot = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,model_q_indices[m0][0]]
+                    elif var == 'uYobs_repeatability':
+                        var_plot = ds_all[m]['uYobs'].values
+                    else:
+                        continue
             
             if np.nanmean(var_plot) <= 0.01:
                 var_mean = np.round(np.nanmean(var_plot),5)
@@ -1735,34 +1750,13 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
         c_border = 'floralwhite'
     
     n_cols = len(ds_all.keys())
-    
-    fluxlim = {'ch4':[0,5e-8],
-        'hfc134a':[0,1e-11],
-        'hfc143a':[0,5e-12],
-        'hfc125':[0,1e-11],
-        'hfc32':[0,1e-11],
-        'hfc23':[0,1e-12],
-        'hfc227ea':[0,1e-12],
-        'pfc218':[0,5e-14],
-        'sf6':[0,2e-13],
-        'n2o':[0,1e-9]}
-
-    difflim = {'ch4':[-2e-8,2e-8],
-            'hfc134a':[-1e-11,1e-11],
-            'hfc143a':[-5e-12,5e-12],
-            'hfc125':[-1e-11,1e-11],
-            'hfc32':[-1e-11,1e-11],
-            'hfc23':[-1e-12,1e-12],
-            'hfc227ea':[-1e-12,1e-12],
-            'pfc218':[-5e-14,5e-14],
-            'sf6':[-5e-13,5e-13],
-            'n2o':[-1e-9,1e-9]}
 
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
@@ -1816,65 +1810,71 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 
         m0 = m.split('_')[0]
         
-        #try:
+        try:
         
-        if len(ds_all[m].time.values) == 1:
-            time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
-        else:
-            start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
-            if period_all[m] == 'datetime64[Y]':
-                end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
-            elif period_all[m] == 'datetime64[M]':
-                end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+            if len(ds_all[m].time.values) == 1:
+                time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
             else:
-                print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
-                        'correct dates for higher frequency inversions.')
-            end_print = to_datetime(end_period).strftime("%d/%m/%Y")
-            time_out = (f'{start_print} - {end_print}')
+                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                if period_all[m] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif period_all[m] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                else:
+                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                            'correct dates for higher frequency inversions.')
+                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                time_out = (f'{start_print} - {end_print}')
+                
+            if n_cols == 1:
+                ax0 = ax[0]
+                ax1 = ax[1]
+                ax2 = ax[2]
+            else:
+                ax0 = ax[0,i]
+                ax1 = ax[1,i]
+                ax2 = ax[2,i]
+
+            ax0.pcolormesh(lon,lat,
+                            np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),cmap=cmap,
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+
+            ax0.set_title(f'{model_labels[m]}: prior')
             
-        if n_cols == 1:
-            ax0 = ax[0]
-            ax1 = ax[1]
-            ax2 = ax[2]
-        else:
-            ax0 = ax[0,i]
-            ax1 = ax[1,i]
-            ax2 = ax[2,i]
+            ax1.pcolormesh(lon,lat,
+                            np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
-        ax0.pcolormesh(lon,lat,
-                        np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),cmap=cmap,
-                        vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='nearest')
-
-        ax0.set_title(f'{model_labels[m]}: prior')
-        
-        ax1.pcolormesh(lon,lat,
-                        np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                        vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='nearest')
-
-        ax1.set_title(f'{model_labels[m]}: posterior')
-        
-        flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
-        flux_diff[np.where(flux_diff) == np.nan] = 0.
-        
-        ax2.pcolormesh(lon,lat,
-                        flux_diff,
-                        cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='nearest')
-
-        ax2.set_title(f'{model_labels[m]}: posterior - prior')
-        
-        if plot_site_locations == True:
+            ax1.set_title(f'{model_labels[m]}: posterior')
             
-            for s in sites_info[m]:
-                ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                            edgecolor='black',marker='o',s=30,zorder=2)
-                ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                            edgecolor='black',marker='o',s=30,zorder=2)
-                ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                            edgecolor='black',marker='o',s=30,zorder=2)
+            flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
+            flux_diff[np.where(flux_diff) == np.nan] = 0.
             
-        #except:
-        #    print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
-        #    print(f'Skipping plotting {m}.')
+            ax2.pcolormesh(lon,lat,
+                            flux_diff,
+                            cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='nearest')
+
+            ax2.set_title(f'{model_labels[m]}: posterior - prior')
+            
+            if plot_site_locations == True:
+                
+                for s in sites_info[m]:
+                    ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=30,zorder=2)
+                    ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=30,zorder=2)
+                    ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=30,zorder=2)
+            
+        except:
+            print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
+            print(f'Skipping plotting {m}.')
+
+            ax2.pcolormesh(lon,lat,
+                            flux_diff,
+                            cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='flat')
+
+            ax2.set_title(f'{model_labels[m]}: posterior - prior')
             
         if plot_point_markers is not None:
             if i == 0:
@@ -1894,10 +1894,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                         ax2.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
                         
     #flux colorbar
-    levels = np.linspace(fluxlim[species][0],fluxlim[species][1])
+    levels = np.linspace(s_data[species]['fluxlim'][0],s_data[species]['fluxlim'][1])
     cbar = plt.cm.ScalarMappable(cmap=cmap)
     cbar.set_array(levels)
-    cbar.set_clim(fluxlim[species])
+    cbar.set_clim(s_data[species]['fluxlim'])
 
     color_bar1 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[0,...],shrink=0.9,pad=0.005)
     color_bar1.set_label(f'Prior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
@@ -1906,10 +1906,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
     color_bar2.set_label(f'Posterior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     #difference colorbar
-    levels_diff = np.linspace(difflim[species][0],difflim[species][1])
+    levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
     cbar_diff = plt.cm.ScalarMappable(cmap=cmap_diff)
     cbar_diff.set_array(levels_diff)
-    cbar_diff.set_clim(difflim[species])
+    cbar_diff.set_clim(s_data[species]['difflim'])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,...],shrink=0.9,pad=0.005)
     color_bar3.set_label(f'Posterior - prior {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
@@ -1985,34 +1985,16 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         c_border = 'floralwhite'
     
     n_cols = len(ds_all.keys())
-    
-    fluxlim = {'ch4':[0,1e-7],
-        'hfc134a':[0,1e-11],
-        'hfc143a':[0,5e-12],
-        'hfc125':[0,1e-11],
-        'hfc32':[0,1e-11],
-        'hfc23':[0,1e-12],
-        'hfc227ea':[0,1e-12],
-        'pfc218':[0,5e-14],
-        'sf6':[0,2e-13],
-        'n2o':[0,1e-9]}
-
-    difflim = {'ch4':[-1e-7,1e-7],
-            'hfc134a':[-1e-11,1e-11],
-            'hfc143a':[-5e-12,5e-12],
-            'hfc125':[-1e-11,1e-11],
-            'hfc32':[-1e-11,1e-11],
-            'hfc23':[-1e-12,1e-12],
-            'hfc227ea':[-1e-12,1e-12],
-            'pfc218':[-5e-14,5e-14],
-            'sf6':[-5e-13,5e-13],
-            'n2o':[-1e-9,1e-9]}
 
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
+                    'ITALY':[6,19,36,48],
+                    'SWITZERLAND':[5.5,11,45,49],
+                    'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
-                    'CWEU':[-12,27,37,66]}
+                    'CWEU':[-12,27,37,66],
+                    'EUROPE':[-98,40,10,80]}
     
     sites_info = {}
     if plot_site_locations == True:
@@ -2070,7 +2052,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         
             ax[0].pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='nearest',
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest',
                             )
 
             ax[0].set_title(f'{model_labels[m]}\nPosterior mean')
@@ -2078,8 +2060,8 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         elif i == 1:
             
             ax[1].pcolormesh(lon,lat,
-                            np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=fluxlim[species][0],vmax=fluxlim[species][1],shading='nearest')
+                            np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0),cmap=cmap,
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='flat')
 
             ax[1].set_title(f'{model_labels[m]}\nPosterior mean')
             
@@ -2099,7 +2081,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
     
     ax[2].pcolormesh(lon,lat,
                     flux_diff,
-                    cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='nearest')
+                    cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
 
     ax[2].set_title(f'{model_labels[all_keys[1]]} - {model_labels[all_keys[0]]}\nAbsolute difference')
 
@@ -2121,10 +2103,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
                         
 
     #flux colorbar
-    levels = np.linspace(fluxlim[species][0],fluxlim[species][1])
+    levels = np.linspace(s_data[species]['fluxlim'][0],s_data[species]['fluxlim'][1])
     cbar = plt.cm.ScalarMappable(cmap=cmap)
     cbar.set_array(levels)
-    cbar.set_clim(fluxlim[species])
+    cbar.set_clim(s_data[species]['fluxlim'])
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[0],shrink=0.9,pad=0.01)
     color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
@@ -2133,10 +2115,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
     color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
 
     #difference colorbar
-    levels_diff = np.linspace(difflim[species][0],difflim[species][1])
+    levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
     cbar_diff = plt.cm.ScalarMappable(cmap=cmap_diff)
     cbar_diff.set_array(levels_diff)
-    cbar_diff.set_clim(difflim[species])
+    cbar_diff.set_clim(s_data[species]['difflim'])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='horizontal',extend='both',ax=ax[2],shrink=0.9,pad=0.01)
     color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
@@ -2208,43 +2190,22 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                   'flux_total_posterior':'Posterior mean',
                   'posterior_prior_diff':'Posterior-prior'}
 
-    fluxlim = {'ch4':[0,1e-7],
-        'hfc134a':[0,1e-11],
-        'hfc143a':[0,5e-12],
-        'hfc125':[0,1e-11],
-        'hfc32':[0,1e-11],
-        'hfc23':[0,1e-12],
-        'hfc227ea':[0,1e-12],
-        'pfc218':[0,5e-14],
-        'sf6':[0,2e-13],
-        'n2o':[0,1e-9]}
-
-    difflim = {'ch4':[-1e-7,1e-7],
-            'hfc134a':[-1e-11,1e-11],
-            'hfc143a':[-5e-12,5e-12],
-            'hfc125':[-1e-11,1e-11],
-            'hfc32':[-1e-11,1e-11],
-            'hfc23':[-1e-12,1e-12],
-            'hfc227ea':[-1e-12,1e-12],
-            'pfc218':[-5e-14,5e-14],
-            'sf6':[-5e-13,5e-13],
-            'n2o':[-1e-9,1e-9]}
-
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
 
     # Define variable specific settings
     if var == 'posterior_prior_diff':
-        lim = difflim[species]
+        lim = s_data[species]['difflim']
         extend ='both'
     else:
-        lim = fluxlim[species]
+        lim = s_data[species]['fluxlim']
         extend = 'max'
 
     # Figure size
