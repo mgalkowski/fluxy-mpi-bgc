@@ -13,7 +13,9 @@
                     "rhime":"datetime64[M]",
                     "elris":"datetime64[M]"},
         "mf_units_scaling":1e-9,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,5e-8],
+        "difflim":[-2e-8,2e-8]
         },
 
     "hfc134a":{
@@ -30,7 +32,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-11],
+        "difflim":[-1e-11,1e-11]
         },
 
     "hfc143a":{
@@ -47,7 +51,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,5e-12],
+        "difflim":[-5e-12,5e-12]
         },
 
     "hfc125":{
@@ -64,7 +70,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-11],
+        "difflim":[-1e-11,1e-11]
         },     
 
     "hfc32":{
@@ -81,7 +89,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-11],
+        "difflim":[-1e-11,1e-11]
         },    
 
     "hfc227ea":{
@@ -98,7 +108,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-12],
+        "difflim":[-1e-12,1e-12]
         }, 
 
     "hfc23":{
@@ -115,7 +127,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-12],
+        "difflim":[-1e-12,1e-12]
     },
 
     "pfc218":{
@@ -132,7 +146,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,5e-14],
+        "difflim":[-5e-14,5e-14]
         },    
 
     "sf6":{
@@ -149,7 +165,9 @@
                     "rhime":"datetime64[M]",
                     "elris":"datetime64[M]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,2e-13],
+        "difflim":[-5e-13,5e-13]
         },    
 
     "n2o":{
@@ -166,7 +184,9 @@
                     "rhime":"datetime64[M]",
                     "elris":"datetime64[M]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-9],
+        "difflim":[-1e-9,1e-9]
         },
 
     "hfc1234yf":{
@@ -183,7 +203,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-12],
+        "difflim":[-1e-12,1e-12]
         },  
 
     "hfc1234zee":{
@@ -200,7 +222,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-12],
+        "difflim":[-1e-12,1e-12]
         },      
             
     "hcfo1233zde":{
@@ -217,7 +241,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-12],
+        "difflim":[-1e-12,1e-12]
         },
 
     "clch2ch2cl":{
@@ -234,7 +260,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,2e-12],
+        "difflim":[-2e-12,2e-12]
         },
 
     "ch3br":{
@@ -251,7 +279,9 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-12],
+        "difflim":[-1e-12,1e-12]
         },
 
     "so2f2":{
@@ -268,6 +298,8 @@
                     "rhime":"datetime64[Y]",
                     "elris":"datetime64[Y]"},
         "mf_units_scaling":1e-12,
-        "mf_units_print":"ppt"
+        "mf_units_print":"ppt",
+        "fluxlim":[0,1e-12],
+        "difflim":[-1e-12,1e-12]
         }
 }
