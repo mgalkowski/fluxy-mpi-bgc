@@ -3,7 +3,7 @@
         "species_print":"CH$_4$",
         "period":"monthly",
         "units_scaling":{"intem":1e9,
-                        "rhime":1e12,
+                        "rhime":1e9,
                         "elris":1e9},
         "model_species":{"intem":"ch4",
                         "rhime":"ch4",
