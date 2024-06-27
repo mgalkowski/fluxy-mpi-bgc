@@ -1840,52 +1840,50 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
         
         try:
         
-            if len(ds_all[m].time.values) == 1:
-                time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
-            else:
-                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
-                if period_all[m] == 'datetime64[Y]':
-                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
-                elif period_all[m] == 'datetime64[M]':
-                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
-                else:
-                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
-                            'correct dates for higher frequency inversions.')
-                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
-                time_out = (f'{start_print} - {end_print}')
-                
-            if n_cols == 1:
-                ax0 = ax[0]
-                ax1 = ax[1]
-                ax2 = ax[2]
-            else:
-                ax0 = ax[0,i]
-                ax1 = ax[1,i]
-                ax2 = ax[2,i]
+          if len(ds_all[m].time.values) == 1:
+              time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
+          else:
+              start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+              if period_all[m] == 'datetime64[Y]':
+                  end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+              elif period_all[m] == 'datetime64[M]':
+                  end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+              else:
+                  print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                          'correct dates for higher frequency inversions.')
+              end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+              time_out = (f'{start_print} - {end_print}')
 
-            ax0.pcolormesh(lon,lat,
-                            np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+          if n_cols == 1:
+              ax0 = ax[0]
+              ax1 = ax[1]
+              ax2 = ax[2]
+          else:
+              ax0 = ax[0,i]
+              ax1 = ax[1,i]
+              ax2 = ax[2,i]
 
-            ax0.set_title(f'{model_labels[m]}: prior')
-            
-            ax1.pcolormesh(lon,lat,
-                            np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+          ax0.pcolormesh(lon,lat,np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),cmap=cmap,
+                          vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
-            ax1.set_title(f'{model_labels[m]}: posterior')
-            
-            flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
-            flux_diff[np.where(flux_diff) == np.nan] = 0.
-            
-            ax2.pcolormesh(lon,lat,
-                            flux_diff,
-                            cmap=cmap_diff,vmin=difflim[species][0],vmax=difflim[species][1],shading='nearest')
+          ax0.set_title(f'{model_labels[m]}: prior')
 
-            ax2.set_title(f'{model_labels[m]}: posterior - prior')
-            
-            if plot_site_locations == True:
-                
+          ax1.pcolormesh(lon,lat,
+                          np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
+                          vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+
+          ax1.set_title(f'{model_labels[m]}: posterior')
+
+          flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
+          flux_diff[np.where(flux_diff) == np.nan] = 0.
+
+          ax2.pcolormesh(lon,lat,
+                          flux_diff,
+                          cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
+
+          ax2.set_title(f'{model_labels[m]}: posterior - prior')
+
+          if plot_site_locations == True:
                 for s in sites_info[m]:
                     ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
                                 edgecolor='black',marker='o',s=30,zorder=2)
@@ -1897,12 +1895,6 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
         except:
             print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
             print(f'Skipping plotting {m}.')
-
-            ax2.pcolormesh(lon,lat,
-                            flux_diff,
-                            cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='flat')
-
-            ax2.set_title(f'{model_labels[m]}: posterior - prior')
             
         if plot_point_markers is not None:
             if i == 0:
@@ -2088,8 +2080,8 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         elif i == 1:
             
             ax[1].pcolormesh(lon,lat,
-                            np.mean(ds_all[m]['flux_total_posterior'][:,:-1,:-1],axis=0),cmap=cmap,
-                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='flat')
+                            np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
             ax[1].set_title(f'{model_labels[m]}\nPosterior mean')
             
