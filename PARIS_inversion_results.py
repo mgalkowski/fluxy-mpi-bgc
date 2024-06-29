@@ -190,10 +190,7 @@ def slice_flux(ds_all,start_date,end_date,
                 'percentile_flux_total_posterior','countryname','country',
                 'country_fraction','outer_region_fraction',
                 'covariance_country_flux_total_posterior']
-    
-    elris_scale = ['flux_total_prior','flux_total_posterior','percentile_flux_total_prior',
-                'percentile_flux_total_posterior']
-        
+
     for m in ds_all.keys():
         
         m0 = m.split('_')[0]
@@ -217,12 +214,6 @@ def slice_flux(ds_all,start_date,end_date,
                 if cov_var in ds_all[m].keys():
                     ds_all[m][cov_var].values = ds_all[m][cov_var].values/s_data[species]["units_scaling"][m0]**2
                     print(f'Scaling covariance units in {m} by {s_data[species]["units_scaling"][m0]**2}')
-
-            # fix for flux scaling issue in ELRIS - to be removed once fixed in .nc files
-            #if 'elris_old' in m:
-            #    for v in elris_scale:
-            #        ds_all[m][v].values = ds_all[m][v].values/1e12
-            #        print('Old ELRIS file! Applying additional scaling correction.')
         
     return ds_all
 
@@ -270,8 +261,6 @@ def read_mf(data_dir,species,models,model_filenames,period_override=None):
         
         m0 = m.split('_')[0]
         model_dir = model_filenames[m].split('_')[0]
-        
-        print(os.path.join(data_dir,model_dir,species,f'{model_filenames[m]}_{s_data[species]["model_species"][m0]}_{period_all[m]}_concentrations.nc'))
         
         print(f'\nAttempting to read data from {m}')
         try:
@@ -469,6 +458,8 @@ def stats_mf(ds_all):
     pprint.pprint(nrmse,sort_dicts=False)
     
     return pearson,nrmse
+
+#####################################################################
 
 def extract_site_info(sites):
     """
@@ -789,7 +780,8 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
                   'YapostBC':'posterior mean baseline',
-                  'Ybias':'posterior bias',
+                  'Yapriori_bias':'prior bias',
+                  'Yapost_bias':'posterior bias',
                   'YaprioriOUTER':'prior outer region mf',
                   'YapostOUTER':'posterior outer region mf',
                   'Yobs':'observed mf',
@@ -801,7 +793,8 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                   'Yapost':0,
                   'YaprioriBC':1,
                   'YapostBC':0,
-                  'Ybias':0,
+                  'Yapriori_bias':0,
+                  'Yapost_bias':1,
                   'YaprioriOUTER':1,
                   'YapostOUTER':0,
                   'Yobs':0,
@@ -1014,7 +1007,8 @@ def plot_obs_diff(ds_all,species,site,model_labels,
                   'Yapost':'posterior mean mf',
                   'YaprioriBC':'prior baseline',
                   'YapostBC':'posterior mean baseline',
-                  'Ybias':'posterior bias',
+                  'Yapriori_bias':'prior bias',
+                  'Yapost_bias':'posterior bias',
                   'YaprioriOUTER':'prior outer region mf',
                   'YapostOUTER':'posterior outer region mf',
                   'Yobs':'observed mf',
@@ -1026,7 +1020,8 @@ def plot_obs_diff(ds_all,species,site,model_labels,
                   'Yapost':0,
                   'YaprioriBC':1,
                   'YapostBC':0,
-                  'Ybias':0,
+                  'Yapriori_bias':0,
+                  'Yapost_bias':1,
                   'YaprioriOUTER':1,
                   'YapostOUTER':0,
                   'Yobs':0,
@@ -1415,6 +1410,7 @@ def extract_region_inventory_flux(country,data_dir,species,
             print(f'No {species} inventory data available for year {inventory_year}.')
             inventory_flux = None
             inventory_time = None
+
     try:
         inv_c_index = np.where(inv_ds['country'].values == country)[0][0]
         inventory_flux = inv_ds['inventory'].values[:,inv_c_index]/s_data[species]["units_scaling"]["intem"]
@@ -1731,9 +1727,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             chosen dates.
         species (str): 
             Gas species, e.g. 'ch4'.
-        plot_area (str):
+        plot_area (str or list):
             Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
             'NWEU','CWEU','EUROPE'.
+            A list with [min_lon, max_lon, min_lat, max_lat] can also be provided.
         model_labels (dict of str):
             Models and corresponding strings used to describe the model in the 
             plot legend.
@@ -2229,7 +2226,6 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
         extend = 'max'
 
     # Figure size
-    #n_cols = len(ds_all.keys())
     n_lines = len(ds_all.keys())
     
     if type(dt) != list:
@@ -2311,7 +2307,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
             if len(ds_all[m].time) == 1 or dt[j] == 1:
                 time_out = to_datetime(ds_all[m].time.values[t0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
             else:
-                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                start_print = to_datetime(ds_all[m].time.values[t0].astype(period_all[m])).strftime("%d/%m/%Y")
                 if period_all[m] == 'datetime64[Y]':
                     end_period = ds_all[m].time.values[t1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
                 elif period_all[m] == 'datetime64[M]':
@@ -2333,11 +2329,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,
                 ax.set_title(f'{model_labels[m]}\n{time_out}')
             else:
                 if n_lines == 1:
-                    iax = i
-                    ax_var = ax[iax]
+                    ax_var = ax[i]
                 elif n_cols == 1:
-                    iax = j
-                    ax_var = ax[iax]
+                    ax_var = ax[j]
                 else:
                     ax_var = ax[j,i]
 
