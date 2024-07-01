@@ -2176,11 +2176,13 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
             Variable to be plotted; options for 'flux_total_prior',
             'flux_total_posterior', 'posterior_prior_diff'
         chop_by (str or list):
-            Time units to perform the average, options for 'year' and 'month';
-            alternatively, a list of starting dates can be provided. The respective
-            end dates are assumed equal to the start date of the following averaging period
+            Time units to perform the average, options for 'year', 'month' and 'season'.
+            Option 'season' will perform the average over specific months/seasons (e.g. Jan-Jun, Jul-Dec).
+            Alternatively, a list of starting dates can be provided. The respective
+            end dates are assumed equal to the start date of the following averaging period.
         dt (int):
             number of time steps (in chop_by units) to use in the averaging;
+            if chop_by = 'season', dt corresponds to the months to be averaged together (e.g. if dt=6, it averages over Jan-Jun and Jul-Dec);
             if chop_by is a list, dt is set to None
         period_override (list of str, optional):
             Inversion periods to include, to override the standards in species_info.json.
@@ -2229,6 +2231,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
 
+    month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+
     # Define variable specific settings
     if var == 'posterior_prior_diff':
         lim = s_data[species]['difflim']
@@ -2243,6 +2247,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
     t1_date = {}
     start_print = {}
     end_print = {}
+    t0_season = {}
+    t1_season = {}
 
     if type(chop_by) == list:
         n_cols = len(chop_by)
@@ -2301,10 +2307,24 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
                     end_print[m]   = end_print[m] + [to_datetime(ds_all[m].time.values[-1].astype(s_data[species]["dt_units"][m0])).strftime('%Y')]
 
                 elif chop_by == 'season':
-                    #nt[i] = 12/dt
-                    print(f'ERROR: option {chop_by} for chop_by not yet implemented.')
+                    nt[i] = 12/dt
+                    nyears = int(total_times/12)
+
+                    # Get indexes to slice the data and caption
+                    t0_season[m]   = np.zeros((int(nt[i]),nyears))
+                    start_print[m] = []
+                    end_print[m]   = []
+                    for j in range(int(nt[i])):
+                        t0_season[m][j] = [k for k in range(j*dt,total_times,12)]
+                        start_print[m] = start_print[m] + [month_names[j*dt]]
+                        end_print[m] = end_print[m] + [month_names[j*dt+dt-1]]
+                    t1_season[m] = t0_season[m] + dt
+
+                    t0_season[m] = t0_season[m].astype(int)
+                    t1_season[m] = t1_season[m].astype(int)
+
                 else:
-                    print(f'ERROR: option {chop_by} for chop_by not implemented. Set it to ''year'', ''month'', or a list of starting dates.')
+                    print(f'ERROR: option {chop_by} for chop_by not implemented. Options are year, month, season or a list of starting dates.')
 
             else:
                 print(f'ERROR: inversion period of {m} is yearly. Set chop_by equal to year or to a list of starting dates.')
@@ -2366,20 +2386,35 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
 
             m0 = m.split('_')[0]
 
-            #try:
+            # Define string for caption
             if dt == 1:
                 time_out = (f'{start_print[m][i]}')
             else:
                 time_out = (f'{start_print[m][i]} - {end_print[m][i]}')
 
-            if var == 'posterior_prior_diff':
-                slice_apost   = ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
-                slice_apriori = ds_all[m]['flux_total_prior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
-                var_plot      = np.mean(slice_apost,axis=0) - np.mean(slice_apriori,axis=0)
-                var_plot[np.where(var_plot) == np.nan] = 0.
-            else:
-                var_plot = np.mean(ds_all[m][var].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+            # Compute averaged quantities
+            if chop_by == 'season':
+                # Get indexes of interest
+                indexes = [ind for ind in range(t0_season[m][i,0],t1_season[m][i,0])]
+                for k in range(1,t0_season[m].shape[1]):
+                    indexes.extend([ind for ind in range(t0_season[m][i,k],t1_season[m][i,k])])
 
+                if var == 'posterior_prior_diff':
+                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes,:,:],axis=0) - np.mean(ds_all[m]['flux_total_prior'][indexes,:,:],axis=0)
+                    var_plot[np.where(var_plot) == np.nan] = 0.
+                else:
+                    var_plot = np.mean(ds_all[m][var][indexes,:,:],axis=0)
+
+            else:
+                if var == 'posterior_prior_diff':
+                    slice_apost   = ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
+                    slice_apriori = ds_all[m]['flux_total_prior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
+                    var_plot      = np.mean(slice_apost,axis=0) - np.mean(slice_apriori,axis=0)
+                    var_plot[np.where(var_plot) == np.nan] = 0.
+                else:
+                    var_plot = np.mean(ds_all[m][var].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+
+            # Make plot
             if n_cols == 1 and n_lines == 1:
                 ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
                 ax.set_title(f'{model_labels[m]}\n{time_out}')
@@ -2396,13 +2431,15 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
                 if i == 0:
                     ax_var.text(-0.07, 0.25, f'{model_labels[m]}', size=14, transform=ax_var.transAxes, rotation=90)
                 
+            # Add site location
             if plot_site_locations == True:
                 
                 for s in sites_info[m]:
                     ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
                                 edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
                 
-            if plot_point_markers is not None:
+            # Add markers at specific locations
+            if plot_point_markers == True:
                 if i == 0:
                     print(f'\nPlotting markers for: {plot_point_markers}')
                     print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
