@@ -18,7 +18,8 @@ model_colors = {'intem':[['darkslateblue','dodgerblue'],
 
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
-                   'elris':[0,1]}
+                   'elris':[0,1],
+                   'flexinvert':[0,1]}
 
 countrycodes_dict = {'IRELAND':'IRL',
                      'UK':'GBR',
@@ -359,11 +360,14 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
                 print(f'No {m} obs found between {start_date} and {end_date}')
                 
         if scale_units == True:
-            print(f'Scaling {m} units by {s_data[species]["mf_units_scaling"]}')
-            if ds_all[m] is not None:
-                var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav']]
-                for v in var_names:
-                    ds_all[m][v] = ds_all[m][v]/s_data[species]["mf_units_scaling"]
+            if 'flexinvert' in m:
+                print('No scaling for flexinvert')
+            else:
+                print(f'Scaling {m} units by {s_data[species]["mf_units_scaling"]}')
+                if ds_all[m] is not None:
+                    var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav']]
+                    for v in var_names:
+                        ds_all[m][v] = ds_all[m][v]/s_data[species]["mf_units_scaling"]
       
         if baseline_site is not None:
             print('Masking timeseries to only include baseline times')
@@ -1243,6 +1247,8 @@ def extract_region_flux(ds_all,m,m0,country):
         c_key = 'country'
     elif m0 == 'elris':
         c_key = 'country'
+    elif m0 == 'flexinvert':
+        c_key = 'country'
         
     #search for existing region names
     try:
@@ -1293,6 +1299,8 @@ def extract_region_flux(ds_all,m,m0,country):
             elif m0 == 'rhime':
                 c_key = 'country'
             elif m0 == 'elris':
+                c_key = 'country'
+            elif m0 == 'flexinvert':
                 c_key = 'country'
 
             country_index_vec = np.zeros(len(ds_all[m][c_key]))
