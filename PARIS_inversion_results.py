@@ -365,7 +365,7 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
             else:
                 print(f'Scaling {m} units by {s_data[species]["mf_units_scaling"]}')
                 if ds_all[m] is not None:
-                    var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav']]
+                    var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav','median_poll_uncert_flag']]
                     for v in var_names:
                         ds_all[m][v] = ds_all[m][v]/s_data[species]["mf_units_scaling"]
       
