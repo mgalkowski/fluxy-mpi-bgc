@@ -2439,7 +2439,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
                                 edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
                 
             # Add markers at specific locations
-            if plot_point_markers == True:
+            if plot_point_markers is not None:
                 if i == 0:
                     print(f'\nPlotting markers for: {plot_point_markers}')
                     print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
