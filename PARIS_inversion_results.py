@@ -1837,50 +1837,50 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
         
         try:
         
-          if len(ds_all[m].time.values) == 1:
-              time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
-          else:
-              start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
-              if period_all[m] == 'datetime64[Y]':
-                  end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
-              elif period_all[m] == 'datetime64[M]':
-                  end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
-              else:
-                  print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
-                          'correct dates for higher frequency inversions.')
-              end_print = to_datetime(end_period).strftime("%d/%m/%Y")
-              time_out = (f'{start_print} - {end_print}')
+            if len(ds_all[m].time.values) == 1:
+                time_out = to_datetime(ds_all[m].time.values[0].astype(s_data[species]["dt_units"][m0])).strftime('%d/%m/%Y')
+            else:
+                start_print = to_datetime(ds_all[m].time.values[0].astype(period_all[m])).strftime("%d/%m/%Y")
+                if period_all[m] == 'datetime64[Y]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'Y') - np.timedelta64(1,'D')                    
+                elif period_all[m] == 'datetime64[M]':
+                    end_period = ds_all[m].time.values[-1].astype(period_all[m]) + np.timedelta64(1,'M') - np.timedelta64(1,'D')                    
+                else:
+                    print('This currently only works for monthly or yearly inversion periods. Update the plotting code to print out '+
+                            'correct dates for higher frequency inversions.')
+                end_print = to_datetime(end_period).strftime("%d/%m/%Y")
+                time_out = (f'{start_print} - {end_print}')
 
-          if n_cols == 1:
-              ax0 = ax[0]
-              ax1 = ax[1]
-              ax2 = ax[2]
-          else:
-              ax0 = ax[0,i]
-              ax1 = ax[1,i]
-              ax2 = ax[2,i]
+            if n_cols == 1:
+                ax0 = ax[0]
+                ax1 = ax[1]
+                ax2 = ax[2]
+            else:
+                ax0 = ax[0,i]
+                ax1 = ax[1,i]
+                ax2 = ax[2,i]
 
-          ax0.pcolormesh(lon,lat,np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),cmap=cmap,
-                          vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+            ax0.pcolormesh(lon,lat,np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),cmap=cmap,
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
-          ax0.set_title(f'{model_labels[m]}: prior')
+            ax0.set_title(f'{model_labels[m]}: prior')
 
-          ax1.pcolormesh(lon,lat,
-                          np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                          vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+            ax1.pcolormesh(lon,lat,
+                            np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
+                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
-          ax1.set_title(f'{model_labels[m]}: posterior')
+            ax1.set_title(f'{model_labels[m]}: posterior')
 
-          flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
-          flux_diff[np.where(flux_diff) == np.nan] = 0.
+            flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
+            flux_diff[np.where(flux_diff) == np.nan] = 0.
 
-          ax2.pcolormesh(lon,lat,
-                          flux_diff,
-                          cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
+            ax2.pcolormesh(lon,lat,
+                            flux_diff,
+                            cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
 
-          ax2.set_title(f'{model_labels[m]}: posterior - prior')
+            ax2.set_title(f'{model_labels[m]}: posterior - prior')
 
-          if plot_site_locations == True:
+            if plot_site_locations == True:
                 for s in sites_info[m]:
                     ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
                                 edgecolor='black',marker='o',s=30,zorder=2)
@@ -1888,7 +1888,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                                 edgecolor='black',marker='o',s=30,zorder=2)
                     ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
                                 edgecolor='black',marker='o',s=30,zorder=2)
-            
+                
         except:
             print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
             print(f'Skipping plotting {m}.')
@@ -2083,14 +2083,14 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
             ax[1].set_title(f'{model_labels[m]}\nPosterior mean')
             
         if plot_site_locations == True:
-                
-            for s in sites_info[m]:
-                ax[0].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                            edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
-                ax[1].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                            edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
-                ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                            edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+            if sites_info[m] is not None:
+                for s in sites_info[m]:
+                    ax[0].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                    ax[1].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                    ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
         
     flux_diff = (np.mean(ds_all[all_keys[1]]['flux_total_posterior'].values[:,:,:],axis=0)-
                  np.mean(ds_all[all_keys[0]]['flux_total_posterior'].values[:,:,:],axis=0))
@@ -2420,9 +2420,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
             if n_cols == 1 and n_lines == 1:
                 ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
                 ax.set_title(f'{model_labels[m]}\n{time_out}')
+                ax_var = ax
             else:
                 if n_lines == 1:
-                    ax_var = ax[i]
+                    ax_var = ax[i] 
                 elif n_cols == 1:
                     ax_var = ax[j]
                 else:
@@ -2435,10 +2436,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
                 
             # Add site location
             if plot_site_locations == True:
-                
-                for s in sites_info[m]:
-                    ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                if sites_info[m] is not None:
+                    for s in sites_info[m]:
+                        ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                    edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
                 
             # Add markers at specific locations
             if plot_point_markers is not None:
