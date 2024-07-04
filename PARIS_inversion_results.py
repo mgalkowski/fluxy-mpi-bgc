@@ -1881,13 +1881,14 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             ax2.set_title(f'{model_labels[m]}: posterior - prior')
 
             if plot_site_locations == True:
-                for s in sites_info[m]:
-                    ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=30,zorder=2)
-                    ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=30,zorder=2)
-                    ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=30,zorder=2)
+                if sites_info[m] is not None:
+                    for s in sites_info[m]:
+                        ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                    edgecolor='black',marker='o',s=30,zorder=2)
+                        ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                    edgecolor='black',marker='o',s=30,zorder=2)
+                        ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                    edgecolor='black',marker='o',s=30,zorder=2)
                 
         except:
             print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
