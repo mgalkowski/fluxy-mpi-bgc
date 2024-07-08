@@ -1884,11 +1884,18 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                 if sites_info[m] is not None:
                     for s in sites_info[m]:
                         ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                    edgecolor='black',marker='o',s=30,zorder=2)
+                                    edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
                         ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                    edgecolor='black',marker='o',s=30,zorder=2)
+                                    edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
                         ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                    edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
+                        ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
                                     edgecolor='black',marker='o',s=30,zorder=2)
+                        ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
+                                    edgecolor='black',marker='o',s=30,zorder=2)
+                        ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
+                                    edgecolor='black',marker='o',s=30,zorder=2)
+                        
                 
         except:
             print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
@@ -2087,11 +2094,17 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
             if sites_info[m] is not None:
                 for s in sites_info[m]:
                     ax[0].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                                edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
                     ax[1].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                                edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
                     ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                                edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
+                    ax[0].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
+                                edgecolor='black',marker='o',s=30,zorder=2)
+                    ax[1].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
+                                edgecolor='black',marker='o',s=30,zorder=2)
+                    ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
+                                edgecolor='black',marker='o',s=30,zorder=2)
         
     flux_diff = (np.mean(ds_all[all_keys[1]]['flux_total_posterior'].values[:,:,:],axis=0)-
                  np.mean(ds_all[all_keys[0]]['flux_total_posterior'].values[:,:,:],axis=0))
@@ -2440,7 +2453,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
                 if sites_info[m] is not None:
                     for s in sites_info[m]:
                         ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                    edgecolor='black',marker='o',s=30,zorder=2,alpha=0.8)
+                                        edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
+                        ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
+                                    edgecolor='black',marker='o',s=30,zorder=2)
                 
             # Add markers at specific locations
             if plot_point_markers is not None:
