@@ -2446,7 +2446,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
                 ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
                 ax_var.set_title(f'{time_out}')
                 if i == 0:
-                    ax_var.text(-0.07, 0.25, f'{model_labels[m]}', size=14, transform=ax_var.transAxes, rotation=90)
+                    if '\n' in model_labels[m]:
+                        ax_var.text(-0.14, 0.25, f'{model_labels[m]}', size=14, transform=ax_var.transAxes, rotation=90)
+                    else:
+                        ax_var.text(-0.07, 0.25, f'{model_labels[m]}', size=14, transform=ax_var.transAxes, rotation=90)
                 
             # Add site location
             if plot_site_locations == True:
