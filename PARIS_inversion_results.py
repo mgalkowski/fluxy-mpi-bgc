@@ -1462,7 +1462,8 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                       data_dir=None,fix_y_axes=False,
                       add_prior_unc=False, set_global_leg=False,
                       country_codes_as_titles=None,plot_separate=True,
-                      plot_combined=False):
+                      plot_combined=False,plot_separate_by_year=False,
+                      period_override=None):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
     areas in plot_regions.
@@ -1499,6 +1500,11 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             If True, plots model results as separate lines.
         plot_combined (bool):
             If True, plots combined average results from all models.
+        plot_separate_by_year (bool):
+            If True, average model results by year (only meaningful for monthly inversions).
+        period_override (list of str, optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
     Returns:
         fig (figure): 
             A plot per country/region.
@@ -1508,6 +1514,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
     max_cf = []
     min_x = []
     max_x = []
+    period_all = {}
 
     n_cols = math.ceil(len(plot_regions)/2)
     if n_cols <= 1:
@@ -1540,7 +1547,18 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
         for j,m in enumerate(ds_all.keys()):
             
             m0 = m.split('_')[0]
-                
+
+            # Get inversion period
+            if period_override is not None:
+                if period_override[i] == 'monthly':
+                    period_all[m] = 'monthly'
+                elif period_override[i] == 'yearly':
+                    period_all[m] = 'yearly'
+                else:
+                    period_all[m] = s_data[species]["period"]
+            else:
+                period_all[m] = s_data[species]["period"]
+
             region_time,region_flux_total_posterior,region_flux_total_prior,\
             region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
             region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_all,m,m0,country)
@@ -1591,6 +1609,38 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                             region_flux_total_prior_upper,
                                             alpha=0.1,color=model_colors[m][0])
                 
+                if (plot_separate_by_year == True and period_all[m] == 'monthly'):
+
+                    # Get unique years in the time array
+                    region_time_year = region_time.astype("datetime64[Y]")
+                    years = np.unique(region_time_year)
+
+                    # Create new time and flux arrays
+                    time_array = np.zeros(len(years), dtype='datetime64[s]')
+                    mean_posterior_flux = np.zeros(len(years))
+                    mean_prior_flux = np.zeros(len(years))
+
+                    # Compute average flux along each year
+                    for t, year in enumerate(years):
+                        index = (region_time_year == year)
+                        time_array[t] = year + np.timedelta64(6, 'M') + np.timedelta64(1, 'D') # to be improved
+                        mean_posterior_flux[t] = np.mean(region_flux_total_posterior[index])
+                        mean_prior_flux[t] = np.mean(region_flux_total_prior[index])
+
+                    # Plot average fluxes
+                    if (plot_separate == True):
+                        ax[a,b].plot(time_array,
+                                     mean_posterior_flux,
+                                     color=model_colors[m][1])
+                    else:
+                        ax[a,b].plot(time_array,
+                                     mean_posterior_flux,
+                                     label=model_labels[m],color=model_colors[m][0])
+
+                        ax[a,b].plot(time_array,
+                                     mean_prior_flux,
+                                     label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
+
                 min_x.append(np.min(region_time).astype('datetime64[M]'))
                 max_x.append(np.max(region_time).astype('datetime64[M]'))
                 max_cf.append(ax[a,b].get_ylim()[1])
@@ -1681,7 +1731,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
     if set_global_leg:
         handles, labels = ax[0,0].get_legend_handles_labels()
         ncol=0   
-        if plot_separate:
+        if (plot_separate or plot_separate_by_year):
             ncol=len(ds_all.keys())
         if plot_combined:
             ncol=ncol+3
