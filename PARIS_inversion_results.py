@@ -1564,85 +1564,99 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_all,m,m0,country)
         
             if region_time is not None:
-        
-                if plot_combined == True:
-            
-                    if j == 0:
-                        all_region_flux_total_posterior = region_flux_total_posterior
-                        all_region_flux_total_prior = region_flux_total_prior
-                        all_region_flux_total_lower = region_flux_total_posterior_lower
-                        all_region_flux_total_upper = region_flux_total_posterior_upper
-                    else:
-                        all_region_flux_total_posterior = np.vstack((all_region_flux_total_posterior,
-                                                                    region_flux_total_posterior))
-                        all_region_flux_total_prior = np.vstack((all_region_flux_total_prior,
-                                                                region_flux_total_prior))
-                        all_region_flux_total_lower = np.vstack((all_region_flux_total_lower,
-                                                                region_flux_total_posterior_lower))
-                        all_region_flux_total_upper = np.vstack((all_region_flux_total_upper,
-                                                                region_flux_total_posterior_upper))
-                        
-                    post_pdfs[m] = np.array([np.random.default_rng().normal(loc=region_flux_total_posterior[t],
-                                                                            scale=np.mean(np.array([region_flux_total_posterior[t]-region_flux_total_posterior_lower[t],
-                                                                                                    region_flux_total_posterior_upper[t]-region_flux_total_posterior[t]])),
-                                                                            size=1000) for t in range(region_time.shape[0])])
-                            
-                if plot_separate == True:
-                    
-                    ax[a,b].plot(region_time,
-                                region_flux_total_posterior,
-                                label=model_labels[m],color=model_colors[m][0])
-                    
-                    ax[a,b].plot(region_time,
-                                region_flux_total_prior,
-                                label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
-                    
-                    
-                    ax[a,b].fill_between(region_time,
-                                        region_flux_total_posterior_lower,
-                                        region_flux_total_posterior_upper,
-                                        alpha=0.3,color=model_colors[m][0])
-                
-                    if add_prior_unc:
-                        ax[a,b].fill_between(region_time,
-                                            region_flux_total_prior_lower,
-                                            region_flux_total_prior_upper,
-                                            alpha=0.1,color=model_colors[m][0])
                 
                 if (plot_separate_by_year == True and period_all[m] == 'monthly'):
-
+                    
                     # Get unique years in the time array
                     region_time_year = region_time.astype("datetime64[Y]")
                     years = np.unique(region_time_year)
 
                     # Create new time and flux arrays
                     time_array = np.zeros(len(years), dtype='datetime64[s]')
-                    mean_posterior_flux = np.zeros(len(years))
-                    mean_prior_flux = np.zeros(len(years))
+                    
+                    mean_region_flux_total_posterior,mean_region_flux_total_prior,\
+                    mean_region_flux_total_posterior_lower,mean_region_flux_total_posterior_upper,\
+                    mean_region_flux_total_prior_lower,mean_region_flux_total_prior_upper = [np.zeros(len(years)),]*6
 
                     # Compute average flux along each year
                     for t, year in enumerate(years):
                         index = (region_time_year == year)
                         time_array[t] = year + np.timedelta64(6, 'M') + np.timedelta64(1, 'D') # to be improved
-                        mean_posterior_flux[t] = np.mean(region_flux_total_posterior[index])
-                        mean_prior_flux[t] = np.mean(region_flux_total_prior[index])
-
-                    # Plot average fluxes
-                    if (plot_separate == True):
-                        ax[a,b].plot(time_array,
-                                     mean_posterior_flux,
-                                     color=model_colors[m][1])
+                        
+                        mean_region_flux_total_posterior[t] = np.mean(region_flux_total_posterior[index])
+                        mean_region_flux_total_prior[t] = np.mean(region_flux_total_prior[index])
+                        print(index)
+                        print(region_flux_total_posterior_lower)
+                        print(region_flux_total_posterior_lower[index])
+                        mean_region_flux_total_posterior_lower[t] = np.mean(region_flux_total_posterior_lower[index])
+                        mean_region_flux_total_posterior_upper[t] = np.mean(region_flux_total_posterior_upper[index])
+                        print(index)
+                        print(region_flux_total_prior_lower)
+                        print(region_flux_total_prior_lower[0][index])
+                        mean_region_flux_total_prior_lower[t] = np.mean(region_flux_total_prior_lower[0][index])
+                        mean_region_flux_total_prior_upper[t] = np.mean(region_flux_total_prior_upper[0][index])
+                    data_tmp = {'region_time':time_array,
+                                'region_flux_total_posterior':mean_region_flux_total_posterior,
+                                'region_flux_total_prior':mean_region_flux_total_prior,
+                                'region_flux_total_posterior_lower':mean_region_flux_total_posterior_lower,
+                                'region_flux_total_posterior_upper':mean_region_flux_total_posterior_upper,
+                                'region_flux_total_prior_lower':mean_region_flux_total_prior_lower,
+                                'region_flux_total_prior_upper':mean_region_flux_total_prior_upper}
+                else : 
+                    data_tmp = {'region_time':region_time,
+                                'region_flux_total_posterior':region_flux_total_posterior,
+                                'region_flux_total_prior':region_flux_total_prior,
+                                'region_flux_total_posterior_lower':region_flux_total_posterior_lower,
+                                'region_flux_total_posterior_upper':region_flux_total_posterior_upper,
+                                'region_flux_total_prior_lower':region_flux_total_prior_lower,
+                                'region_flux_total_prior_upper':region_flux_total_prior_upper}
+        
+                if plot_combined == True:
+            
+                    if j == 0:
+                        all_region_flux_total_posterior = data_tmp['region_flux_total_posterior']
+                        all_region_flux_total_prior =  data_tmp['region_flux_total_prior']
+                        all_region_flux_total_lower =  data_tmp['region_flux_total_posterior_lower']
+                        all_region_flux_total_upper =  data_tmp['region_flux_total_posterior_upper']
                     else:
-                        ax[a,b].plot(time_array,
-                                     mean_posterior_flux,
-                                     label=model_labels[m],color=model_colors[m][0])
-
-                        ax[a,b].plot(time_array,
-                                     mean_prior_flux,
-                                     label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
-
-                min_x.append(np.min(region_time).astype('datetime64[M]'))
-                max_x.append(np.max(region_time).astype('datetime64[M]'))
+                        all_region_flux_total_posterior = np.vstack((all_region_flux_total_posterior,
+                                                                    data_tmp['region_flux_total_posterior']))
+                        all_region_flux_total_prior = np.vstack((all_region_flux_total_prior,
+                                                                data_tmp['region_flux_total_prior']))
+                        all_region_flux_total_lower = np.vstack((all_region_flux_total_lower,
+                                                                data_tmp['region_flux_total_posterior_lower']))
+                        all_region_flux_total_upper = np.vstack((all_region_flux_total_upper,
+                                                                data_tmp['region_flux_total_posterior_upper']))
+                        
+                    post_pdfs[m] = np.array([np.random.default_rng().normal(loc=data_tmp['region_flux_total_posterior'][t],
+                                                                            scale=np.mean(np.array([data_tmp['region_flux_total_posterior'][t]-data_tmp['region_flux_total_posterior_lower'][t],
+                                                                                                    data_tmp['region_flux_total_posterior_upper'][t]-data_tmp['region_flux_total_posterior'][t]])),
+                                                                            size=1000) for t in range(data_tmp['region_time'].shape[0])])
+                            
+                if plot_separate == True:
+                    
+                    ax[a,b].plot(data_tmp['region_time'],
+                                data_tmp['region_flux_total_posterior'],
+                                label=model_labels[m],color=model_colors[m][0])
+                    
+                    ax[a,b].plot(data_tmp['region_time'],
+                                data_tmp['region_flux_total_prior'],
+                                label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
+                    
+                    
+                    ax[a,b].fill_between(data_tmp['region_time'],
+                                        data_tmp['region_flux_total_posterior_lower'],
+                                        data_tmp['region_flux_total_posterior_upper'],
+                                        alpha=0.3,color=model_colors[m][0])
+                
+                    if add_prior_unc:
+                        ax[a,b].fill_between(data_tmp['region_time'],
+                                            data_tmp['region_flux_total_prior_lower'],
+                                            data_tmp['region_flux_total_prior_upper'],
+                                            alpha=0.1,color=model_colors[m][0])
+                
+                min_x.append(np.min(data_tmp['region_time']).astype('datetime64[M]'))
+                max_x.append(np.max(data_tmp['region_time']).astype('datetime64[M]'))
                 max_cf.append(ax[a,b].get_ylim()[1])
                 
         if plot_combined == True:
