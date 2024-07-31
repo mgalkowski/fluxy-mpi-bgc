@@ -1293,7 +1293,7 @@ def extract_region_flux(ds_all,m,m0,country):
                     country_search = countrycodes_dict[country]
                     r = 1
                 country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
-            
+
             # fix for RHIME which reports regions emissions with the regions_dict key names
             except:
                 
@@ -1314,10 +1314,9 @@ def extract_region_flux(ds_all,m,m0,country):
         region_flux_total_posterior_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
         region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r,
         region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r,
-           
+            
     #calculate values for region names that don't exist in the file
     except:
-        
         try:
             region_search = regions_dict[country]
             print(f'{country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
@@ -1509,7 +1508,43 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
         fig (figure): 
             A plot per country/region.
     """
-
+    
+    # Create annual mean xarrays if needed
+    if plot_separate_by_year == True:
+        tmp = {m:ds_all[m].copy() for m in ds_all.keys()}
+        for m in ds_all.keys():
+            if 'elris' in m:
+                del tmp[m]['covariance_country_flux_total_posterior']
+                
+        if period_override is not None: 
+            ds_all_p = {m:tmp[m].groupby("time.year").mean().rename({'year':'time'}) if period_override[i] == 'monthly' else tmp[m] for i,m in enumerate(ds_all.keys())}
+            for i,m in enumerate(ds_all.keys()):
+                if period_override[i] == 'monthly':
+                    ds_all_p[m]['time'] = (ds_all_p[m]['time']-1970).astype('datetime64[Y]')
+                if 'elris' in m and period_override[i] == 'monthly':
+                    ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
+                    ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
+                    ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].groupby("time.year").mean().rename({'year':'time'})})
+                    
+        elif s_data[species]["period"]=='monthly':
+            ds_all_p = {m:tmp[m].groupby("time.year").mean().rename({'year':'time'}) for m in ds_all.keys()}
+            for m in ds_all.keys():
+                ds_all_p[m]['time'] = (ds_all_p[m]['time']-1970).astype('datetime64[Y]')
+                if 'elris' in m:
+                    ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
+                    ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
+                    ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].groupby("time.year").mean().rename({'year':'time'})})
+        else:
+            ds_all_p = ds_all
+            
+        del tmp
+        
+            
+    else:
+        ds_all_p = ds_all
+    
     a,b = 0,0
     max_cf = []
     min_x = []
@@ -1543,7 +1578,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                 label=f'Inventory {i_year}',zorder=0)
         
         post_pdfs = {}
-        
+                
         for j,m in enumerate(ds_all.keys()):
             
             m0 = m.split('_')[0]
@@ -1558,105 +1593,58 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                     period_all[m] = s_data[species]["period"]
             else:
                 period_all[m] = s_data[species]["period"]
-
+                
             region_time,region_flux_total_posterior,region_flux_total_prior,\
             region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
-            region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_all,m,m0,country)
-        
+            region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_all_p,m,m0,country)
+            
             if region_time is not None:
-                
-                if (plot_separate_by_year == True and period_all[m] == 'monthly'):
-                    
-                    # Get unique years in the time array
-                    region_time_year = region_time.astype("datetime64[Y]")
-                    years = np.unique(region_time_year)
-
-                    # Create new time and flux arrays
-                    time_array = np.zeros(len(years), dtype='datetime64[s]')
-                    
-                    mean_region_flux_total_posterior,mean_region_flux_total_prior,\
-                    mean_region_flux_total_posterior_lower,mean_region_flux_total_posterior_upper,\
-                    mean_region_flux_total_prior_lower,mean_region_flux_total_prior_upper = [np.zeros(len(years)),]*6
-
-                    # Compute average flux along each year
-                    for t, year in enumerate(years):
-                        index = (region_time_year == year)
-                        time_array[t] = year + np.timedelta64(6, 'M') + np.timedelta64(1, 'D') # to be improved
-                        
-                        mean_region_flux_total_posterior[t] = np.mean(region_flux_total_posterior[index])
-                        mean_region_flux_total_prior[t] = np.mean(region_flux_total_prior[index])
-                        print(index)
-                        print(region_flux_total_posterior_lower)
-                        print(region_flux_total_posterior_lower[index])
-                        mean_region_flux_total_posterior_lower[t] = np.mean(region_flux_total_posterior_lower[index])
-                        mean_region_flux_total_posterior_upper[t] = np.mean(region_flux_total_posterior_upper[index])
-                        print(index)
-                        print(region_flux_total_prior_lower)
-                        print(region_flux_total_prior_lower[0][index])
-                        mean_region_flux_total_prior_lower[t] = np.mean(region_flux_total_prior_lower[0][index])
-                        mean_region_flux_total_prior_upper[t] = np.mean(region_flux_total_prior_upper[0][index])
-                    data_tmp = {'region_time':time_array,
-                                'region_flux_total_posterior':mean_region_flux_total_posterior,
-                                'region_flux_total_prior':mean_region_flux_total_prior,
-                                'region_flux_total_posterior_lower':mean_region_flux_total_posterior_lower,
-                                'region_flux_total_posterior_upper':mean_region_flux_total_posterior_upper,
-                                'region_flux_total_prior_lower':mean_region_flux_total_prior_lower,
-                                'region_flux_total_prior_upper':mean_region_flux_total_prior_upper}
-                else : 
-                    data_tmp = {'region_time':region_time,
-                                'region_flux_total_posterior':region_flux_total_posterior,
-                                'region_flux_total_prior':region_flux_total_prior,
-                                'region_flux_total_posterior_lower':region_flux_total_posterior_lower,
-                                'region_flux_total_posterior_upper':region_flux_total_posterior_upper,
-                                'region_flux_total_prior_lower':region_flux_total_prior_lower,
-                                'region_flux_total_prior_upper':region_flux_total_prior_upper}
         
                 if plot_combined == True:
             
                     if j == 0:
-                        all_region_flux_total_posterior = data_tmp['region_flux_total_posterior']
-                        all_region_flux_total_prior =  data_tmp['region_flux_total_prior']
-                        all_region_flux_total_lower =  data_tmp['region_flux_total_posterior_lower']
-                        all_region_flux_total_upper =  data_tmp['region_flux_total_posterior_upper']
+                        all_region_flux_total_posterior = region_flux_total_posterior
+                        all_region_flux_total_prior =  region_flux_total_prior
+                        all_region_flux_total_lower =  region_flux_total_posterior_lower
+                        all_region_flux_total_upper =  region_flux_total_posterior_upper
                     else:
                         all_region_flux_total_posterior = np.vstack((all_region_flux_total_posterior,
-                                                                    data_tmp['region_flux_total_posterior']))
+                                                                    region_flux_total_posterior))
                         all_region_flux_total_prior = np.vstack((all_region_flux_total_prior,
-                                                                data_tmp['region_flux_total_prior']))
+                                                                region_flux_total_prior))
                         all_region_flux_total_lower = np.vstack((all_region_flux_total_lower,
-                                                                data_tmp['region_flux_total_posterior_lower']))
+                                                                region_flux_total_posterior_lower))
                         all_region_flux_total_upper = np.vstack((all_region_flux_total_upper,
-                                                                data_tmp['region_flux_total_posterior_upper']))
+                                                                region_flux_total_posterior_upper))
                         
-                    post_pdfs[m] = np.array([np.random.default_rng().normal(loc=data_tmp['region_flux_total_posterior'][t],
-                                                                            scale=np.mean(np.array([data_tmp['region_flux_total_posterior'][t]-data_tmp['region_flux_total_posterior_lower'][t],
-                                                                                                    data_tmp['region_flux_total_posterior_upper'][t]-data_tmp['region_flux_total_posterior'][t]])),
-                                                                            size=1000) for t in range(data_tmp['region_time'].shape[0])])
+                    post_pdfs[m] = np.array([np.random.default_rng().normal(loc=region_flux_total_posterior[t],
+                                                                            scale=np.mean(np.array([region_flux_total_posterior[t]-region_flux_total_posterior_lower[t],
+                                                                                                    region_flux_total_posterior_upper[t]-region_flux_total_posterior[t]])),
+                                                                            size=1000) for t in range(region_time.shape[0])])
                             
                 if plot_separate == True:
-                    
-                    ax[a,b].plot(data_tmp['region_time'],
-                                data_tmp['region_flux_total_posterior'],
+                    ax[a,b].plot(region_time,
+                                region_flux_total_posterior,
                                 label=model_labels[m],color=model_colors[m][0])
                     
-                    ax[a,b].plot(data_tmp['region_time'],
-                                data_tmp['region_flux_total_prior'],
+                    ax[a,b].plot(region_time,
+                                region_flux_total_prior,
                                 label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
                     
                     
-                    ax[a,b].fill_between(data_tmp['region_time'],
-                                        data_tmp['region_flux_total_posterior_lower'],
-                                        data_tmp['region_flux_total_posterior_upper'],
+                    ax[a,b].fill_between(region_time,
+                                        region_flux_total_posterior_lower,
+                                        region_flux_total_posterior_upper,
                                         alpha=0.3,color=model_colors[m][0])
                 
                     if add_prior_unc:
-                        ax[a,b].fill_between(data_tmp['region_time'],
-                                            data_tmp['region_flux_total_prior_lower'],
-                                            data_tmp['region_flux_total_prior_upper'],
+                        ax[a,b].fill_between(region_time,
+                                            region_flux_total_prior_lower,
+                                            region_flux_total_prior_upper,
                                             alpha=0.1,color=model_colors[m][0])
                 
-                min_x.append(np.min(data_tmp['region_time']).astype('datetime64[M]'))
-                max_x.append(np.max(data_tmp['region_time']).astype('datetime64[M]'))
+                min_x.append(np.min(region_time).astype('datetime64[M]'))
+                max_x.append(np.max(region_time).astype('datetime64[M]'))
                 max_cf.append(ax[a,b].get_ylim()[1])
                 
         if plot_combined == True:
@@ -1682,27 +1670,27 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             pdf_mean = np.mean(pdf_all,axis=1)
             pdf_std = np.std(pdf_all,axis=1)
                                         
-            ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].plot(region_time.astype('datetime64[ns]'),
                             mean_country_flux_total_posterior,
                             label='Mean posterior',color='black')
-            ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].plot(region_time.astype('datetime64[ns]'),
                                 mean_country_flux_total_prior,
                                 label='Mean prior',color='black',linestyle='dashed')
             
-            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].fill_between(region_time.astype('datetime64[ns]'),
                                             min_country_flux_total_lower,
                                             max_country_flux_total_upper,
                                             alpha=0.3,color='black',label='Min/max of post uncertainty')
             
-            ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].plot(region_time.astype('datetime64[ns]'),
                                 pdf_mean,
                                 label='Mean of sampled post PDFs',color='dodgerblue')
-            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].fill_between(region_time.astype('datetime64[ns]'),
                                             pdf_mean-pdf_std,
                                             pdf_mean+pdf_std,
                                             alpha=0.3,color='dodgerblue',label='Std dev of sampled post PDFs')
             
-            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].fill_between(region_time.astype('datetime64[ns]'),
                                             mean_country_flux_total_lower,
                                             mean_country_flux_total_upper,
                                             alpha=0.3,color='yellow',label='Mean of post uncertainty')
