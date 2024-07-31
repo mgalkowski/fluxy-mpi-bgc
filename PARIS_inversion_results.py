@@ -12,9 +12,9 @@ import cartopy
 from json import load
 import inspect
 
-model_colors = {'intem':[['darkslateblue','dodgerblue'],
+model_colors = {'intem':[['red','lightsalmon'],
                          ['black','grey']],
-                'rhime':[['darkgreen','green']],
+                'rhime':[['green','lightgreen']],
                 'elris':[['purple','mediumpurple']]}
 
 model_q_indices = {'intem':[0,1],
@@ -86,6 +86,20 @@ with open(filename, "r") as f:
 print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
 
 #####################################################################
+
+def set_model_colors(models):
+    cList = [['darkslateblue','dodgerblue'],
+             ['red','lightsalmon'],
+             ['green','lightgreen'],
+             ['purple','mediumpurple'],
+             ['black','grey']]
+    mc = dict()
+    if np.unique([m.split('_')[0] for m in models]).size==len(models):
+        mc = {m:model_colors[m.split('_')[0]][0] for m in models}
+    else:
+        for i,m in enumerate(models):
+            mc[m] = cList[i]
+    return mc
 
 def read_flux(data_dir,species,models,model_filenames,period_override=None):
     """
