@@ -12,9 +12,9 @@ import cartopy
 from json import load
 import inspect
 
-model_colors = {'intem':[['darkslateblue','dodgerblue'],
+model_colors = {'intem':[['red','lightsalmon'],
                          ['black','grey']],
-                'rhime':[['darkgreen','green']],
+                'rhime':[['green','lightgreen']],
                 'elris':[['purple','mediumpurple']]}
 
 model_q_indices = {'intem':[0,1],
@@ -86,6 +86,20 @@ with open(filename, "r") as f:
 print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
 
 #####################################################################
+
+def set_model_colors(models):
+    cList = [['darkslateblue','dodgerblue'],
+             ['red','lightsalmon'],
+             ['green','lightgreen'],
+             ['purple','mediumpurple'],
+             ['black','grey']]
+    mc = dict()
+    if np.unique([m.split('_')[0] for m in models]).size==len(models):
+        mc = {m:model_colors[m.split('_')[0]][0] for m in models}
+    else:
+        for i,m in enumerate(models):
+            mc[m] = cList[i]
+    return mc
 
 def read_flux(data_dir,species,models,model_filenames,period_override=None):
     """
@@ -1293,7 +1307,7 @@ def extract_region_flux(ds_all,m,m0,country):
                     country_search = countrycodes_dict[country]
                     r = 1
                 country_index = np.where(ds_all[m][c_key].values.astype(str) == country_search)[0][0]
-            
+
             # fix for RHIME which reports regions emissions with the regions_dict key names
             except:
                 
@@ -1314,7 +1328,7 @@ def extract_region_flux(ds_all,m,m0,country):
         region_flux_total_posterior_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
         region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r,
         region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r,
-           
+        
     #calculate values for region names that don't exist in the file
     except:
         
@@ -1462,7 +1476,8 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                       data_dir=None,fix_y_axes=False,
                       add_prior_unc=False, set_global_leg=False,
                       country_codes_as_titles=None,plot_separate=True,
-                      plot_combined=False):
+                      plot_combined=False,plot_separate_by_year=False,
+                      period_override=None):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
     areas in plot_regions.
@@ -1499,15 +1514,57 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             If True, plots model results as separate lines.
         plot_combined (bool):
             If True, plots combined average results from all models.
+        plot_separate_by_year (bool):
+            If True, average model results by year (only meaningful for monthly inversions).
+        period_override (list of str, optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
     Returns:
         fig (figure): 
             A plot per country/region.
     """
-
+    
+    # Create annual mean xarrays if needed
+    if plot_separate_by_year == True:
+        tmp = {m:ds_all[m].copy() for m in ds_all.keys()}
+        for m in ds_all.keys():
+            if 'elris' in m:
+                del tmp[m]['covariance_country_flux_total_posterior']
+                
+        if period_override is not None: 
+            ds_all_p = {m:tmp[m].groupby("time.year").mean().rename({'year':'time'}) if period_override[i] == 'monthly' else tmp[m] for i,m in enumerate(ds_all.keys())}
+            for i,m in enumerate(ds_all.keys()):
+                if period_override[i] == 'monthly':
+                    ds_all_p[m]['time'] = (ds_all_p[m]['time']-1970).astype('datetime64[Y]')
+                if 'elris' in m and period_override[i] == 'monthly':
+                    ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
+                    ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
+                    ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].groupby("time.year").mean().rename({'year':'time'})})
+                    
+        elif s_data[species]["period"]=='monthly':
+            ds_all_p = {m:tmp[m].groupby("time.year").mean().rename({'year':'time'}) for m in ds_all.keys()}
+            for m in ds_all.keys():
+                ds_all_p[m]['time'] = (ds_all_p[m]['time']-1970).astype('datetime64[Y]')
+                if 'elris' in m:
+                    ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
+                    ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
+                    ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].groupby("time.year").mean().rename({'year':'time'})})
+        else:
+            ds_all_p = ds_all
+            
+        del tmp
+        
+            
+    else:
+        ds_all_p = ds_all
+    
     a,b = 0,0
     max_cf = []
     min_x = []
     max_x = []
+    period_all = {}
 
     n_cols = math.ceil(len(plot_regions)/2)
     if n_cols <= 1:
@@ -1540,11 +1597,22 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
         for j,m in enumerate(ds_all.keys()):
             
             m0 = m.split('_')[0]
+
+            # Get inversion period
+            if period_override is not None:
+                if period_override[i] == 'monthly':
+                    period_all[m] = 'monthly'
+                elif period_override[i] == 'yearly':
+                    period_all[m] = 'yearly'
+                else:
+                    period_all[m] = s_data[species]["period"]
+            else:
+                period_all[m] = s_data[species]["period"]
                 
             region_time,region_flux_total_posterior,region_flux_total_prior,\
             region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
-            region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_all,m,m0,country)
-        
+            region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_all_p,m,m0,country)
+            
             if region_time is not None:
         
                 if plot_combined == True:
@@ -1570,7 +1638,6 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                                                             size=1000) for t in range(region_time.shape[0])])
                             
                 if plot_separate == True:
-                    
                     ax[a,b].plot(region_time,
                                 region_flux_total_posterior,
                                 label=model_labels[m],color=model_colors[m][0])
@@ -1614,31 +1681,31 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 else:
                     pdf_all = np.hstack((pdf_all,
                                         np.array([np.random.choice(post_pdfs[m][t,:],500) for t in range(post_pdfs[m].shape[0])])))
-        
+            
             pdf_mean = np.mean(pdf_all,axis=1)
             pdf_std = np.std(pdf_all,axis=1)
                                         
-            ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].plot(region_time.astype('datetime64[ns]'),
                             mean_country_flux_total_posterior,
                             label='Mean posterior',color='black')
-            ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].plot(region_time.astype('datetime64[ns]'),
                                 mean_country_flux_total_prior,
                                 label='Mean prior',color='black',linestyle='dashed')
             
-            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].fill_between(region_time.astype('datetime64[ns]'),
                                             min_country_flux_total_lower,
                                             max_country_flux_total_upper,
                                             alpha=0.3,color='black',label='Min/max of post uncertainty')
             
-            ax[a,b].plot(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].plot(region_time.astype('datetime64[ns]'),
                                 pdf_mean,
                                 label='Mean of sampled post PDFs',color='dodgerblue')
-            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].fill_between(region_time.astype('datetime64[ns]'),
                                             pdf_mean-pdf_std,
                                             pdf_mean+pdf_std,
                                             alpha=0.3,color='dodgerblue',label='Std dev of sampled post PDFs')
             
-            ax[a,b].fill_between(ds_all[m].time.values.astype('datetime64[ns]'),
+            ax[a,b].fill_between(region_time.astype('datetime64[ns]'),
                                             mean_country_flux_total_lower,
                                             mean_country_flux_total_upper,
                                             alpha=0.3,color='yellow',label='Mean of post uncertainty')
@@ -1681,7 +1748,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
     if set_global_leg:
         handles, labels = ax[0,0].get_legend_handles_labels()
         ncol=0   
-        if plot_separate:
+        if (plot_separate or plot_separate_by_year):
             ncol=len(ds_all.keys())
         if plot_combined:
             ncol=ncol+3
