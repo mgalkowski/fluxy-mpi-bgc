@@ -1328,9 +1328,10 @@ def extract_region_flux(ds_all,m,m0,country):
         region_flux_total_posterior_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
         region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r,
         region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r,
-            
+        
     #calculate values for region names that don't exist in the file
     except:
+        
         try:
             region_search = regions_dict[country]
             print(f'{country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
@@ -1592,7 +1593,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                 label=f'Inventory {i_year}',zorder=0)
         
         post_pdfs = {}
-                
+        
         for j,m in enumerate(ds_all.keys()):
             
             m0 = m.split('_')[0]
@@ -1618,9 +1619,9 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             
                     if j == 0:
                         all_region_flux_total_posterior = region_flux_total_posterior
-                        all_region_flux_total_prior =  region_flux_total_prior
-                        all_region_flux_total_lower =  region_flux_total_posterior_lower
-                        all_region_flux_total_upper =  region_flux_total_posterior_upper
+                        all_region_flux_total_prior = region_flux_total_prior
+                        all_region_flux_total_lower = region_flux_total_posterior_lower
+                        all_region_flux_total_upper = region_flux_total_posterior_upper
                     else:
                         all_region_flux_total_posterior = np.vstack((all_region_flux_total_posterior,
                                                                     region_flux_total_posterior))
@@ -1680,7 +1681,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 else:
                     pdf_all = np.hstack((pdf_all,
                                         np.array([np.random.choice(post_pdfs[m][t,:],500) for t in range(post_pdfs[m].shape[0])])))
-        
+            
             pdf_mean = np.mean(pdf_all,axis=1)
             pdf_std = np.std(pdf_all,axis=1)
                                         
