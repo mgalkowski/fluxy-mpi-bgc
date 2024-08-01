@@ -1780,7 +1780,8 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 
 def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
-                      plot_site_locations=False,plot_point_markers=None):
+                      plot_site_locations=False,plot_point_markers=None,
+                      season=None):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
@@ -1816,6 +1817,10 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             List of names of points to plot over larger point sources or lat/lon locations.
             See point_markers_dict for a list of options.
             e.g. ['paris','nw_england',[50.,5.]]
+        season (string, default None):
+            If specified, plot the seasonal mean (only valable for monthly data). 
+            Options are 'DJF', 'MAM', 'JJA', 'SON'.
+            
     Returns:
         fig (figure): 
             A plot of spatial flux posterior and prior mean/mode and a plot 
@@ -1926,20 +1931,37 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                 ax0 = ax[0,i]
                 ax1 = ax[1,i]
                 ax2 = ax[2,i]
+            
+            if season is None:
+                ax0.pcolormesh(lon,lat,
+                               np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),
+                               cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
-            ax0.pcolormesh(lon,lat,np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                ax1.pcolormesh(lon,lat,
+                               np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),
+                               map=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
+                flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
+                flux_diff[np.where(flux_diff) == np.nan] = 0.
+                
+            else :
+                ax0.pcolormesh(lon,lat,
+                               ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values,
+                               cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+
+                ax1.pcolormesh(lon,lat,
+                               ds_all[m]['flux_total_posterior'].groupby("time.season").mean().sel(season=season).values,
+                               cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                
+                flux_diff = ds_all[m]['flux_total_posterior'].groupby("time.season").mean().sel(season=season).values \
+                            -ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values
+                flux_diff[np.where(flux_diff) == np.nan] = 0.
+                
+                time_out = f'{season} of {time_out}'
+                
+            
             ax0.set_title(f'{model_labels[m]}: prior')
-
-            ax1.pcolormesh(lon,lat,
-                            np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
-
             ax1.set_title(f'{model_labels[m]}: posterior')
-
-            flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
-            flux_diff[np.where(flux_diff) == np.nan] = 0.
 
             ax2.pcolormesh(lon,lat,
                             flux_diff,
