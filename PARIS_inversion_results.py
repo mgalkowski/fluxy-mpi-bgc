@@ -6,7 +6,7 @@ import os
 import glob
 import math
 from matplotlib.dates import YearLocator, MonthLocator
-from matplotlib.ticker import NullFormatter
+from matplotlib.ticker import NullFormatter, AutoMinorLocator, MultipleLocator
 import pprint
 import cartopy
 from json import load
@@ -2597,4 +2597,71 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
     color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]} (mol m$^{{-2}}$ s$^{{-1}}$)')
     fig.subplots_adjust(left=0.05, right=0.9, top=0.95, bottom=0.05, wspace=0.04, hspace=0.12)
 
+    return fig
+
+
+def plot_sites_timeseries(ds_all,var,start_date,end_date,model_labels,model_colors):
+    """
+    Plot the timeseries of data available for each site and model.
+    
+    Args:
+        ds_all : 
+            Dictionnary of xarray returned by read_mf
+        var : 
+            Var for which the timeseries should be plotted
+        start_date (str): 
+            Date to plot data from, e.g. '2021-01-01'
+        end_date (str): 
+            Date to plot data to, e.g. '2022-01-01' would include all
+            data up to 2021-12-31.
+        model_labels (dict of str):
+            Models and corresponding strings used to describe the model in the 
+            plot legend.
+        model_colors (dict of str):
+            Models and corresponding colours used to plot the model.
+    """
+    siteList = np.sort(np.unique(np.concatenate([ds_all[m].sitenames.values.astype(str) for m in ds_all.keys()])))
+
+    fig,ax = plt.subplots(1,1,figsize = (0.7*len(siteList),8))
+    leg = []
+    for iSite,site in enumerate(siteList):
+        if iSite!=0:
+            ax.plot([iSite-0.5,iSite-0.5],[np.datetime64(start_date),np.datetime64(end_date)],
+                   c='gray',ls='-',lw=1)
+        for i,m in enumerate(ds_all.keys()):
+            try:
+                if m not in leg:
+                    site_index = np.where(ds_all[m]['sitenames'].astype(str) == site)[0][0]
+                    data = ds_all[m].isel(nsite=site_index)[var].dropna(dim='time').time.values
+                    ax.scatter(-2*np.ones(data.size),
+                               data,c=model_colors[m][0],s=20,label=model_labels[m])
+                    leg.append(m)
+
+                site_index = np.where(ds_all[m]['sitenames'].astype(str) == site)[0][0]
+                data = ds_all[m].isel(nsite=site_index)[var].dropna(dim='time').time.values
+                ax.scatter((iSite+0.2*(i-1))*np.ones(data.size),
+                           data,c=model_colors[m][0],s=2)
+
+            except:
+                pass
+    ax.set_ylim(np.datetime64(start_date)-np.timedelta64(1,'D'),
+                np.datetime64(end_date)+np.timedelta64(1,'D'))
+    
+    
+    ax.set_xticks(np.arange(siteList.size))
+    ax.set_xticklabels(siteList)
+    
+    
+    if int(np.datetime64(end_date).astype('datetime64[M]')-np.datetime64(start_date).astype('datetime64[M]')) > 12:
+        ax.yaxis.set_minor_locator(MonthLocator())
+        ax.yaxis.set_minor_formatter(NullFormatter())
+        ax.yaxis.set_major_locator(YearLocator())
+    else:
+        ax.yaxis.set_major_locator(MonthLocator())
+    ax.yaxis.grid(True, which='major')
+    
+    ax.set_xlim(-1,siteList.size)
+        
+    plt.legend(loc='upper right')
+    
     return fig
