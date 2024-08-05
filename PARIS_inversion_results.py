@@ -1939,7 +1939,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 
                 ax1.pcolormesh(lon,lat,
                                np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),
-                               map=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                               cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
                 flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
                 flux_diff[np.where(flux_diff) == np.nan] = 0.
