@@ -1326,8 +1326,8 @@ def extract_region_flux(ds_all,m,m0,country):
         region_flux_total_prior = ds_all[m]['country_flux_total_prior'].values[:,country_index]*r
         region_flux_total_posterior_lower = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index]*r
         region_flux_total_posterior_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
-        region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r,
-        region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r,
+        region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r
+        region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r
         
     #calculate values for region names that don't exist in the file
     except:
@@ -1651,7 +1651,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                                         region_flux_total_posterior_lower,
                                         region_flux_total_posterior_upper,
                                         alpha=0.3,color=model_colors[m][0])
-                
+
                     if add_prior_unc:
                         ax[a,b].fill_between(region_time,
                                             region_flux_total_prior_lower,
