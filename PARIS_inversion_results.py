@@ -12,10 +12,14 @@ import cartopy
 from json import load
 import inspect
 
-model_colors = {'intem':[['red','lightsalmon'],
-                         ['black','grey']],
-                'rhime':[['green','lightgreen']],
-                'elris':[['purple','mediumpurple']]}
+model_colors = {'intem':[['navy','dodgerblue'],
+                         ['dodgerblue','skyblue']],
+                'elris':[['purple','mediumpurple'],
+                         ['deeppink','pink'],
+                         ['darkorange','red']],
+                'rhime':[['darkgreen','green'],
+                         ['limegreen','palegreen'],
+                         ['olive','lightgreen']]}
 
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
@@ -109,6 +113,56 @@ def set_model_colors(models):
     else:
         for i,m in enumerate(models):
             mc[m] = cList[i]
+    return mc
+
+#####################################################################
+
+def set_model_colors_2(models):
+    """
+    Sets plotting colors for each model (updates model_colors).
+
+    Args:
+        models (list of str):
+            Keys specifying model names, e.g. ['intem','elris']
+
+    Returns:
+        mc (dict of lists):
+            List of colors to be used by each model.
+    """
+
+    mc = dict()
+    m0_list = np.unique([m.split('_')[0] for m in models])
+
+    # If the different models result from a single inversion system
+    if len(m0_list) == 1:
+        inv_models = list(model_colors.keys())
+        i = 0
+        j = 0
+        # Use model_colors in order
+        for m in models:
+            if j == len(model_colors[inv_models[i]]):
+                i = i+1
+                j = 0
+
+            try:
+                mc[m] = model_colors[inv_models[i]][j]
+                j = j+1
+            except:
+                print('ERROR: Number of models is greater than number of colors in model_colors.')
+
+    # If results from multiple inversion systems will be plotted together
+    else:
+        tmp_m0 = models[0].split('_')[0]
+        j = 0
+        for m in models:
+            m0 = m.split('_')[0]
+            if m0 != tmp_m0:
+                tmp_m0 = m0
+                j = 0
+
+            mc[m] = model_colors[m0][j]
+            j = j+1
+
     return mc
 
 #####################################################################
