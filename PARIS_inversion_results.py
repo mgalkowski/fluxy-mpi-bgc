@@ -160,8 +160,11 @@ def set_model_colors_2(models):
                 tmp_m0 = m0
                 j = 0
 
-            mc[m] = model_colors[m0][j]
-            j = j+1
+            try:
+                mc[m] = model_colors[m0][j]
+                j = j+1
+            except:
+                print(f'ERROR: Trying to use color number {j+1}, but there are only {j} colors defined for {m0}.')
 
     return mc
 
