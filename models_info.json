@@ -1,0 +1,145 @@
+{
+    "intem_name_edgar":{
+        "filename":"InTEM_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_optimized",
+        "label":"InTEM NAME EDGAR"
+        },
+
+    "intem_name_edgar_allobs":{
+        "filename":"InTEM_NAME_EUROPE_EDGAR_all_obs_intem_baseline_optimized",
+        "label":"InTEM NAME EDGAR all obs"
+        },
+
+    "intem_name_flat":{
+        "filename":"InTEM_NAME_EUROPE_FLAT_intem_obs_intem_baseline_optimized",
+        "label":"InTEM NAME Flat"
+        },
+
+    "intem_name_flat_allobs":{
+        "filename":"InTEM_NAME_EUROPE_FLAT_all_obs_intem_baseline_optimized",
+        "label":"InTEM NAME Flat all obs"
+        },
+
+    "intem_flex_edgar":{
+        "filename":"InTEM_FLEXPART_EUROPE_EDGAR_intem_obs_intem_baseline_optimized",
+        "label":"InTEM FLEXPART EDGAR"
+        },
+
+    "intem_flex_edgar_allobs":{
+        "filename":"InTEM_FLEXPART_EUROPE_EDGAR_all_obs_intem_baseline_optimized",
+        "label":"InTEM FLEXPART EDGAR all obs"
+        },
+
+    "intem_flex_flat":{
+        "filename":"InTEM_FLEXPART_EUROPE_FLAT_intem_obs_intem_baseline_optimized",
+        "label":"InTEM FLEXPART Flat"
+        },
+
+    "intem_flex_flat_allobs":{
+        "filename":"InTEM_FLEXPART_EUROPE_FLAT_all_obs_intem_baseline_optimized",
+        "label":"InTEM FLEXPART Flat all obs"
+        },
+
+
+
+    "elris_name_edgar":{
+        "filename":"ELRIS_NAME_EUROPE_EDGAR_elris_obs_elris_baseline_optimized",
+        "label":"ELRIS NAME EDGAR"
+        },
+
+    "elris_name_edgar_allobs":{
+        "filename":"ELRIS_NAME_EUROPE_EDGAR_all_obs_elris_baseline_optimized",
+        "label":"ELRIS NAME EDGAR all obs"
+        },
+
+    "elris_name_flat":{
+        "filename":"ELRIS_NAME_EUROPE_FLAT_elris_obs_elris_baseline_optimized",
+        "label":"ELRIS NAME Flat"
+        },
+
+    "elris_name_flat_allobs":{
+        "filename":"ELRIS_NAME_EUROPE_FLAT_all_obs_elris_baseline_optimized",
+        "label":"ELRIS NAME Flat all obs"
+        },
+
+    "elris_flex_edgar":{
+        "filename":"ELRIS_FLEXPART_EUROPE_EDGAR_elris_obs_elris_baseline_optimized",
+        "label":"ELRIS FLEXPART EDGAR"
+        },
+
+    "elris_flex_edgar_allobs":{
+        "filename":"ELRIS_FLEXPART_EUROPE_EDGAR_all_obs_elris_baseline_optimized",
+        "label":"ELRIS FLEXPART EDGAR all obs"
+        },
+
+    "elris_flex_flat":{
+        "filename":"ELRIS_FLEXPART_EUROPE_FLAT_elris_obs_elris_baseline_optimized",
+        "label":"ELRIS FLEXPART Flat"
+        },
+
+    "elris_flex_flat_allobs":{
+        "filename":"ELRIS_FLEXPART_EUROPE_FLAT_all_obs_elris_baseline_optimized",
+        "label":"ELRIS FLEXPART Flat all obs"
+        },
+
+    "elris_ibaseline":{
+        "filename":"ELRIS_NAME_EUROPE_*_elris_obs_intem_baseline_fixed",
+        "label":"ELRIS InTEM background"
+        },
+
+    "elris_iall":{
+        "filename":"ELRIS_NAME_EUROPE_*_intem_obs_intem_baseline_fixed_intem_unc",
+        "label":"ELRIS InTEM obs-background-unc"
+        },
+
+
+
+    "rhime_name_edgar":{
+        "filename":"RHIME_NAME_EUROPE_EDGAR_rhime_obs_rhime_baseline_optimized",
+        "label":"RHIME NAME EDGAR"
+        },
+
+    "rhime_name_edgar_allobs":{
+        "filename":"RHIME_NAME_EUROPE_EDGAR_all_obs_rhime_baseline_optimized",
+        "label":"InTEM NAME EDGAR all obs"
+        },
+
+    "rhime_name_flat":{
+        "filename":"RHIME_NAME_EUROPE_FLAT_rhime_obs_rhime_baseline_optimized",
+        "label":"RHIME NAME Flat"
+        },
+
+    "rhime_name_flat_allobs":{
+        "filename":"RHIME_NAME_EUROPE_FLAT_all_obs_rhime_baseline_optimized",
+        "label":"RHIME NAME Flat all obs"
+        },
+
+    "rhime_flex_edgar":{
+        "filename":"RHIME_FLEXPART_EUROPE_EDGAR_rhime_obs_rhime_baseline_optimized",
+        "label":"RHIME FLEXPART EDGAR"
+        },
+
+    "rhime_flex_edgar_allobs":{
+        "filename":"RHIME_FLEXPART_EUROPE_EDGAR_all_obs_rhime_baseline_optimized",
+        "label":"RHIME FLEXPART EDGAR all obs"
+        },
+
+    "rhime_flex_flat":{
+        "filename":"RHIME_FLEXPART_EUROPE_FLAT_rhime_obs_rhime_baseline_optimized",
+        "label":"RHIME FLEXPART Flat"
+        },
+
+    "rhime_flex_flat_allobs":{
+        "filename":"RHIME_FLEXPART_EUROPE_FLAT_all_obs_rhime_baseline_optimized",
+        "label":"RHIME FLEXPART Flat all obs"
+        },
+
+    "rhime_ibaseline":{
+        "filename":"RHIME_NAME_EUROPE_*_rhime_obs_intem_baseline_fixed",
+        "label":"RHIME InTEM background"
+        },
+
+    "rhime_iall":{
+        "filename":"RHIME_NAME_EUROPE_*_intem_obs_intem_baseline_fixed_intem_unc",
+        "label":"RHIME InTEM obs-background-unc"
+        }
+    }
