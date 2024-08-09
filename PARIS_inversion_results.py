@@ -12,10 +12,14 @@ import cartopy
 from json import load
 import inspect
 
-model_colors = {'intem':[['red','lightsalmon'],
-                         ['black','grey']],
-                'rhime':[['green','lightgreen']],
-                'elris':[['purple','mediumpurple']]}
+model_colors = {'intem':[['navy','dodgerblue'],
+                         ['dodgerblue','skyblue']],
+                'elris':[['purple','mediumpurple'],
+                         ['deeppink','pink'],
+                         ['darkorange','red']],
+                'rhime':[['darkgreen','green'],
+                         ['limegreen','palegreen'],
+                         ['olive','lightgreen']]}
 
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
@@ -82,7 +86,17 @@ if os.path.exists(filename) == False:
 
 with open(filename, "r") as f:
     s_data = load(f)
-    
+
+### read in models info file
+
+filename = os.path.join(os.getcwd(),'models_info.json')
+
+if os.path.exists(filename) == False:
+    print('ERROR: Cannot find models_info.json file. Check that this exists in the same directory as your notebook.')
+
+with open(filename, "r") as f:
+    m_data = load(f)
+
 print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
 
 #####################################################################
@@ -101,7 +115,62 @@ def set_model_colors(models):
             mc[m] = cList[i]
     return mc
 
-def read_flux(data_dir,species,models,model_filenames,period_override=None):
+#####################################################################
+
+def set_model_colors_2(models):
+    """
+    Sets plotting colors for each model (updates model_colors).
+
+    Args:
+        models (list of str):
+            Keys specifying model names, e.g. ['intem','elris']
+
+    Returns:
+        mc (dict of lists):
+            List of colors to be used by each model.
+    """
+
+    mc = dict()
+    m0_list = np.unique([m.split('_')[0] for m in models])
+
+    # If the different models result from a single inversion system
+    if len(m0_list) == 1:
+        inv_models = list(model_colors.keys())
+        i = 0
+        j = 0
+        # Use model_colors in order
+        for m in models:
+            if j == len(model_colors[inv_models[i]]):
+                i = i+1
+                j = 0
+
+            try:
+                mc[m] = model_colors[inv_models[i]][j]
+                j = j+1
+            except:
+                print('ERROR: Number of models is greater than number of colors in model_colors.')
+
+    # If results from multiple inversion systems will be plotted together
+    else:
+        tmp_m0 = models[0].split('_')[0]
+        j = 0
+        for m in models:
+            m0 = m.split('_')[0]
+            if m0 != tmp_m0:
+                tmp_m0 = m0
+                j = 0
+
+            try:
+                mc[m] = model_colors[m0][j]
+                j = j+1
+            except:
+                print(f'ERROR: Trying to use color number {j+1}, but there are only {j} colors defined for {m0}.')
+
+    return mc
+
+#####################################################################
+
+def read_flux(data_dir,species,models,period_override=None):
     """
     Extracts flux and country flux timeseries from each model.
     
@@ -112,9 +181,6 @@ def read_flux(data_dir,species,models,model_filenames,period_override=None):
             Gas species, e.g. 'ch4'.
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
-        model_filenames (dict of str): 
-            Paired models and filenames, e.g. {'intem':'InTEM_NAME_EUROPE',
-                                               'elris':'ELRIS_NAME_EUROPE_baselinetest'}
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -146,19 +212,19 @@ def read_flux(data_dir,species,models,model_filenames,period_override=None):
         
         m0 = m.split('_')[0]
         
-        model_dir = model_filenames[m].split('_')[0]
+        model_dir = m_data[m]["filename"].split('_')[0]
 
         try:
             filepath = glob.glob(os.path.join(data_dir,model_dir,species,
-                                              f'{model_filenames[m]}_{s_data[species]["model_species"][m0]}_{period_all[m]}.nc'))
+                                              f'{m_data[m]["filename"]}_{s_data[species]["model_species"][m0]}_{period_all[m]}.nc'))
             print(f'Reading data from: {filepath[0]}')
             with xr.open_dataset(filepath[0]) as in_ds:
                 ds_all[m] = in_ds
                 print('Done!')
         except:
             try:
-                if (model_filenames[m].split('_')[-1] == 'std*'):
-                    alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
+                if (m_data[m]["filename"].split('_')[-1] == 'std*'):
+                    alternative_filename = f'{m_data[m]["filename"][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
                     filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{s_data[species]["model_species"][m0]}_{period_all[m]}.nc'))
                     print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
                     with xr.open_dataset(filepath[0]) as in_ds:
@@ -233,7 +299,7 @@ def slice_flux(ds_all,start_date,end_date,
 
 #####################################################################
 
-def read_mf(data_dir,species,models,model_filenames,period_override=None):
+def read_mf(data_dir,species,models,period_override=None):
     """
     Extracts mole fraction timeseries data from each model.
     Args:
@@ -243,9 +309,6 @@ def read_mf(data_dir,species,models,model_filenames,period_override=None):
             Gas species, e.g. 'ch4'.
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
-        model_filenames (dict of str): 
-            Paired models and filenames, e.g. {'intem':'InTEM_NAME_EUROPE',
-                                               'elris':'ELRIS_NAME_EUROPE_baselinetest'}
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -274,19 +337,19 @@ def read_mf(data_dir,species,models,model_filenames,period_override=None):
     for m in models:
         
         m0 = m.split('_')[0]
-        model_dir = model_filenames[m].split('_')[0]
+        model_dir = m_data[m]["filename"].split('_')[0]
         
         print(f'\nAttempting to read data from {m}')
         try:
-            filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{model_filenames[m]}_{s_data[species]["model_species"][m0]}_{period_all[m]}_concentrations.nc'))
+            filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{m_data[m]["filename"]}_{s_data[species]["model_species"][m0]}_{period_all[m]}_concentrations.nc'))
             print(f'Reading data from: {filepath[0]}')
             with xr.open_dataset(filepath[0]) as in_ds:
                 ds_all[m] = in_ds
             print('Done!')
         except:
             try:
-                if (model_filenames[m].split('_')[-1] == 'std*'):
-                    alternative_filename = f'{model_filenames[m][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
+                if (m_data[m]["filename"].split('_')[-1] == 'std*'):
+                    alternative_filename = f'{m_data[m]["filename"][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
                     filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{s_data[species]["model_species"][m0]}_{period_all[m]}_concentrations.nc'))
                     print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
                     with xr.open_dataset(filepath[0]) as in_ds:
@@ -496,7 +559,7 @@ def extract_site_info(sites):
 
 #####################################################################
 
-def plot_obs_modelled_separate(ds_all,species,site,model_labels,
+def plot_obs_modelled_separate(ds_all,species,site,
                                model_colors,
                              include=['Yobs','Yapriori','Yapost'],
                              diff_include=['Yapriori','Yapost'],
@@ -516,9 +579,6 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
             Gas species, e.g. 'ch4'.
         site (str):
             Obs site, e.g. 'MHD'.
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the 
-            plot legend.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         include (list of str):
@@ -588,7 +648,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                     ax.scatter(ds_all[m].time.values,
                                ds_all[m]['Yobs'].values,
                                color=model_colors[m][var_colors[var]],
-                               label=f'Obs ({model_labels[m]})',s=8,alpha=0.8,marker='s')
+                               label=f'Obs ({m_data[m]["label"]})',s=8,alpha=0.8,marker='s')
                     
                     if add_unc:
                         try:
@@ -609,7 +669,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                     
                     ax.scatter(ds_all[m].time.values,
                                 ds_all[m]['Yobs'].values,
-                                color='black',label=f'Obs ({model_labels[m]})',s=8,alpha=0.8,
+                                color='black',label=f'Obs ({m_data[m]["label"]})',s=8,alpha=0.8,
                                 marker='s')
                     
                     if add_unc:
@@ -632,7 +692,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                             ds_all[m][var].values,
                             color=model_colors[m][var_colors[var]],alpha=0.8,
                             linewidth=2.,
-                            label=f'{model_labels[m]} {var_labels[var]}')
+                            label=f'{m_data[m]["label"]} {var_labels[var]}')
                 
                 except:
                     #handle old ncdf files
@@ -642,7 +702,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                                 uYmod,
                                 color=model_colors[m][var_colors[var]],alpha=0.8,
                                 linewidth=2.,
-                                label=f'{model_labels[m]} {var_labels[var]}')
+                                label=f'{m_data[m]["label"]} {var_labels[var]}')
                         print(f'WARNING: uYmod is not present in {m}. This quantity is being computed from qYmod.')
 
                     elif var == 'uYobs_repeatability':
@@ -650,7 +710,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
                                 ds_all[m]['uYobs'].values,
                                 color=model_colors[m][var_colors[var]],alpha=0.8,
                                 linewidth=2.,
-                                label=f'{model_labels[m]} {var_labels[var]}')
+                                label=f'{m_data[m]["label"]} {var_labels[var]}')
                         print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead.')
 
                     else:
@@ -718,7 +778,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
         min_mf.append(ax.get_ylim()[0])
         max_mf.append(ax.get_ylim()[1])
         
-        ax.set_title(model_labels[m])
+        ax.set_title(m_data[m]["label"])
         ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
         leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
         try:
@@ -750,7 +810,7 @@ def plot_obs_modelled_separate(ds_all,species,site,model_labels,
 
 #####################################################################
 
-def plot_obs_modelled_together(ds_all,species,site,model_labels,
+def plot_obs_modelled_together(ds_all,species,site,
                                model_colors,
                                include=['Yapost'],
                                diff_include=['Yapost'],
@@ -770,9 +830,6 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
             Gas species, e.g. 'ch4'.
         site (str):
             Obs site, e.g. 'MHD'.
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the 
-            plot legend.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         include (list of str):
@@ -837,7 +894,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                 if len(include) == 1:
                     ax.scatter(ds_all[m].time.values,
                                 ds_all[m]['Yobs'].values,
-                                color=model_colors[m][var_colors[var]],label=f'Obs ({model_labels[m]})',s=5,alpha=0.5)
+                                color=model_colors[m][var_colors[var]],label=f'Obs ({m_data[m]["label"]})',s=5,alpha=0.5)
 
                     if add_unc:
                         try:
@@ -857,14 +914,14 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                 else:
                     ax.scatter(ds_all[m].time.values,
                                 ds_all[m]['Yobs'].values,
-                                color='dimgrey',label=f'Obs ({model_labels[m]})',s=5,alpha=0.5)
+                                color='dimgrey',label=f'Obs ({m_data[m]["label"]})',s=5,alpha=0.5)
 
             else:
                 try:
                     ax.scatter(ds_all[m].time.values,
                             ds_all[m][var].values,
                             color=model_colors[m][var_colors[var]],alpha=0.5,
-                            label=f'{model_labels[m]} {var_labels[var]}',
+                            label=f'{m_data[m]["label"]} {var_labels[var]}',
                             linewidth=2,s=5)
 
                 except:
@@ -874,7 +931,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                         ax.scatter(ds_all[m].time.values,
                                    uYmod,
                                    color=model_colors[m][var_colors[var]],
-                                   label=f'{model_labels[m]} {var_labels[var]}',
+                                   label=f'{m_data[m]["label"]} {var_labels[var]}',
                                    linewidth=2,s=5,alpha=0.5)
                         print(f'WARNING: uYmod is not present in {m}. This quantity is being computed from qYmod.')
 
@@ -882,7 +939,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
                         ax.scatter(ds_all[m].time.values,
                                    ds_all[m]['uYobs'].values,
                                    color=model_colors[m][var_colors[var]],
-                                   label=f'{model_labels[m]} {var_labels[var]}',
+                                   label=f'{m_data[m]["label"]} {var_labels[var]}',
                                    linewidth=2.,s=5,alpha=0.5)
                         print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead.')
 
@@ -978,7 +1035,7 @@ def plot_obs_modelled_together(ds_all,species,site,model_labels,
 
 #####################################################################
 
-def plot_obs_diff(ds_all,species,site,model_labels,
+def plot_obs_diff(ds_all,species,site,
                                model_colors,
                                include=['Yapost'],
                                diff_include=['Yapost'],
@@ -999,9 +1056,6 @@ def plot_obs_diff(ds_all,species,site,model_labels,
             Gas species, e.g. 'ch4'.
         site (str):
             Obs site, e.g. 'MHD'.
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the 
-            plot legend.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         include (list of str):
@@ -1066,7 +1120,7 @@ def plot_obs_diff(ds_all,species,site,model_labels,
             ax.scatter(ds_all[models[0]].time.values,
                        ds_all[models[0]][var].values - ds_all[models[1]][var].values,
                        color=model_colors[models[0]][var_colors[var]],alpha=0.5,
-                       label=f'{model_labels[models[0]]} - {model_labels[models[1]]}\n{var_labels[var]}',
+                       label=f'{m_data[models[0]]["label"]} - {m_data[models[1]]["label"]}\n{var_labels[var]}',
                        linewidth=2,s=8)
 
         except:
@@ -1082,7 +1136,7 @@ def plot_obs_diff(ds_all,species,site,model_labels,
                     ax.scatter(ds_all[models[0]].time.values,
                                 uYmod0 - uYmod1,
                                 color=model_colors[models[0]][var_colors[var]],alpha=0.5,
-                                label=f'{model_labels[models[0]]} - {model_labels[models[1]]}\n{var_labels[var]}',
+                                label=f'{m_data[models[0]]["label"]} - {m_data[models[1]]["label"]}\n{var_labels[var]}',
                                 linewidth=2,s=8)
                     print(f'WARNING: uYmod is not present in both models. This quantity is being computed from qYmod.')
 
@@ -1094,7 +1148,7 @@ def plot_obs_diff(ds_all,species,site,model_labels,
                     ax.scatter(ds_all[models[0]].time.values,
                                 ds_all[models[0]]['uYobs'].values - ds_all[models[1]]['uYobs'].values,
                                 color=model_colors[models[0]][var_colors[var]],alpha=0.5,
-                                label=f'{model_labels[models[0]]} - {model_labels[models[1]]}\n{var_labels[var]}',
+                                label=f'{m_data[models[0]]["label"]} - {m_data[models[1]]["label"]}\n{var_labels[var]}',
                                 linewidth=2,s=8)
                     print(f'WARNING: uYobs_repeatability is not present in both models. uYobs is being plotted instead.')
 
@@ -1166,7 +1220,7 @@ def plot_obs_diff(ds_all,species,site,model_labels,
     min_mf.append(ax.get_ylim()[0])
     max_mf.append(ax.get_ylim()[1])
     
-    ax.set_title(f'{model_labels[models[0]]} - {model_labels[models[1]]}')
+    ax.set_title(f'{m_data[models[0]]["label"]} - {m_data[models[1]]["label"]}')
     ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
     leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
     try:
@@ -1196,7 +1250,7 @@ def plot_obs_diff(ds_all,species,site,model_labels,
 
 #####################################################################
 
-def plot_stats_mf(pearson,nrmse,species,model_labels,
+def plot_stats_mf(pearson,nrmse,species,
                   model_colors,
                   start_date=None,end_date=None):
     """
@@ -1209,9 +1263,6 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
             Normalised root mean square error, for each site and for each model.
         species (str): 
             Gas species, e.g. 'ch4'.
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the 
-            plot legend.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         start_date (str) and end_date (str):
@@ -1233,9 +1284,9 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
         for m,model in enumerate(pearson[site]):
             model0 = model.split('_')[0]
             if i == 0:
-                ax[0].scatter(i+m*0.2,pearson[site][model],color=model_colors[model][0],marker='x',s=150,label=model_labels[model])
-                ax[1].scatter(i+m*0.2,nrmse[site][model],color=model_colors[model][0],marker='x',s=150,label=model_labels[model])
-                #ax[2].scatter(i+m*0.2,std[site][model],color=model_colors_stats[model],marker='x',s=150,label=model_labels[model])
+                ax[0].scatter(i+m*0.2,pearson[site][model],color=model_colors[model][0],marker='x',s=150,label=m_data[model]["label"])
+                ax[1].scatter(i+m*0.2,nrmse[site][model],color=model_colors[model][0],marker='x',s=150,label=m_data[model]["label"])
+                #ax[2].scatter(i+m*0.2,std[site][model],color=model_colors_stats[model],marker='x',s=150,label=m_data[model]["label"])
                 
             else:
                 ax[0].scatter(i+m*0.2,pearson[site][model],color=model_colors[model][0],marker='x',s=150)
@@ -1278,6 +1329,7 @@ def plot_stats_mf(pearson,nrmse,species,model_labels,
     return fig
 
 #####################################################################
+
 def extract_region_flux(ds_all,m,m0,country):
     """
     Finds the index of a chosen region name and extracts the country flux
@@ -1400,6 +1452,7 @@ def extract_region_flux(ds_all,m,m0,country):
             region_flux_total_prior_lower,region_flux_total_prior_upper)
     
 #####################################################################
+
 def extract_region_inventory_flux(country,data_dir,species,
                                   inventory_year=None):
     """
@@ -1470,7 +1523,7 @@ def extract_region_inventory_flux(country,data_dir,species,
 
 #####################################################################
 
-def plot_country_flux(ds_all,species,plot_regions,model_labels,
+def plot_country_flux(ds_all,species,plot_regions,
                       model_colors,
                       plot_inventory=True,inventory_years=None,
                       data_dir=None,fix_y_axes=False,
@@ -1490,9 +1543,6 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
             Gas species, e.g. 'ch4'.
         plot_regions (list of str):
             Country or regions to plot, e.g. ['UNITED KINGDOM','SWITZERLAND']
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the 
-            plot legend.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         plot_inventory (bool):
@@ -1640,11 +1690,11 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
                 if plot_separate == True:
                     ax[a,b].plot(region_time,
                                 region_flux_total_posterior,
-                                label=model_labels[m],color=model_colors[m][0])
+                                label=m_data[m]["label"],color=model_colors[m][0])
                     
                     ax[a,b].plot(region_time,
                                 region_flux_total_prior,
-                                label=f'{model_labels[m]} prior',color=model_colors[m][0],linestyle='dashed')
+                                label=f'{m_data[m]["label"]} prior',color=model_colors[m][0],linestyle='dashed')
                     
                     
                     ax[a,b].fill_between(region_time,
@@ -1778,7 +1828,7 @@ def plot_country_flux(ds_all,species,plot_regions,model_labels,
 
 #####################################################################
 
-def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
+def plot_spatial_flux(ds_all,species,plot_area,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
                       plot_site_locations=False,plot_point_markers=None,
                       season=None):
@@ -1799,9 +1849,6 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
             Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
             'NWEU','CWEU','EUROPE'.
             A list with [min_lon, max_lon, min_lat, max_lat] can also be provided.
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the 
-            plot legend.
         cmap (str):
             Colour map for flux plots.
         cmap_diff (str):
@@ -1960,14 +2007,14 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
                 time_out = f'{season} of {time_out}'
                 
             
-            ax0.set_title(f'{model_labels[m]}: prior')
-            ax1.set_title(f'{model_labels[m]}: posterior')
+            ax0.set_title(f'{m_data[m]["label"]}: prior')
+            ax1.set_title(f'{m_data[m]["label"]}: posterior')
 
             ax2.pcolormesh(lon,lat,
                             flux_diff,
                             cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
 
-            ax2.set_title(f'{model_labels[m]}: posterior - prior')
+            ax2.set_title(f'{m_data[m]["label"]}: posterior - prior')
 
             if plot_site_locations == True:
                 if sites_info[m] is not None:
@@ -2032,7 +2079,7 @@ def plot_spatial_flux(ds_all,species,plot_area,model_labels,cmap=None,
 
 #####################################################################
 
-def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
+def plot_spatial_flux_comparison(ds_all,species,plot_area,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
                                  plot_site_locations=False,plot_point_markers=None):
     """
@@ -2053,9 +2100,6 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
         plot_area (str):
             Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
             'NWEU','CWEU'.
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the 
-            plot legend.
         cmap (str):
             Colour map for flux plots.
         cmap_diff (str):
@@ -2169,7 +2213,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
                             vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest',
                             )
 
-            ax[0].set_title(f'{model_labels[m]}\nPosterior mean')
+            ax[0].set_title(f'{m_data[m]["label"]}\nPosterior mean')
             
         elif i == 1:
             
@@ -2177,7 +2221,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
                             vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
-            ax[1].set_title(f'{model_labels[m]}\nPosterior mean')
+            ax[1].set_title(f'{m_data[m]["label"]}\nPosterior mean')
             
         if plot_site_locations == True:
             if sites_info[m] is not None:
@@ -2203,7 +2247,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
                     flux_diff,
                     cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
 
-    ax[2].set_title(f'{model_labels[all_keys[1]]} - {model_labels[all_keys[0]]}\nAbsolute difference')
+    ax[2].set_title(f'{m_data[all_keys[1]]["label"]} - {m_data[all_keys[0]]["label"]}\nAbsolute difference')
 
     if plot_point_markers is not None:
         print(f'\nPlotting markers for: {plot_point_markers}')
@@ -2247,7 +2291,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,model_labels,
 
 #####################################################################
 
-def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_date,
+def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,
                                     cmap='viridis',c_border='floralwhite',
                                     var='flux_total_posterior',
                                     chop_by='year',dt=1,period_override=None,
@@ -2265,9 +2309,6 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
         plot_area (str):
             Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
             'ITALY','SWITZERLAND','NWEU','CWEU','EUROPE'.
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the
-            plot legend.
         end_date (str):
             End date of sliced data, e.g. '2022-01-01' would include all
             data up to 2021-12-31.
@@ -2522,7 +2563,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
             # Make plot
             if n_cols == 1 and n_lines == 1:
                 ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
-                ax.set_title(f'{model_labels[m]}\n{time_out}')
+                ax.set_title(f'{m_data[m]["label"]}\n{time_out}')
                 ax_var = ax
             else:
                 if n_lines == 1:
@@ -2535,10 +2576,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
                 ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
                 ax_var.set_title(f'{time_out}')
                 if i == 0:
-                    if '\n' in model_labels[m]:
-                        ax_var.text(-0.14, 0.25, f'{model_labels[m]}', size=14, transform=ax_var.transAxes, rotation=90)
+                    if '\n' in m_data[m]["label"]:
+                        ax_var.text(-0.14, 0.25, f'{m_data[m]["label"]}', size=14, transform=ax_var.transAxes, rotation=90)
                     else:
-                        ax_var.text(-0.07, 0.25, f'{model_labels[m]}', size=14, transform=ax_var.transAxes, rotation=90)
+                        ax_var.text(-0.07, 0.25, f'{m_data[m]["label"]}', size=14, transform=ax_var.transAxes, rotation=90)
                 
             # Add site location
             if plot_site_locations == True:
@@ -2599,8 +2640,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,model_labels,end_da
 
     return fig
 
+#####################################################################
 
-def plot_sites_timeseries(ds_all,var,start_date,end_date,model_labels,model_colors):
+def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors):
     """
     Plot the timeseries of data available for each site and model.
     
@@ -2614,9 +2656,6 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_labels,model_colo
         end_date (str): 
             Date to plot data to, e.g. '2022-01-01' would include all
             data up to 2021-12-31.
-        model_labels (dict of str):
-            Models and corresponding strings used to describe the model in the 
-            plot legend.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
     """
@@ -2634,7 +2673,7 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_labels,model_colo
                     site_index = np.where(ds_all[m]['sitenames'].astype(str) == site)[0][0]
                     data = ds_all[m].isel(nsite=site_index)[var].dropna(dim='time').time.values
                     ax.scatter(-2*np.ones(data.size),
-                               data,c=model_colors[m][0],s=20,label=model_labels[m])
+                               data,c=model_colors[m][0],s=20,label=m_data[m]["label"])
                     leg.append(m)
 
                 site_index = np.where(ds_all[m]['sitenames'].astype(str) == site)[0][0]
