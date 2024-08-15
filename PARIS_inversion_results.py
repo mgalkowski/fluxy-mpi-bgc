@@ -1529,7 +1529,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                       data_dir=None,fix_y_axes=False,
                       add_prior_unc=False, set_global_leg=False,
                       country_codes_as_titles=None,plot_separate=True,
-                      plot_combined=False,plot_separate_by_year=False,
+                      plot_combined=False,resample=None,
                       period_override=None):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
@@ -1564,8 +1564,10 @@ def plot_country_flux(ds_all,species,plot_regions,
             If True, plots model results as separate lines.
         plot_combined (bool):
             If True, plots combined average results from all models.
-        plot_separate_by_year (bool):
-            If True, average model results by year (only meaningful for monthly inversions).
+        resample (str):
+            Option to be passed to resample built-in function of xarray Dataset. 
+            For yearly average, 'YS' option should be used; 'QS-DEC' for seasonaly average.
+            See http://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html
         period_override (list of str, optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -1575,32 +1577,32 @@ def plot_country_flux(ds_all,species,plot_regions,
     """
     
     # Create annual mean xarrays if needed
-    if plot_separate_by_year == True:
+    if resample is not None:
         tmp = {m:ds_all[m].copy() for m in ds_all.keys()}
-        for m in ds_all.keys():
-            if 'elris' in m:
-                del tmp[m]['covariance_country_flux_total_posterior']
                 
         if period_override is not None: 
-            ds_all_p = {m:tmp[m].groupby("time.year").mean().rename({'year':'time'}) if period_override[i] == 'monthly' else tmp[m] for i,m in enumerate(ds_all.keys())}
+            for m in ds_all.keys():
+                if 'elris' in m:
+                    del tmp[m]['covariance_country_flux_total_posterior']
+            ds_all_p = {m:tmp[m].resample(time=resample).mean(dim="time") if period_override[i] == 'monthly' else tmp[m] for i,m in enumerate(ds_all.keys())}
             for i,m in enumerate(ds_all.keys()):
-                if period_override[i] == 'monthly':
-                    ds_all_p[m]['time'] = (ds_all_p[m]['time']-1970).astype('datetime64[Y]')
                 if 'elris' in m and period_override[i] == 'monthly':
                     ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
                     ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
                     ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
-                                                      ds_all[m]['covariance_country_flux_total_posterior'].groupby("time.year").mean().rename({'year':'time'})})
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=resample).mean(dim="time")})
                     
         elif s_data[species]["period"]=='monthly':
-            ds_all_p = {m:tmp[m].groupby("time.year").mean().rename({'year':'time'}) for m in ds_all.keys()}
             for m in ds_all.keys():
-                ds_all_p[m]['time'] = (ds_all_p[m]['time']-1970).astype('datetime64[Y]')
+                if 'elris' in m:
+                    del tmp[m]['covariance_country_flux_total_posterior']
+            ds_all_p = {m:tmp[m].resample(time=resample).mean(dim="time") for m in ds_all.keys()}
+            for m in ds_all.keys():
                 if 'elris' in m:
                     ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
                     ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
                     ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
-                                                      ds_all[m]['covariance_country_flux_total_posterior'].groupby("time.year").mean().rename({'year':'time'})})
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=resample).mean(dim="time")})
         else:
             ds_all_p = ds_all
             
@@ -1798,7 +1800,7 @@ def plot_country_flux(ds_all,species,plot_regions,
     if set_global_leg:
         handles, labels = ax[0,0].get_legend_handles_labels()
         ncol=0   
-        if (plot_separate or plot_separate_by_year):
+        if (plot_separate or resample):
             ncol=len(ds_all.keys())
         if plot_combined:
             ncol=ncol+3
