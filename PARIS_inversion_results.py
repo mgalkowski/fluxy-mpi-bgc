@@ -299,6 +299,18 @@ def slice_flux(ds_all,start_date,end_date,
 
 #####################################################################
 
+def read_flux_total_fgases():
+    """
+    Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
+    to produce one dataset which can be used with plotting functions in the rest 
+    of the notebook.
+
+    Returns:
+        _type_: _description_
+    """
+
+#####################################################################
+
 def read_mf(data_dir,species,models,period_override=None):
     """
     Extracts mole fraction timeseries data from each model.
