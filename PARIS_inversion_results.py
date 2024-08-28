@@ -299,15 +299,60 @@ def slice_flux(ds_all,start_date,end_date,
 
 #####################################################################
 
-def read_flux_total_fgases():
+def read_flux_total_fgases(data_dir,species,models,
+                           period_override=None):
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
     to produce one dataset which can be used with plotting functions in the rest 
     of the notebook.
 
+    Args:
+        data_dir (str): 
+            Path to top data directory.
+        species (str): 
+            'all_hfc' or 'all_pfc'
+        models (list of str): 
+            Keys specifying model names, e.g. ['intem','elris']
+        period_override (list of str) (optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
+                                       
     Returns:
-        _type_: _description_
+        ds_all (dictionary of datasets): 
+            xarray dataset read directly from each model's flux netCDF.
     """
+    
+    if species == 'all_hfc':
+        all_species = ['hfc125','hfc134a']#,'hfc143a','hfc152a','hfc23',
+                   #'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee']
+    elif species == 'all_pfc':
+        all_species = ['cf4','pfc116','pfc218','pfc318']
+        
+    if period_override == None:
+        period_override = [None]*len(all_species)
+        
+    ds_out = {}
+        
+    for s,species in enumerate(all_species):
+        
+        ds_in = read_flux(data_dir,species,models,period_override[s])
+        
+        for m,model in enumerate(models):
+            if s == 0:
+                ds_out[model] = ds_in
+            else:
+                #need to stack then take the average?
+                ds_out[model]['flux_total_prior'] = np.mean(ds_out[model]['flux_total_prior'],
+                                                            ds_in[model]['flux_total_prior'])
+        
+    '''
+    flux_total_prior/posterior - mean average
+    
+    '''
+        
+    # then loop through by model, creating a new dataset of means/averages for each model?
+            
+    return ds_out
 
 #####################################################################
 
