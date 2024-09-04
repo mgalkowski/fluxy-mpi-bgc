@@ -11,6 +11,7 @@ import pprint
 import cartopy
 from json import load
 import inspect
+from IPython.utils import io
 
 model_colors = {'intem':[['navy','dodgerblue'],
                          ['dodgerblue','skyblue']],
@@ -232,10 +233,10 @@ def read_flux(data_dir,species,models,period_override=None):
                     print('Done!')
                 else:
                     print(f'Failed!')
-                    print(f'Cannot find {m} file for {species}. This model will not be plotted')
+                    print(f'Cannot find {m} file for {species}. This data will not be included')
             except:
                 print(f'Failed!')
-                print(f'Cannot find {m} file for {species}. This model will not be plotted')
+                print(f'Cannot find {m} file for {species}. This data will not be included')
     
     return ds_all
 
@@ -299,8 +300,8 @@ def slice_flux(ds_all,start_date,end_date,
 
 #####################################################################
 
-def read_flux_total_fgases(data_dir,species,models,
-                           period_override=None):
+def read_flux_total_fgases(data_dir,species,models,regions,
+                           start_date,end_date,period_override=None):
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
     to produce one dataset which can be used with plotting functions in the rest 
@@ -313,6 +314,8 @@ def read_flux_total_fgases(data_dir,species,models,
             'all_hfc' or 'all_pfc'
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
+        regions (list of str):
+            Region names used to extract fluxes. Only these regions can then be plotted.
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -323,37 +326,176 @@ def read_flux_total_fgases(data_dir,species,models,
     """
     
     if species == 'all_hfc':
-        all_species = ['hfc125','hfc134a']#,'hfc143a','hfc152a','hfc23',
-                   #'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee']
+        all_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
+                   'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee']
     elif species == 'all_pfc':
         all_species = ['cf4','pfc116','pfc218','pfc318']
+    else:
+        print('This function can only be used to read total hfc (all_hfc) or total pfc (all_pfc).')
+        sys.exit()
+        
+    species_filenames = {'hfc134a':'name_edgar',
+                     'hfc143a':'name_edgar',
+                     'hfc125':'name_edgar',
+                     'hfc32':'name_edgar',
+                     'hfc23':'name_flat',
+                     'hfc152a':'name_flat',
+                     'hfc365mfc':'name_flat',
+                     'hfc4310mee':'name_flat',
+                     'hfc245fa':'name_flat',
+                     'hfc227ea':'name_flat',
+                     'pfc218':'name_flat',
+                     'pfc318':'name_flat',
+                     'pfc116':'name_edgarminval',
+                     'cf4':'name_edgarminval',
+                     'sf6':'name_flat'}
         
     if period_override == None:
         period_override = [None]*len(all_species)
         
-    ds_out = {}
-        
-    for s,species in enumerate(all_species):
-        
-        ds_in = read_flux(data_dir,species,models,period_override[s])
-        
-        for m,model in enumerate(models):
-            if s == 0:
-                ds_out[model] = ds_in
-            else:
-                #need to stack then take the average?
-                ds_out[model]['flux_total_prior'] = np.mean(ds_out[model]['flux_total_prior'],
-                                                            ds_in[model]['flux_total_prior'])
-        
-    '''
-    flux_total_prior/posterior - mean average
-    
-    '''
-        
-    # then loop through by model, creating a new dataset of means/averages for each model?
-            
-    return ds_out
+    ds_all = {}
+    ds_in = {}
 
+    for m,model in enumerate(models):
+        
+        m0 = model.split('_')[0]
+        
+        for s,species in enumerate(all_species):
+
+            model_read = f'{model}_{species_filenames[species]}'
+            
+            #dictionary containing datasets for each species, these are then summed/averaged across the time coordinate
+            ds_out = {}
+            
+            try:
+            
+                ds_in[model] = read_flux(data_dir,species,[model_read],period_override[s])[model_read]    #edit read_flux so that it searches for correct filename per gas
+                with io.capture_output() as captured:
+                    ds_in = slice_flux(ds_in,start_date,end_date,scale_units=False,species=None)
+                    
+            except:
+                
+                ds_in = None
+            
+            for r,region in enumerate(regions):
+                
+                try:
+        
+                    region_time,region_flux_total_posterior,region_flux_total_prior,\
+                    region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
+                    region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region)
+                    #print(region_flux_total_posterior)
+                    
+                    region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
+                    region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
+                    
+                    #for percentiles, first convert to upper and lower standard deviations (difference from mean)
+                    region_flux_total_posterior_lower = (region_flux_total_posterior-region_flux_total_posterior_lower) * 1e3 * s_data[species]['gwp'] * 1e-12
+                    region_flux_total_posterior_upper = (region_flux_total_posterior_upper-region_flux_total_posterior) * 1e3 * s_data[species]['gwp'] * 1e-12
+                    region_flux_total_prior_lower = (region_flux_total_prior-region_flux_total_prior_lower) * 1e3 * s_data[species]['gwp'] * 1e-12
+                    region_flux_total_prior_upper = (region_flux_total_prior_upper-region_flux_total_prior) * 1e3 * s_data[species]['gwp'] * 1e-12
+                    
+                    region_flux_total_posterior = region_flux_total_posterior * 1e3 * s_data[species]['gwp'] * 1e-12
+                    region_flux_total_prior = region_flux_total_prior * 1e3 * s_data[species]['gwp'] * 1e-12
+                
+                    #print(region_flux_total_posterior)
+                
+                except:
+                    # create empty set of values for this region and species, so it can be skipped if needed
+                    print(f'No {species} {region} fluxes found for {model_read} check directory paths and netcdf contents.')
+                    region_time = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),np.datetime64(end_date).astype('datetime64[Y]'),
+                                            np.timedelta64(1,'Y')).astype('datetime64[ns]')
+                    region_time_extended = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),
+                                                    np.datetime64(end_date).astype('datetime64[Y]')+np.timedelta64(1,'Y'),
+                                                    np.timedelta64(1,'Y')).astype('datetime64[ns]')
+                    time_diff = []
+                    for t,test_time in enumerate(region_time):
+                        time_diff.append((region_time_extended[t+1] - region_time_extended[t])/2)
+                    region_time = region_time + time_diff
+                    
+                    region_flux_total_posterior_lower,region_flux_total_posterior_upper = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
+                    region_flux_total_prior_lower,region_flux_total_prior_upper = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
+                    region_flux_total_posterior,region_flux_total_prior = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
+                 
+                if r == 0:
+                    country_out = np.array([region])
+                    region_time_out = region_time
+                    region_flux_total_posterior_out = np.expand_dims(region_flux_total_posterior,axis=1)
+                    region_flux_total_prior_out = np.expand_dims(region_flux_total_prior,axis=1)
+                    region_flux_total_posterior_lower_out = np.expand_dims(region_flux_total_posterior_lower,axis=1)
+                    region_flux_total_posterior_upper_out = np.expand_dims(region_flux_total_posterior_upper,axis=1)
+                    region_flux_total_prior_lower_out = np.expand_dims(region_flux_total_prior_lower,axis=1)
+                    region_flux_total_prior_upper_out = np.expand_dims(region_flux_total_prior_upper,axis=1)
+                else:
+                    country_out = np.hstack((country_out,np.array([region])))
+                    region_flux_total_posterior_out = np.concatenate((region_flux_total_posterior_out,np.expand_dims(region_flux_total_posterior,axis=1)),axis=1)
+                    region_flux_total_prior_out = np.concatenate((region_flux_total_prior_out,np.expand_dims(region_flux_total_prior,axis=1)),axis=1)
+                    region_flux_total_posterior_lower_out = np.concatenate((region_flux_total_posterior_lower_out,np.expand_dims(region_flux_total_posterior_lower,axis=1)),axis=1)
+                    region_flux_total_posterior_upper_out = np.concatenate((region_flux_total_posterior_upper_out,np.expand_dims(region_flux_total_posterior_upper,axis=1)),axis=1)
+                    region_flux_total_prior_lower_out = np.concatenate((region_flux_total_prior_lower_out,np.expand_dims(region_flux_total_prior_lower,axis=1)),axis=1)
+                    region_flux_total_prior_upper_out = np.concatenate((region_flux_total_prior_upper_out,np.expand_dims(region_flux_total_prior_upper,axis=1)),axis=1)
+                #should be of shape (time,n_country)
+                    
+            ds_out = xr.Dataset({'region_flux_total_posterior_out':(['region_time','country_out'],region_flux_total_posterior_out),
+                                'region_flux_total_prior_out':(['region_time','country_out'],region_flux_total_prior_out),
+                                'region_flux_total_posterior_lower_out':(['region_time','country_out'],region_flux_total_posterior_lower_out),
+                                'region_flux_total_posterior_upper_out':(['region_time','country_out'],region_flux_total_posterior_upper_out),
+                                'region_flux_total_prior_lower_out':(['region_time','country_out'],region_flux_total_prior_lower_out),
+                                'region_flux_total_prior_upper_out':(['region_time','country_out'],region_flux_total_prior_upper_out)},
+                                coords={'region_time':(['region_time'],region_time),
+                                        'country_out':(['country_out'],country_out),
+                                        'percentile':(['percentile'],np.array([0.159,0.841]))})
+            
+            if s == 0:
+                ds_out_species_total = ds_out.copy()
+            else:
+                region_flux_total_posterior_all_species = xr.concat((ds_out_species_total['region_flux_total_posterior_out'],
+                                                                    ds_out['region_flux_total_posterior_out']),dim='stack').sum(dim='stack')   #this works when ds_out and ds_out_species_total have different time coordinates
+                region_flux_total_prior_all_species = xr.concat((ds_out_species_total['region_flux_total_prior_out'],
+                                                                    ds_out['region_flux_total_prior_out']),dim='stack').sum(dim='stack')
+                region_flux_total_posterior_lower_all_species = np.sqrt(xr.concat((ds_out_species_total['region_flux_total_posterior_lower_out']**2,
+                                                                    ds_out['region_flux_total_posterior_lower_out']**2),dim='stack').sum(dim='stack'))
+                region_flux_total_posterior_upper_all_species = np.sqrt(xr.concat((ds_out_species_total['region_flux_total_posterior_upper_out']**2,
+                                                                    ds_out['region_flux_total_posterior_upper_out']**2),dim='stack').sum(dim='stack'))
+                region_flux_total_prior_lower_all_species = np.sqrt(xr.concat((ds_out_species_total['region_flux_total_prior_lower_out']**2,
+                                                                    ds_out['region_flux_total_prior_lower_out']**2),dim='stack').sum(dim='stack'))
+                region_flux_total_prior_upper_all_species = np.sqrt(xr.concat((ds_out_species_total['region_flux_total_prior_upper_out']**2,
+                                                                    ds_out['region_flux_total_prior_upper_out']**2),dim='stack').sum(dim='stack'))
+                
+                ds_out_species_total = xr.Dataset({'region_flux_total_posterior_out':(['region_time','country_out'],region_flux_total_posterior_all_species.values),
+                                'region_flux_total_prior_out':(['region_time','country_out'],region_flux_total_prior_all_species.values),
+                                'region_flux_total_posterior_lower_out':(['region_time','country_out'],region_flux_total_posterior_lower_all_species.values),
+                                'region_flux_total_posterior_upper_out':(['region_time','country_out'],region_flux_total_posterior_upper_all_species.values),
+                                'region_flux_total_prior_lower_out':(['region_time','country_out'],region_flux_total_prior_lower_all_species.values),
+                                'region_flux_total_prior_upper_out':(['region_time','country_out'],region_flux_total_prior_upper_all_species.values)},
+                                coords={'region_time':(['region_time'],region_flux_total_prior_all_species['region_time'].values),
+                                        'country_out':(['country_out'],country_out)}) 
+                
+            if m0 == 'intem':
+                country_coord_name = 'countrynumber'
+            else:
+                country_coord_name = 'country'
+                
+        country_shortnames = []
+        for c in ds_out_species_total['country_out'].values:
+            try:
+                    country_shortnames.append(countrycodes_dict[c])
+            except:
+                country_shortnames.append(regions_dict_old[country])
+                
+        ds_all[model] = xr.Dataset({'country_flux_total_prior':(['time',country_coord_name],ds_out_species_total['region_flux_total_prior_out'].values),
+                                    'country_flux_total_posterior':(['time',country_coord_name],ds_out_species_total['region_flux_total_posterior_out'].values),
+                                    'percentile_country_flux_total_prior':(['time','percentile',country_coord_name],
+                                                                        np.concatenate((np.expand_dims((ds_out_species_total['region_flux_total_prior_out'].values-ds_out_species_total['region_flux_total_prior_lower_out'].values),axis=1),
+                                                                                    np.expand_dims((ds_out_species_total['region_flux_total_prior_out'].values+ds_out_species_total['region_flux_total_prior_upper_out'].values),axis=1)),axis=1)),
+                                    'percentile_country_flux_total_posterior':(['time','percentile',country_coord_name],
+                                                                        np.concatenate((np.expand_dims((ds_out_species_total['region_flux_total_posterior_out'].values-ds_out_species_total['region_flux_total_posterior_lower_out'].values),axis=1),
+                                                                                    np.expand_dims((ds_out_species_total['region_flux_total_posterior_out'].values+ds_out_species_total['region_flux_total_posterior_upper_out'].values),axis=1)),axis=1))},
+                            coords={'time':(['time'],ds_out_species_total['region_time'].values),
+                                    country_coord_name:([country_coord_name],np.array(country_shortnames))}) 
+        
+    return ds_all
+    
 #####################################################################
 
 def read_mf(data_dir,species,models,period_override=None):
@@ -1496,8 +1638,8 @@ def extract_region_flux(ds_all,m,m0,country):
             region_flux_total_prior_upper = region_flux_total_prior + sigma_region_flux_total_prior
 
         except:
-            print(f'ERROR: Either start and end dates are incorrect or there is no {country} emissions in {m}.')
-            print(f'Skipping plotting {m}.')
+            print(f'ERROR: Could not find {country} emissions for {m}.')
+            print(f'Skipping read in of {m}.')
             
             region_time = None
             region_flux_total_posterior,region_flux_total_prior = None,None
@@ -1821,9 +1963,19 @@ def plot_country_flux(ds_all,species,plot_regions,
                                         
         #format each subplot
         
-        ax[a,b].set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$)')
-        ax[a,b].set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
-                        np.max(max_x)+np.timedelta64(1,'M')])
+        if 'all' in species:
+            y_label_append = 'CO$_2$-eq'
+        else:
+            y_label_append = ''
+        
+        ax[a,b].set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$ {y_label_append})')
+        
+        if period_all[list(ds_all.keys())[0]] == 'monthly':
+            ax[a,b].set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
+                            np.max(max_x)+np.timedelta64(1,'M')])
+        elif period_all[list(ds_all.keys())[0]] == 'yearly':
+            ax[a,b].set_xlim([np.min(min_x)-np.timedelta64(7,'M'),
+                            np.max(max_x)+np.timedelta64(7,'M')])
 
         ncol = 2
         if set_global_leg == False:
