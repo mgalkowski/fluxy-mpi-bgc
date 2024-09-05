@@ -2047,6 +2047,8 @@ def plot_country_flux(ds_all,species,plot_regions,
             print_country = 'NW EUROPE'
         elif country == 'CW_EU':
             print_country = 'Central W EUROPE'
+        elif country == 'NW_EU_CONTINENT':
+            print_country = 'NW CONTINENTAL EUROPE'
         else:
             print_country = country
         
