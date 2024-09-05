@@ -1819,11 +1819,31 @@ def plot_country_flux(ds_all,species,plot_regions,
                     ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
                     ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
                                                       ds_all[m]['covariance_country_flux_total_posterior'].resample(time=resample).mean(dim="time")})
+        
         else:
             ds_all_p = ds_all
             
         del tmp
         
+        # shift timestamps of averaged data forwards to centre of inversion period
+        for m in ds_all.keys():
+                
+            time_mid = np.array([]).astype('datetime64[ns]')
+            time_diff_all = np.array([]).astype('timedelta64[ns]')
+            
+            for i,t in enumerate(ds_all_p[m].time.values):
+                if i < ds_all_p[m].time.values.shape[0]-1:
+                    time_diff = (ds_all_p[m].time.values[i+1].astype('datetime64[ns]') - ds_all_p[m].time.values[i].astype('datetime64[ns]'))/2
+                    time_diff_all = np.hstack((time_diff_all,time_diff))
+                    time_mid = np.hstack((time_mid,t+time_diff))
+                else:
+                    try:
+                        av_diff = collections.Counter(time_diff_all).most_common()[0][0]
+                    except:
+                        av_diff = np.mean(time_diff_all)
+                    time_mid = np.hstack((time_mid,t+av_diff))
+                    
+            ds_all_p[m]['time'] = time_mid
             
     else:
         ds_all_p = ds_all
@@ -1987,10 +2007,10 @@ def plot_country_flux(ds_all,species,plot_regions,
         
         ax[a,b].set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$ {y_label_append})')
         
-        if period_all[list(ds_all.keys())[0]] == 'monthly':
+        if period_all[list(ds_all.keys())[0]] == 'monthly' and resample != 'YS':
             ax[a,b].set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
                             np.max(max_x)+np.timedelta64(1,'M')])
-        elif period_all[list(ds_all.keys())[0]] == 'yearly':
+        else: #period_all[list(ds_all.keys())[0]] == 'yearly':
             ax[a,b].set_xlim([np.min(min_x)-np.timedelta64(7,'M'),
                             np.max(max_x)+np.timedelta64(7,'M')])
 
