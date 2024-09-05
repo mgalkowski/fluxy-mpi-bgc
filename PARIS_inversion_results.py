@@ -1847,20 +1847,31 @@ def plot_country_flux(ds_all,species,plot_regions,
             
     else:
         ds_all_p = ds_all
-    
-    a,b = 0,0
+
     max_cf = []
     min_x = []
     max_x = []
     period_all = {}
-
-    n_cols = math.ceil(len(plot_regions)/2)
-    if n_cols <= 1:
+    
+    if len(plot_regions) == 4:
         n_cols = 2
+        n_rows = 2
+    elif len(plot_regions) < 4:
+        n_cols = len(plot_regions)
+        n_rows = 1
+    elif len(plot_regions) > 4:
+        n_cols = 4
+        n_rows = math.ceil(len(plot_regions)/4)
         
-    fig,ax = plt.subplots(2,n_cols,figsize=(n_cols*6,8),constrained_layout=True)
+    fig = plt.figure(constrained_layout=True,figsize=(n_cols*6,n_rows*4))
+    gs = fig.add_gridspec(n_rows,n_cols)
+    
+    # used to iterate through subplots
+    count = 0
 
     for i,country in enumerate(plot_regions):
+        
+        ax = fig.add_subplot(gs[count])
         
         if plot_inventory == True:
             
@@ -1876,7 +1887,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                                                                               inventory_year=i_year)
                 
                 if inventory_flux is not None:
-                    ax[a,b].bar(inventory_time,inventory_flux,
+                    ax.bar(inventory_time,inventory_flux,
                                 np.timedelta64(340, 'D'),color='white',edgecolor=inv_colours[y],align='edge',
                                 label=f'Inventory {i_year}',zorder=0)
         
@@ -1926,29 +1937,29 @@ def plot_country_flux(ds_all,species,plot_regions,
                                                                             size=1000) for t in range(region_time.shape[0])])
                             
                 if plot_separate == True:
-                    ax[a,b].plot(region_time,
+                    ax.plot(region_time,
                                 region_flux_total_posterior,
                                 label=m_data[m]["label"],color=model_colors[m][0])
                     
-                    ax[a,b].plot(region_time,
+                    ax.plot(region_time,
                                 region_flux_total_prior,
                                 label=f'{m_data[m]["label"]} prior',color=model_colors[m][0],linestyle='dashed')
                     
                     
-                    ax[a,b].fill_between(region_time,
+                    ax.fill_between(region_time,
                                         region_flux_total_posterior_lower,
                                         region_flux_total_posterior_upper,
                                         alpha=0.3,color=model_colors[m][0])
 
                     if add_prior_unc:
-                        ax[a,b].fill_between(region_time,
+                        ax.fill_between(region_time,
                                             region_flux_total_prior_lower,
                                             region_flux_total_prior_upper,
                                             alpha=0.1,color=model_colors[m][0])
                 
                 min_x.append(np.min(region_time).astype('datetime64[M]'))
                 max_x.append(np.max(region_time).astype('datetime64[M]'))
-                max_cf.append(ax[a,b].get_ylim()[1])
+                max_cf.append(ax.get_ylim()[1])
                 
         if plot_combined == True:
             
@@ -1973,27 +1984,27 @@ def plot_country_flux(ds_all,species,plot_regions,
             pdf_mean = np.mean(pdf_all,axis=1)
             pdf_std = np.std(pdf_all,axis=1)
                                         
-            ax[a,b].plot(region_time.astype('datetime64[ns]'),
+            ax.plot(region_time.astype('datetime64[ns]'),
                             mean_country_flux_total_posterior,
                             label='Mean posterior',color='black')
-            ax[a,b].plot(region_time.astype('datetime64[ns]'),
+            ax.plot(region_time.astype('datetime64[ns]'),
                                 mean_country_flux_total_prior,
                                 label='Mean prior',color='black',linestyle='dashed')
             
-            ax[a,b].fill_between(region_time.astype('datetime64[ns]'),
+            ax.fill_between(region_time.astype('datetime64[ns]'),
                                             min_country_flux_total_lower,
                                             max_country_flux_total_upper,
                                             alpha=0.3,color='black',label='Min/max of post uncertainty')
             
-            ax[a,b].plot(region_time.astype('datetime64[ns]'),
+            ax.plot(region_time.astype('datetime64[ns]'),
                                 pdf_mean,
                                 label='Mean of sampled post PDFs',color='dodgerblue')
-            ax[a,b].fill_between(region_time.astype('datetime64[ns]'),
+            ax.fill_between(region_time.astype('datetime64[ns]'),
                                             pdf_mean-pdf_std,
                                             pdf_mean+pdf_std,
                                             alpha=0.3,color='dodgerblue',label='Std dev of sampled post PDFs')
             
-            ax[a,b].fill_between(region_time.astype('datetime64[ns]'),
+            ax.fill_between(region_time.astype('datetime64[ns]'),
                                             mean_country_flux_total_lower,
                                             mean_country_flux_total_upper,
                                             alpha=0.3,color='yellow',label='Mean of post uncertainty')
@@ -2005,18 +2016,18 @@ def plot_country_flux(ds_all,species,plot_regions,
         else:
             y_label_append = ''
         
-        ax[a,b].set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$ {y_label_append})')
+        ax.set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$ {y_label_append})')
         
         if period_all[list(ds_all.keys())[0]] == 'monthly' and resample != 'YS':
-            ax[a,b].set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
+            ax.set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
                             np.max(max_x)+np.timedelta64(1,'M')])
         else: #period_all[list(ds_all.keys())[0]] == 'yearly':
-            ax[a,b].set_xlim([np.min(min_x)-np.timedelta64(7,'M'),
+            ax.set_xlim([np.min(min_x)-np.timedelta64(7,'M'),
                             np.max(max_x)+np.timedelta64(7,'M')])
 
         ncol = 2
         if set_global_leg == False:
-            leg = ax[a,b].legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
+            leg = ax.legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
             if plot_inventory == True:
                 for l in leg.legendHandles[:-1]:
                     l.set_linewidth(3.0)
@@ -2026,49 +2037,48 @@ def plot_country_flux(ds_all,species,plot_regions,
         
         if country_codes_as_titles == True:
             try:
-                ax[a,b].set_title(f'{country}\n{regions_dict[country]}')
+                ax.set_title(f'{country}\n{regions_dict[country]}')
             except:
-                ax[a,b].set_title(f'{country}')
+                ax.set_title(f'{country}')
         else:        
-            ax[a,b].set_title(f'{country}')
-        ax[a,b].grid(visible=True,which='major',alpha=0.4)
-        ax[a,b].xaxis.set_minor_locator(MonthLocator())
-        ax[a,b].xaxis.set_minor_formatter(NullFormatter())
-        ax[a,b].xaxis.set_major_locator(YearLocator())
+            ax.set_title(f'{country}')
+        ax.grid(visible=True,which='major',alpha=0.4)
+        ax.xaxis.set_minor_locator(MonthLocator())
+        ax.xaxis.set_minor_formatter(NullFormatter())
+        ax.xaxis.set_major_locator(YearLocator())
         
-        #increase row and column counts
-        if (b - (n_cols-1)) == 0:
-            b = 0
-            a += 1
-        else:
-            b += 1
+        count += 1
+        
+        if set_global_leg:
+            if n_rows > 1:
+                legend_loc = (0.5, 1.07)
+            else:
+                legend_loc = (0.5, 1.15)
+            handles, labels = ax.get_legend_handles_labels()
+            ncol=0   
+            if (plot_separate or resample):
+                ncol=len(ds_all.keys())
+            if plot_combined:
+                ncol=ncol+3
+            if plot_inventory == True:
+                ncol=ncol+1
+            leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,bbox_to_anchor=legend_loc)
+            if plot_inventory == True:
+                for l in leg.legendHandles:
+                    l.set_linewidth(3.0)
+            else:
+                for l in leg.legendHandles:
+                    l.set_linewidth(3.0)
 
-    if set_global_leg:
-        handles, labels = ax[0,0].get_legend_handles_labels()
-        ncol=0   
-        if (plot_separate or resample):
-            ncol=len(ds_all.keys())
-        if plot_combined:
-            ncol=ncol+3
-        if plot_inventory == True:
-            ncol=ncol+1
-        leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,bbox_to_anchor=(0.5, 1.07))
-        if plot_inventory == True:
-            for l in leg.legendHandles:
-                l.set_linewidth(3.0)
-        else:
-            for l in leg.legendHandles:
-                l.set_linewidth(3.0)
-
-    for a in range(2):
-        for b in range(n_cols):
-            if fix_y_axes == True:
-                ax[a,b].set_ylim([0,(np.max(max_cf)+(0.1*np.max(max_cf)))])  
-            elif type(fix_y_axes) == list:
-                ax[a,b].set_ylim(fix_y_axes)
-            
-            elif fix_y_axes == False:
-                ax[a,b].set_ylim(bottom=0)  
+    # loop through plots again to fix min/max axis values
+    for i,country in enumerate(plot_regions):
+        ax = fig.axes[i]
+        if fix_y_axes == True:
+            ax.set_ylim([0,(np.max(max_cf)+(0.1*np.max(max_cf)))])  
+        elif type(fix_y_axes) == list:
+            ax.set_ylim(fix_y_axes)
+        elif fix_y_axes == False:
+            ax.set_ylim(bottom=0)  
 
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim parameter')
     
