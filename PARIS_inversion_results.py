@@ -327,7 +327,7 @@ def read_flux_total_fgases(data_dir,species,models,regions,
     
     if species == 'all_hfc':
         all_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
-                   'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee']
+                       'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee']
     elif species == 'all_pfc':
         all_species = ['cf4','pfc116','pfc218','pfc318']
     else:
@@ -364,27 +364,33 @@ def read_flux_total_fgases(data_dir,species,models,regions,
         
         for s,species in enumerate(all_species):
 
-            model_read = f'{model}_{species_filenames[species]}'
             
             #dictionary containing datasets for each species, these are then summed/averaged across the time coordinate
             ds_out = {}
             
+            #tries to read from standard filename, as listed above, if this fails, tries 'model_name_edgar', if this fails, skips this species
             try:
             
-                ds_in[model] = read_flux(data_dir,species,[model_read],period_override[s])[model_read]    #edit read_flux so that it searches for correct filename per gas
-                with io.capture_output() as captured:
-                    ds_in = slice_flux(ds_in,start_date,end_date,scale_units=False,species=None)
-                    
-            except:
+                try:
+                    model_read = f'{model}_{species_filenames[species]}'
+                    ds_in[model] = read_flux(data_dir,species,[model_read],period_override[s])[model_read]    #edit read_flux so that it searches for correct filename per gas
+                    with io.capture_output() as captured:
+                        ds_in[model] = slice_flux(ds_in,start_date,end_date,scale_units=False,species=None)[model]
                 
-                ds_in = None
+                except:
+                    print(f'No standard run file for {model} {species}, so looking for {model}_name_edgar')
+                    ds_in[model] = read_flux(data_dir,species,[f'{model}_name_edgar'],period_override[s])[f'{model}_name_edgar']    #edit read_flux so that it searches for correct filename per gas
+                    with io.capture_output() as captured:
+                        ds_in[model] = slice_flux(ds_in,start_date,end_date,scale_units=False,species=None)[model]
+            except:
+                ds_in[model] = None
                 if species not in missing_species[model]:
                     missing_species[model].append(species)
-            
+                        
             for r,region in enumerate(regions):
                 
                 try:
-        
+                    #print(f'\n{model} {species}')
                     region_time,region_flux_total_posterior,region_flux_total_prior,\
                     region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
                     region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region)
@@ -401,12 +407,12 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                     
                     region_flux_total_posterior = region_flux_total_posterior * 1e3 * s_data[species]['gwp'] * 1e-12
                     region_flux_total_prior = region_flux_total_prior * 1e3 * s_data[species]['gwp'] * 1e-12
-                
+            
                     #print(f'After scaling = {region_flux_total_posterior_lower}')
                 
                 except:
                     # create empty set of values for this region and species, so it can be skipped if needed
-                    print(f'No {species} {region} fluxes found for {model_read} check directory paths and netcdf contents.')
+                    print(f'No {species} {region} fluxes found for {model} check directory paths and netcdf contents.')
                     region_time = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),np.datetime64(end_date).astype('datetime64[Y]'),
                                             np.timedelta64(1,'Y')).astype('datetime64[ns]')
                     region_time_extended = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),
@@ -422,7 +428,7 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                     region_flux_total_posterior,region_flux_total_prior = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
                  
                     if species not in missing_species[model]:
-                        missing_species[model].append(species)
+                        missing_species[model].appendsp(ecies)
                  
                 if r == 0:
                     country_out = np.array([region])
@@ -1596,6 +1602,8 @@ def extract_region_flux(ds_all,m,m0,country):
         region_flux_total_posterior_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
         region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r
         region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r
+        #print(region_time)
+        #print(region_flux_total_posterior)
         
     #calculate values for region names that don't exist in the file
     except:
@@ -1655,7 +1663,7 @@ def extract_region_flux(ds_all,m,m0,country):
             region_flux_total_prior_upper = region_flux_total_prior + sigma_region_flux_total_prior
 
         except:
-            print(f'ERROR: Could not find {country} emissions for {m}.')
+            #print(f'ERROR: Could not find {country} emissions for {m}.')
             print(f'Skipping read in of {m}.')
             
             region_time = None
@@ -2035,13 +2043,20 @@ def plot_country_flux(ds_all,species,plot_regions,
                 for l in leg.legendHandles:
                     l.set_linewidth(3.0)
         
+        if country == 'NW_EU2':
+            print_country = 'NW EUROPE'
+        elif country == 'CW_EU':
+            print_country = 'Central W EUROPE'
+        else:
+            print_country = country
+        
         if country_codes_as_titles == True:
             try:
-                ax.set_title(f'{country}\n{regions_dict[country]}')
+                ax.set_title(f'{print_country}\n{regions_dict[country]}')
             except:
-                ax.set_title(f'{country}')
+                ax.set_title(f'{print_country}')
         else:        
-            ax.set_title(f'{country}')
+            ax.set_title(f'{print_country}')
         ax.grid(visible=True,which='major',alpha=0.4)
         ax.xaxis.set_minor_locator(MonthLocator())
         ax.xaxis.set_minor_formatter(NullFormatter())
