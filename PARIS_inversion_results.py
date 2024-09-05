@@ -355,9 +355,11 @@ def read_flux_total_fgases(data_dir,species,models,regions,
         
     ds_all = {}
     ds_in = {}
+    missing_species = {}
 
     for m,model in enumerate(models):
         
+        missing_species[model] = []
         m0 = model.split('_')[0]
         
         for s,species in enumerate(all_species):
@@ -376,6 +378,8 @@ def read_flux_total_fgases(data_dir,species,models,regions,
             except:
                 
                 ds_in = None
+                if species not in missing_species[model]:
+                    missing_species[model].append(species)
             
             for r,region in enumerate(regions):
                 
@@ -384,7 +388,7 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                     region_time,region_flux_total_posterior,region_flux_total_prior,\
                     region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
                     region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region)
-                    #print(region_flux_total_posterior)
+                    #print(f'Before scaling = {region_flux_total_posterior_lower}')
                     
                     region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
                     region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
@@ -398,7 +402,7 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                     region_flux_total_posterior = region_flux_total_posterior * 1e3 * s_data[species]['gwp'] * 1e-12
                     region_flux_total_prior = region_flux_total_prior * 1e3 * s_data[species]['gwp'] * 1e-12
                 
-                    #print(region_flux_total_posterior)
+                    #print(f'After scaling = {region_flux_total_posterior_lower}')
                 
                 except:
                     # create empty set of values for this region and species, so it can be skipped if needed
@@ -416,6 +420,9 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                     region_flux_total_posterior_lower,region_flux_total_posterior_upper = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
                     region_flux_total_prior_lower,region_flux_total_prior_upper = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
                     region_flux_total_posterior,region_flux_total_prior = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
+                 
+                    if species not in missing_species[model]:
+                        missing_species[model].append(species)
                  
                 if r == 0:
                     country_out = np.array([region])
@@ -471,6 +478,8 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                                 coords={'region_time':(['region_time'],region_flux_total_prior_all_species['region_time'].values),
                                         'country_out':(['country_out'],country_out)}) 
                 
+            #print(f"Total = {ds_out_species_total['region_flux_total_posterior_lower_out'].values}")
+                
             if m0 == 'intem':
                 country_coord_name = 'countrynumber'
             else:
@@ -493,6 +502,14 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                                                                                     np.expand_dims((ds_out_species_total['region_flux_total_posterior_out'].values+ds_out_species_total['region_flux_total_posterior_upper_out'].values),axis=1)),axis=1))},
                             coords={'time':(['time'],ds_out_species_total['region_time'].values),
                                     country_coord_name:([country_coord_name],np.array(country_shortnames))}) 
+    
+    missing = []
+    for model in models:
+        if missing_species[model] != []:
+            missing.append(model)
+            
+    for m in missing:
+        print(f'\nWARNING: Model {m} is missing species: {missing_species[model]}')
         
     return ds_all
     
