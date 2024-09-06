@@ -121,9 +121,10 @@
         },
 
     "elris_name_edgarminval":{
-            "filename":"ELRIS_NAME_EUROPE_EDGARMINVAL_intem_obs_intem_baseline_optimized",
+            "filename":"ELRIS_NAME_EUROPE_EDGARMINVAL_elris_obs_elris_baseline_optimized",
             "label":"ELRIS NAME EDGAR with min value"
             },
+
 
     "rhime_name_edgar":{
         "filename":"RHIME_NAME_EUROPE_EDGAR_rhime_obs_rhime_baseline_optimized",
@@ -191,7 +192,7 @@
         },
 
     "rhime_name_edgarminval":{
-            "filename":"RHIME_NAME_EUROPE_EDGARMINVAL_intem_obs_intem_baseline_optimized",
+            "filename":"RHIME_NAME_EUROPE_EDGARMINVAL_rhime_obs_rhime_baseline_optimized",
             "label":"RHIME NAME EDGAR with min value"
             },
 
