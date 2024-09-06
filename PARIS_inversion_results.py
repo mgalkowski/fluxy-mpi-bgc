@@ -390,11 +390,9 @@ def read_flux_total_fgases(data_dir,species,models,regions,
             for r,region in enumerate(regions):
                 
                 try:
-                    #print(f'\n{model} {species}')
                     region_time,region_flux_total_posterior,region_flux_total_prior,\
                     region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
                     region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region)
-                    #print(f'Before scaling = {region_flux_total_posterior_lower}')
                     
                     region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
                     region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
@@ -407,8 +405,19 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                     
                     region_flux_total_posterior = region_flux_total_posterior * 1e3 * s_data[species]['gwp'] * 1e-12
                     region_flux_total_prior = region_flux_total_prior * 1e3 * s_data[species]['gwp'] * 1e-12
-            
-                    #print(f'After scaling = {region_flux_total_posterior_lower}')
+
+                    #fix to replace rhime's timestamps, which aren't always in the centre of the inversion period
+                    # which breaks the .sum() steps below if trying to include data from missing species
+                    if 'rhime' in model:
+                        region_time = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),np.datetime64(end_date).astype('datetime64[Y]'),
+                                        np.timedelta64(1,'Y')).astype('datetime64[ns]')
+                        region_time_extended = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),
+                                                        np.datetime64(end_date).astype('datetime64[Y]')+np.timedelta64(1,'Y'),
+                                                        np.timedelta64(1,'Y')).astype('datetime64[ns]')
+                        time_diff = []
+                        for t,test_time in enumerate(region_time):
+                            time_diff.append((region_time_extended[t+1] - region_time_extended[t])/2)
+                        region_time = region_time + time_diff
                 
                 except:
                     # create empty set of values for this region and species, so it can be skipped if needed
@@ -428,7 +437,10 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                     region_flux_total_posterior,region_flux_total_prior = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
                  
                     if species not in missing_species[model]:
-                        missing_species[model].appendsp(ecies)
+                        missing_species[model].append(species)
+                        
+                #print(f'{model} {species}')
+                #print(region_time)
                  
                 if r == 0:
                     country_out = np.array([region])
