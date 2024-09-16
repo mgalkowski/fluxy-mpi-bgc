@@ -333,6 +333,14 @@ def read_flux_total_fgases(data_dir,species,models,regions,
     else:
         print('This function can only be used to read total hfc (all_hfc) or total pfc (all_pfc).')
         sys.exit()
+       
+    if type(start_date) is str:
+        print('\nNOTE: Using same start and end date for all models')
+        print('If this fails with an error message related to region_time dimensions, check the availablility\n'+
+              'of data from all models for all timestamps.\n'+
+              'To fix this error, set start_date and end_date as lists with the correct start and end times\nfor each model.')
+        start_date = [start_date]*len(models)
+        end_date = [end_date]*len(models)
         
     species_filenames = {'hfc134a':'name_edgar',
                      'hfc143a':'name_edgar',
@@ -375,13 +383,13 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                     model_read = f'{model}_{species_filenames[species]}'
                     ds_in[model] = read_flux(data_dir,species,[model_read],period_override[s])[model_read]    #edit read_flux so that it searches for correct filename per gas
                     with io.capture_output() as captured:
-                        ds_in[model] = slice_flux(ds_in,start_date,end_date,scale_units=False,species=None)[model]
+                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],scale_units=False,species=None)[model]
                 
                 except:
                     print(f'No standard run file for {model} {species}, so looking for {model}_name_edgar')
                     ds_in[model] = read_flux(data_dir,species,[f'{model}_name_edgar'],period_override[s])[f'{model}_name_edgar']    #edit read_flux so that it searches for correct filename per gas
                     with io.capture_output() as captured:
-                        ds_in[model] = slice_flux(ds_in,start_date,end_date,scale_units=False,species=None)[model]
+                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],scale_units=False,species=None)[model]
             except:
                 ds_in[model] = None
                 if species not in missing_species[model]:
@@ -409,10 +417,10 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                     #fix to replace rhime's timestamps, which aren't always in the centre of the inversion period
                     # which breaks the .sum() steps below if trying to include data from missing species
                     if 'rhime' in model:
-                        region_time = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),np.datetime64(end_date).astype('datetime64[Y]'),
+                        region_time = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),np.datetime64(end_date[m]).astype('datetime64[Y]'),
                                         np.timedelta64(1,'Y')).astype('datetime64[ns]')
-                        region_time_extended = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),
-                                                        np.datetime64(end_date).astype('datetime64[Y]')+np.timedelta64(1,'Y'),
+                        region_time_extended = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),
+                                                        np.datetime64(end_date[m]).astype('datetime64[Y]')+np.timedelta64(1,'Y'),
                                                         np.timedelta64(1,'Y')).astype('datetime64[ns]')
                         time_diff = []
                         for t,test_time in enumerate(region_time):
@@ -422,10 +430,10 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                 except:
                     # create empty set of values for this region and species, so it can be skipped if needed
                     print(f'No {species} {region} fluxes found for {model} check directory paths and netcdf contents.')
-                    region_time = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),np.datetime64(end_date).astype('datetime64[Y]'),
+                    region_time = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),np.datetime64(end_date[m]).astype('datetime64[Y]'),
                                             np.timedelta64(1,'Y')).astype('datetime64[ns]')
-                    region_time_extended = np.arange(np.datetime64(start_date).astype('datetime64[Y]'),
-                                                    np.datetime64(end_date).astype('datetime64[Y]')+np.timedelta64(1,'Y'),
+                    region_time_extended = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),
+                                                    np.datetime64(end_date[m]).astype('datetime64[Y]')+np.timedelta64(1,'Y'),
                                                     np.timedelta64(1,'Y')).astype('datetime64[ns]')
                     time_diff = []
                     for t,test_time in enumerate(region_time):
@@ -1734,7 +1742,7 @@ def extract_region_inventory_flux(country,data_dir,species,
                     inv_key = [k for k, code in countrycodes_dict.items() if code == var]
                     inv_c_index[i] = np.where(inv_ds['country'].values == inv_key[0])[0][0]
                     inv_c_temp = inv_ds['inventory'].values[:,inv_c_index[i]]
-                    if np.any(np.isnan(inv_c_temp) == True):
+                    if np.all(np.isnan(inv_c_temp) == True):
                         inv_c_temp = np.zeros(len(inv_ds.time.values))
                         print(f'WARNING: Inventory data for {inv_key[0]} is NaN. Inventory value for {country} will not include {inv_key[0]} contributions.')
 
