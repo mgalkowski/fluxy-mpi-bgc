@@ -14,6 +14,11 @@
         "label":"InTEM NAME Flat"
         },
 
+    "intem_name_edgarminval":{
+            "filename":"InTEM_NAME_EUROPE_EDGARMINVAL_intem_obs_intem_baseline_optimized",
+            "label":"InTEM NAME EDGAR with min value"
+            },
+
     "intem_name_flat_allobs":{
         "filename":"InTEM_NAME_EUROPE_FLAT_all_obs_intem_baseline_optimized",
         "label":"InTEM NAME Flat all obs"
@@ -115,6 +120,10 @@
         "label":"ELRIS 35 sites(e+w)"
         },
 
+    "elris_name_edgarminval":{
+            "filename":"ELRIS_NAME_EUROPE_EDGARMINVAL_elris_obs_elris_baseline_optimized",
+            "label":"ELRIS NAME EDGAR with min value"
+            },
 
 
     "rhime_name_edgar":{
@@ -180,7 +189,27 @@
     "rhime_36sites_wetcharts":{
         "filename":"RHIME_NAME_EUROPE_EDGAR-WetCHARTs_rhime_obs_rhime_baseline_optimized_36sites",
         "label":"RHIME 36 sites (e+w)"
-        }
+        },
+
+    "rhime_name_edgarminval":{
+            "filename":"RHIME_NAME_EUROPE_EDGARMINVAL_rhime_obs_rhime_baseline_optimized",
+            "label":"RHIME NAME EDGAR with min value"
+            },
+
+    "elris":{
+        "filename":"None",
+        "label":"ELRIS"
+        },
+
+    "intem":{
+            "filename":"None",
+            "label":"InTEM"
+            },
+    
+    "rhime":{
+            "filename":"None",
+            "label":"RHIME"
+            }
  }
     
 
