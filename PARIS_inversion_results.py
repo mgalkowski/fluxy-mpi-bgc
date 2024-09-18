@@ -1996,9 +1996,9 @@ def plot_country_flux(ds_all,species,plot_regions,
                 
         if plot_combined == True:
             
-            if i == 0:
-                print('\nNOTE: This currently assumes that posterior PDFs are Gaussian. The average percentile is used '+
-                    'to estimate an approximate standard deviation.\n')
+            #if i == 0:
+                #print('\nNOTE: This currently assumes that posterior PDFs are Gaussian. The average percentile is used '+
+                #    'to estimate an approximate standard deviation.\n')
             
             mean_country_flux_total_posterior = np.mean(all_region_flux_total_posterior,axis=0)
             mean_country_flux_total_prior = np.mean(all_region_flux_total_prior,axis=0)
@@ -2006,7 +2006,7 @@ def plot_country_flux(ds_all,species,plot_regions,
             mean_country_flux_total_upper = np.mean(all_region_flux_total_upper,axis=0)
             min_country_flux_total_lower = np.min(all_region_flux_total_lower,axis=0)
             max_country_flux_total_upper = np.max(all_region_flux_total_upper,axis=0)
-            
+            '''
             for j,m in enumerate(ds_all.keys()):
                 if j == 0:
                     pdf_all = np.array([np.random.choice(post_pdfs[m][t,:],500) for t in range(post_pdfs[m].shape[0])])
@@ -2016,10 +2016,10 @@ def plot_country_flux(ds_all,species,plot_regions,
             
             pdf_mean = np.mean(pdf_all,axis=1)
             pdf_std = np.std(pdf_all,axis=1)
-                                        
+            '''                          
             ax.plot(region_time.astype('datetime64[ns]'),
                             mean_country_flux_total_posterior,
-                            label='Mean posterior',color='black')
+                            label='Mean posterior',color='black',linewidth=3.5)
             ax.plot(region_time.astype('datetime64[ns]'),
                                 mean_country_flux_total_prior,
                                 label='Mean prior',color='black',linestyle='dashed')
@@ -2028,10 +2028,11 @@ def plot_country_flux(ds_all,species,plot_regions,
                                             min_country_flux_total_lower,
                                             max_country_flux_total_upper,
                                             alpha=0.3,color='black',label='Min/max of post uncertainty')
-            
+            '''
             ax.plot(region_time.astype('datetime64[ns]'),
                                 pdf_mean,
                                 label='Mean of sampled post PDFs',color='dodgerblue')
+            
             ax.fill_between(region_time.astype('datetime64[ns]'),
                                             pdf_mean-pdf_std,
                                             pdf_mean+pdf_std,
@@ -2041,9 +2042,9 @@ def plot_country_flux(ds_all,species,plot_regions,
                                             mean_country_flux_total_lower,
                                             mean_country_flux_total_upper,
                                             alpha=0.3,color='yellow',label='Mean of post uncertainty')
-                                        
-        #format each subplot
+            '''                            
         
+        #format each subplot
         if 'all' in species:
             y_label_append = ' CO$_2$-eq'
         else:
