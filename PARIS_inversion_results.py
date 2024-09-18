@@ -1876,7 +1876,7 @@ def plot_country_flux(ds_all,species,plot_regions,
     else:
         ds_all_p = ds_all
 
-    max_cf = []
+    max_cf = np.zeros(len(plot_regions))
     min_x = []
     max_x = []
     period_all = {}
@@ -1984,10 +1984,15 @@ def plot_country_flux(ds_all,species,plot_regions,
                                             region_flux_total_prior_lower,
                                             region_flux_total_prior_upper,
                                             alpha=0.1,color=model_colors[m][0])
+                        max_cf.append(np.max(region_flux_total_prior_upper))
+                        
                 
                 min_x.append(np.min(region_time).astype('datetime64[M]'))
                 max_x.append(np.max(region_time).astype('datetime64[M]'))
-                max_cf.append(ax.get_ylim()[1])
+                max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_posterior_upper)))
+                max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
+                max_cf[i] = np.max((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
+                                                                                  inventory_time <= np.max(region_time))])))
                 
         if plot_combined == True:
             
@@ -2040,19 +2045,19 @@ def plot_country_flux(ds_all,species,plot_regions,
         #format each subplot
         
         if 'all' in species:
-            y_label_append = 'CO$_2$-eq'
+            y_label_append = ' CO$_2$-eq'
         else:
             y_label_append = ''
         
-        ax.set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}$ {y_label_append})')
+        ax.set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}${y_label_append})')
         
         if period_all[list(ds_all.keys())[0]] == 'monthly' and resample != 'YS':
             ax.set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
                             np.max(max_x)+np.timedelta64(1,'M')])
         else: #period_all[list(ds_all.keys())[0]] == 'yearly':
             ax.set_xlim([np.min(min_x)-np.timedelta64(7,'M'),
-                            np.max(max_x)+np.timedelta64(7,'M')])
-
+                            np.max(max_x)+np.timedelta64(7,'M')])        
+        
         ncol = 2
         if set_global_leg == False:
             leg = ax.legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
@@ -2066,7 +2071,7 @@ def plot_country_flux(ds_all,species,plot_regions,
         if country == 'NW_EU2':
             print_country = 'NW EUROPE'
         elif country == 'CW_EU':
-            print_country = 'Central W EUROPE'
+            print_country = 'CENTRAL W EUROPE'
         elif country == 'NW_EU_CONTINENT':
             print_country = 'NW CONTINENTAL EUROPE'
         else:
@@ -2108,15 +2113,15 @@ def plot_country_flux(ds_all,species,plot_regions,
                     l.set_linewidth(3.0)
 
     # loop through plots again to fix min/max axis values
+    
     for i,country in enumerate(plot_regions):
-        ax = fig.axes[i]
         if fix_y_axes == True:
-            ax.set_ylim([0,(np.max(max_cf)+(0.1*np.max(max_cf)))])  
-        elif type(fix_y_axes) == list:
-            ax.set_ylim(fix_y_axes)
+            fig.axes[i].set_ylim([0,np.nanmax(max_cf)*1.1])  
+        elif (type(fix_y_axes) == list) == True:
+            fig.axes[i].set_ylim(fix_y_axes)
         elif fix_y_axes == False:
-            ax.set_ylim(bottom=0)  
-
+            fig.axes[i].set_ylim([0,max_cf[i]*1.1])  
+    
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim parameter')
     
     return fig
