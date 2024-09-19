@@ -357,7 +357,7 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                      'pfc116':'name_edgarminval',
                      'cf4':'name_edgarminval',
                      'sf6':'name_flat'}
-        
+
     if period_override == None:
         period_override = [None]*len(all_species)
         
@@ -367,6 +367,12 @@ def read_flux_total_fgases(data_dir,species,models,regions,
 
     for m,model in enumerate(models):
         
+        if 'longrun' in model:
+            model = model.split('_')[0]
+            models[m] = model
+            for f in species_filenames.keys():
+                species_filenames[f] = f'{species_filenames[f]}_longrun'
+
         missing_species[model] = []
         m0 = model.split('_')[0]
         
@@ -1877,8 +1883,8 @@ def plot_country_flux(ds_all,species,plot_regions,
                     
             ds_all_p[m]['time'] = time_mid
             
-    #else:
-    #    ds_all_p = ds_all
+    else:
+        ds_all_p = ds_all.copy()
 
     max_cf = np.zeros(len(plot_regions))
     min_x = []
@@ -1894,11 +1900,6 @@ def plot_country_flux(ds_all,species,plot_regions,
     elif len(plot_regions) > 4:
         n_cols = 4
         n_rows = math.ceil(len(plot_regions)/4)
-        
-    if plot_resample_and_original == True:
-        all_datasets = [ds_all_p,ds_all]
-    else:
-        all_datasets = [ds_all_p]
         
     fig = plt.figure(constrained_layout=True,figsize=(n_cols*6,n_rows*4))
     gs = fig.add_gridspec(n_rows,n_cols)
@@ -1929,6 +1930,11 @@ def plot_country_flux(ds_all,species,plot_regions,
                                 label=f'Inventory {i_year}',zorder=0)
         
         ds_count = 0
+        
+        if plot_resample_and_original == True:
+            all_datasets = [ds_all_p,ds_all]
+        else:
+            all_datasets = [ds_all_p]
         
         for ds in all_datasets:
         
@@ -2010,9 +2016,10 @@ def plot_country_flux(ds_all,species,plot_regions,
                     max_x.append(np.max(region_time).astype('datetime64[M]'))
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_posterior_upper)))
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
-                    max_cf[i] = np.max((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
-                                                                                    inventory_time <= np.max(region_time))])))
-                    
+                    if plot_inventory == True:
+                        max_cf[i] = np.max((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
+                                                                                        inventory_time <= np.max(region_time))])))
+
             if plot_combined == True:
                 
                 #if i == 0:
@@ -2106,10 +2113,18 @@ def plot_country_flux(ds_all,species,plot_regions,
                 ax.set_title(f'{print_country}')
         else:        
             ax.set_title(f'{print_country}')
+            
         ax.grid(visible=True,which='major',alpha=0.4)
-        ax.xaxis.set_minor_locator(MonthLocator())
-        ax.xaxis.set_minor_formatter(NullFormatter())
-        ax.xaxis.set_major_locator(YearLocator())
+            
+        if (region_time[-1]-region_time[0]).astype('timedelta64[Y]') > 8:
+            ax.set_xticks(region_time[::2])
+            ax.set_xticklabels(region_time[::2].astype('datetime64[Y]'))
+            ax.xaxis.set_minor_formatter(NullFormatter())
+
+        else:
+            ax.xaxis.set_minor_locator(MonthLocator())
+            ax.xaxis.set_minor_formatter(NullFormatter())
+            ax.xaxis.set_major_locator(YearLocator())
         
         count += 1
         
