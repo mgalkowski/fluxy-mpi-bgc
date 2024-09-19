@@ -3,6 +3,10 @@
         "filename":"InTEM_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME EDGAR"
         },
+    "intem_name_edgar_longrun":{
+        "filename":"InTEM_NAME_EUROPE_EDGAR_longrun_intem_obs_intem_baseline_optimized",
+        "label":"InTEM NAME EDGAR"
+        },
 
     "intem_name_edgar_allobs":{
         "filename":"InTEM_NAME_EUROPE_EDGAR_all_obs_intem_baseline_optimized",
@@ -13,9 +17,17 @@
         "filename":"InTEM_NAME_EUROPE_FLAT_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME Flat"
         },
+    "intem_name_flat_longrun":{
+        "filename":"InTEM_NAME_EUROPE_FLAT_longrun_intem_obs_intem_baseline_optimized",
+        "label":"InTEM NAME Flat"
+        },
 
     "intem_name_edgarminval":{
             "filename":"InTEM_NAME_EUROPE_EDGARMINVAL_intem_obs_intem_baseline_optimized",
+            "label":"InTEM NAME EDGAR with min value"
+            },
+    "intem_name_edgarminval_longrun":{
+            "filename":"InTEM_NAME_EUROPE_EDGARMINVAL_longrun_intem_obs_intem_baseline_optimized",
             "label":"InTEM NAME EDGAR with min value"
             },
 
