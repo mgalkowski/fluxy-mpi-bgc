@@ -1704,6 +1704,7 @@ def extract_region_flux(ds_all,m,m0,country):
 #####################################################################
 
 def extract_region_inventory_flux(country,data_dir,species,
+                                  start_date,end_date,
                                   inventory_year=None):
     """
     Extracts inventory flux values for regions that exists,
@@ -1729,6 +1730,7 @@ def extract_region_inventory_flux(country,data_dir,species,
             inventory_time = None
 
     try:
+        inv_ds = inv_ds.sel(time=slice(start_date,end_date))
         inv_c_index = np.where(inv_ds['country'].values == country)[0][0]
         inventory_flux = inv_ds['inventory'].values[:,inv_c_index]/s_data[species]["units_scaling"]["intem"]
         inventory_time = inv_ds.time.values
@@ -1775,6 +1777,7 @@ def extract_region_inventory_flux(country,data_dir,species,
 
 def plot_country_flux(ds_all,species,plot_regions,
                       model_colors,
+                      start_date,end_date,
                       plot_inventory=True,inventory_years=None,
                       data_dir=None,fix_y_axes=False,
                       add_prior_unc=False, set_global_leg=False,
@@ -1794,6 +1797,9 @@ def plot_country_flux(ds_all,species,plot_regions,
             Gas species, e.g. 'ch4'.
         plot_regions (list of str):
             Country or regions to plot, e.g. ['UNITED KINGDOM','SWITZERLAND']
+        start_date (str) and end_date (str):
+            Start and end dates of the data to plot.
+            Used to slice inventory data.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         plot_inventory (bool):
@@ -1859,7 +1865,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                                                       ds_all[m]['covariance_country_flux_total_posterior'].resample(time=resample).mean(dim="time")})
         
         else:
-            ds_all_p = ds_all
+            ds_all_p = ds_all.copy()
             
         del tmp
         
@@ -1922,6 +1928,7 @@ def plot_country_flux(ds_all,species,plot_regions,
             for y,i_year in enumerate(inventory_years):
             
                 inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,
+                                                                              start_date,end_date,
                                                                               inventory_year=i_year)
                 
                 if inventory_flux is not None:
@@ -2009,7 +2016,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                                                 region_flux_total_prior_lower,
                                                 region_flux_total_prior_upper,
                                                 alpha=0.1,color=model_colors[m][0])
-                            max_cf.append(np.max(region_flux_total_prior_upper))
+                            max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
                             
                     
                     min_x.append(np.min(region_time).astype('datetime64[M]'))
@@ -2017,7 +2024,8 @@ def plot_country_flux(ds_all,species,plot_regions,
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_posterior_upper)))
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
                     if plot_inventory == True:
-                        max_cf[i] = np.max((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
+                        if inventory_flux is not None:
+                            max_cf[i] = np.max((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
                                                                                         inventory_time <= np.max(region_time))])))
 
             if plot_combined == True:
