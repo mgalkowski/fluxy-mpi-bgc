@@ -3,6 +3,7 @@
         "filename":"InTEM_NAME_EUROPE_EDGAR_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME EDGAR"
         },
+
     "intem_name_edgar_longrun":{
         "filename":"InTEM_NAME_EUROPE_EDGAR_longrun_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME EDGAR"
@@ -17,6 +18,7 @@
         "filename":"InTEM_NAME_EUROPE_FLAT_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME Flat"
         },
+
     "intem_name_flat_longrun":{
         "filename":"InTEM_NAME_EUROPE_FLAT_longrun_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME Flat"
@@ -26,6 +28,7 @@
             "filename":"InTEM_NAME_EUROPE_EDGARMINVAL_intem_obs_intem_baseline_optimized",
             "label":"InTEM NAME EDGAR with min value"
             },
+
     "intem_name_edgarminval_longrun":{
             "filename":"InTEM_NAME_EUROPE_EDGARMINVAL_longrun_intem_obs_intem_baseline_optimized",
             "label":"InTEM NAME EDGAR with min value"
@@ -56,6 +59,11 @@
         "label":"InTEM FLEXPART Flat all obs"
         },
 
+    "intem_name_edgar_26sites":{
+        "filename":"InTEM_NAME_EUROPE_EDGAR_26sites_intem_obs_intem_baseline",
+        "label":"InTEM NAME 31 sites (e+w)"
+        },
+
     "intem_13sites":{
         "filename":"InTEM_NAME_EUROPE_EDGAR_13sites_intem_obs_intem_baseline_optimized",
         "label":"InTEM 13 sites"
@@ -66,9 +74,9 @@
         "label":"InTEM 33 sites"
         },
 
-    "intem_XXsites_wetcharts":{
-        "filename":"InTEM_NAME_EUROPE_PARIS_selectedobs_intem_baseline_wetcharts_prior",
-        "label":"InTEM wetcharts"
+    "intem_name_wetcharts_31sites":{
+        "filename":"InTEM_NAME_EUROPE_EDGARWETCHART_31sites_intem_obs_intem_baseline",
+        "label":"InTEM NAME 31 sites (e+w)"
         },
 
 
@@ -122,14 +130,34 @@
         "label":"ELRIS InTEM obs-background-unc"
         },
 
-    "elris_35sites":{
-        "filename":"ELRIS_NAME_EUROPE_EDGAR_std_35sites",
-        "label":"ELRIS 35 sites (e)"
+    "elris_name_edgar_26sites":{
+        "filename":"ELRIS_NAME_EUROPE_EDGAR_26sites",
+        "label":"ELRIS NAME 26 sites (e)"
         },
 
-    "elris_35sites_wetcharts":{
-        "filename":"ELRIS_NAME_EUROPE_EDGARandWETLANDS_std_35sites",
-        "label":"ELRIS 35 sites(e+w)"
+    "elris_name_edgar_31sites":{
+        "filename":"ELRIS_NAME_EUROPE_EDGAR_31base",
+        "label":"ELRIS NAME 31 sites (e)"
+        },
+
+    "elris_name_wetcharts_31sites":{
+        "filename":"ELRIS_NAME_EUROPE_EDGARWETCHART_31base",
+        "label":"ELRIS NAME 31 sites (e+w)"
+        },
+
+    "elris_flex_edgar_26sites":{
+        "filename":"ELRIS_FLEXPART_EUROPE_EDGAR_26sites",
+        "label":"ELRIS FLEXPART 26 sites (e)"
+        },
+
+    "elris_flex_edgar_31sites":{
+        "filename":"ELRIS_FLEXPART_EUROPE_EDGAR_31base",
+        "label":"ELRIS FLEXPART 31 sites (e)"
+        },
+
+    "elris_flex_wetcharts_31sites":{
+        "filename":"ELRIS_FLEXPART_EUROPE_EDGARWETCHART_31base",
+        "label":"ELRIS FLEXPART 31 sites (e+w)"
         },
 
     "elris_name_edgarminval":{
@@ -193,14 +221,14 @@
         "label":"RHIME 13 sites (e)"
         },
 
-    "rhime_36sites":{
-        "filename":"RHIME_NAME_EUROPE_EDGAR_rhime_obs_baseline_optimized_36sites",
-        "label":"RHIME 36 sites (e)"
+    "rhime_name_wetcharts_31sites":{
+        "filename":"RHIME_NAME_EUROPE_EDGAR-WetCHARTs_rhime_obs_rhime_baseline_optimized_31sites",
+        "label":"RHIME NAME 31 sites (e+w)"
         }, 
 
-    "rhime_36sites_wetcharts":{
-        "filename":"RHIME_NAME_EUROPE_EDGAR-WetCHARTs_rhime_obs_rhime_baseline_optimized_36sites",
-        "label":"RHIME 36 sites (e+w)"
+    "rhime_flex_wetcharts_31sites":{
+        "filename":"RHIME_FLEXPART_EUROPE_EDGAR-WetCHARTs_std_31sites",
+        "label":"RHIME FLEXPART 31 sites (e+w)"
         },
 
     "rhime_name_edgarminval":{
