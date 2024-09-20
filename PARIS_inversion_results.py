@@ -13,22 +13,13 @@ from json import load
 import inspect
 from IPython.utils import io
 
-model_colors = {'intem':[['navy','dodgerblue'],
-                         ['dodgerblue','skyblue']],
-                'elris':[['purple','mediumpurple'],
-                         ['deeppink','pink'],
-                         ['darkorange','red']],
-                'rhime':[['darkgreen','green'],
-                         ['limegreen','palegreen'],
-                         ['olive','lightgreen']]}
-
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
                    'elris':[0,1]}
 
 point_source_dict = {'paris':[2.340430,48.860050],
                      'london':[-0.127799,51.507593],
-                 'nw_england':[-2.796870,53.774820]}
+                     'nw_england':[-2.796870,53.774820]}
 
 countrycodes_dict = {'IRELAND':'IRL',
                      'UK':'GBR',
@@ -78,31 +69,60 @@ bel_pop_r = np.round(np.mean(bel_pop/(bel_pop+lux_pop)),3)
 font = {'size':12}
 plt.rc('font', **font)
 
-### read in species info file
+#####################################################################
 
-filename = os.path.join(os.getcwd(),'species_info.json')
+def initialize_settings():
+    """
+    Extracts species and models info from json files.
+    Defines standard colors for plotting.
 
-if os.path.exists(filename) == False:
-    print('ERROR: Cannot find species_info.json file. Check that this exists in the same directory as your notebook.')
+    Returns:
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
+        model_colors (dict of lists):
+            Default lists of colors to be used by each model.
+    """
 
-with open(filename, "r") as f:
-    s_data = load(f)
+    ### read in species info file
 
-### read in models info file
+    filename = os.path.join(os.getcwd(),'species_info.json')
 
-filename = os.path.join(os.getcwd(),'models_info.json')
+    if os.path.exists(filename) == False:
+        print('ERROR: Cannot find species_info.json file. Check that this exists in the same directory as your notebook.')
 
-if os.path.exists(filename) == False:
-    print('ERROR: Cannot find models_info.json file. Check that this exists in the same directory as your notebook.')
+    with open(filename, "r") as f:
+        s_data = load(f)
 
-with open(filename, "r") as f:
-    m_data = load(f)
+    ### read in models info file
 
-print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
+    filename = os.path.join(os.getcwd(),'models_info.json')
+
+    if os.path.exists(filename) == False:
+        print('ERROR: Cannot find models_info.json file. Check that this exists in the same directory as your notebook.')
+
+    with open(filename, "r") as f:
+        m_data = load(f)
+
+    print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
+
+    ### define colors
+
+    model_colors = {'intem':[['navy','dodgerblue'],
+                             ['dodgerblue','skyblue']],
+                    'elris':[['purple','mediumpurple'],
+                             ['deeppink','pink'],
+                             ['darkorange','red']],
+                    'rhime':[['darkgreen','green'],
+                             ['limegreen','palegreen'],
+                             ['olive','lightgreen']]}
+
+    return s_data,m_data,model_colors
 
 #####################################################################
 
-def set_model_colors(models):
+def set_model_colors(models,model_colors):
     cList = [['darkslateblue','dodgerblue'],
              ['red','lightsalmon'],
              ['green','lightgreen'],
@@ -118,13 +138,15 @@ def set_model_colors(models):
 
 #####################################################################
 
-def set_model_colors_2(models):
+def set_model_colors_2(models,model_colors):
     """
     Sets plotting colors for each model (updates model_colors).
 
     Args:
         models (list of str):
             Keys specifying model names, e.g. ['intem','elris']
+        model_colors (dict of lists):
+            Default lists of colors to be used by each model.
 
     Returns:
         mc (dict of lists):
@@ -171,7 +193,7 @@ def set_model_colors_2(models):
 
 #####################################################################
 
-def read_flux(data_dir,species,models,period_override=None):
+def read_flux(data_dir,species,models,s_data,m_data,period_override=None):
     """
     Extracts flux and country flux timeseries from each model.
     
@@ -182,6 +204,10 @@ def read_flux(data_dir,species,models,period_override=None):
             Gas species, e.g. 'ch4'.
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -242,7 +268,7 @@ def read_flux(data_dir,species,models,period_override=None):
 
 #####################################################################
 
-def slice_flux(ds_all,start_date,end_date,
+def slice_flux(ds_all,start_date,end_date,s_data,
                scale_units=True,species=None):
     """
     Slices the flux datasets to within given time limits and 
@@ -256,6 +282,8 @@ def slice_flux(ds_all,start_date,end_date,
         end_date (str): 
             Date to slice data to, e.g. '2022-01-01' would include all
             data up to 2021-12-31.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
         scale_units (bool): 
             If True, scales country fluxes to Tg or Gy per year.
         species (str):
@@ -300,7 +328,7 @@ def slice_flux(ds_all,start_date,end_date,
 
 #####################################################################
 
-def read_flux_total_fgases(data_dir,species,models,regions,
+def read_flux_total_fgases(data_dir,species,models,regions,s_data,
                            start_date,end_date,period_override=None):
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
@@ -316,6 +344,13 @@ def read_flux_total_fgases(data_dir,species,models,regions,
             Keys specifying model names, e.g. ['intem','elris']
         regions (list of str):
             Region names used to extract fluxes. Only these regions can then be plotted.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        start_date (str):
+            Date to slice data from, e.g. '2021-01-01'
+        end_date (str):
+            Date to slice data to, e.g. '2022-01-01' would include all
+            data up to 2021-12-31.
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -542,12 +577,14 @@ def read_flux_total_fgases(data_dir,species,models,regions,
             
     for m in missing:
         print(f'\nWARNING: Model {m} is missing species: {missing_species[model]}')
-        
+
+    print('To change the files used as the standard for each HFC/PFC, edit the species_filename variable in PARIS_inversion_results.py')
+
     return ds_all
     
 #####################################################################
 
-def read_mf(data_dir,species,models,period_override=None):
+def read_mf(data_dir,species,models,s_data,m_data,period_override=None):
     """
     Extracts mole fraction timeseries data from each model.
     Args:
@@ -557,6 +594,10 @@ def read_mf(data_dir,species,models,period_override=None):
             Gas species, e.g. 'ch4'.
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -612,7 +653,7 @@ def read_mf(data_dir,species,models,period_override=None):
 
 #####################################################################
 
-def slice_mf(ds_all,start_date=None,end_date=None,site=None,
+def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
              baseline_site=None,data_dir=None,
              scale_units=False,
              species=None):
@@ -623,6 +664,8 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
     Args:
         ds_all (dictionary of datasets): 
             xarray datasets read directly from each model's flux netCDF.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
         start_date (str): 
             Date to slice data from, e.g. '2021-01-01'
         end_date (str): 
@@ -808,7 +851,7 @@ def extract_site_info(sites):
 #####################################################################
 
 def plot_obs_modelled_separate(ds_all,species,site,
-                               model_colors,
+                               model_colors,s_data,m_data,
                              include=['Yobs','Yapriori','Yapost'],
                              diff_include=['Yapriori','Yapost'],
                              add_unc=True,
@@ -829,6 +872,10 @@ def plot_obs_modelled_separate(ds_all,species,site,
             Obs site, e.g. 'MHD'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1059,7 +1106,7 @@ def plot_obs_modelled_separate(ds_all,species,site,
 #####################################################################
 
 def plot_obs_modelled_together(ds_all,species,site,
-                               model_colors,
+                               model_colors,s_data,m_data,
                                include=['Yapost'],
                                diff_include=['Yapost'],
                                add_unc=True,
@@ -1080,6 +1127,10 @@ def plot_obs_modelled_together(ds_all,species,site,
             Obs site, e.g. 'MHD'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1284,7 +1335,7 @@ def plot_obs_modelled_together(ds_all,species,site,
 #####################################################################
 
 def plot_obs_diff(ds_all,species,site,
-                               model_colors,
+                               model_colors,s_data,m_data,
                                include=['Yapost'],
                                diff_include=['Yapost'],
                                y_lim=None):
@@ -1306,6 +1357,10 @@ def plot_obs_diff(ds_all,species,site,
             Obs site, e.g. 'MHD'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1499,7 +1554,7 @@ def plot_obs_diff(ds_all,species,site,
 #####################################################################
 
 def plot_stats_mf(pearson,nrmse,species,
-                  model_colors,
+                  model_colors,s_data,m_data,
                   start_date=None,end_date=None):
     """
     Plots fit statistics for all sites, for all models.
@@ -1513,6 +1568,10 @@ def plot_stats_mf(pearson,nrmse,species,
             Gas species, e.g. 'ch4'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         start_date (str) and end_date (str):
             Dates used to title the plot. 
     Returns:
@@ -1704,7 +1763,7 @@ def extract_region_flux(ds_all,m,m0,country):
 #####################################################################
 
 def extract_region_inventory_flux(country,data_dir,species,
-                                  start_date,end_date,
+                                  s_data,start_date,end_date,
                                   inventory_year=None):
     """
     Extracts inventory flux values for regions that exists,
@@ -1776,7 +1835,7 @@ def extract_region_inventory_flux(country,data_dir,species,
 #####################################################################
 
 def plot_country_flux(ds_all,species,plot_regions,
-                      model_colors,
+                      s_data,m_data,model_colors,
                       start_date,end_date,
                       plot_inventory=True,inventory_years=None,
                       data_dir=None,fix_y_axes=False,
@@ -1797,6 +1856,10 @@ def plot_country_flux(ds_all,species,plot_regions,
             Gas species, e.g. 'ch4'.
         plot_regions (list of str):
             Country or regions to plot, e.g. ['UNITED KINGDOM','SWITZERLAND']
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         start_date (str) and end_date (str):
             Start and end dates of the data to plot.
             Used to slice inventory data.
@@ -1927,7 +1990,7 @@ def plot_country_flux(ds_all,species,plot_regions,
             
             for y,i_year in enumerate(inventory_years):
             
-                inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,
+                inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,s_data,
                                                                               start_date,end_date,
                                                                               inventory_year=i_year)
                 
@@ -2173,7 +2236,7 @@ def plot_country_flux(ds_all,species,plot_regions,
 
 #####################################################################
 
-def plot_spatial_flux(ds_all,species,plot_area,cmap=None,
+def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
                       plot_site_locations=False,plot_point_markers=None,
                       season=None):
@@ -2194,6 +2257,10 @@ def plot_spatial_flux(ds_all,species,plot_area,cmap=None,
             Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
             'NWEU','CWEU','EUROPE'.
             A list with [min_lon, max_lon, min_lat, max_lat] can also be provided.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         cmap (str):
             Colour map for flux plots.
         cmap_diff (str):
@@ -2424,7 +2491,7 @@ def plot_spatial_flux(ds_all,species,plot_area,cmap=None,
 
 #####################################################################
 
-def plot_spatial_flux_comparison(ds_all,species,plot_area,
+def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
                                  plot_site_locations=False,plot_point_markers=None):
     """
@@ -2445,6 +2512,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,
         plot_area (str):
             Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
             'NWEU','CWEU'.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         cmap (str):
             Colour map for flux plots.
         cmap_diff (str):
@@ -2636,7 +2707,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,
 
 #####################################################################
 
-def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,
+def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_data,
                                     cmap='viridis',c_border='floralwhite',
                                     var='flux_total_posterior',
                                     chop_by='year',dt=1,period_override=None,
@@ -2657,6 +2728,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,
         end_date (str):
             End date of sliced data, e.g. '2022-01-01' would include all
             data up to 2021-12-31.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         cmap (str):
             Colour map for flux plots.
         c_border (str):
@@ -2987,7 +3062,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,
 
 #####################################################################
 
-def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors):
+def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,m_data):
     """
     Plot the timeseries of data available for each site and model.
     
@@ -3003,6 +3078,8 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors):
             data up to 2021-12-31.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
     """
     siteList = np.sort(np.unique(np.concatenate([ds_all[m].sitenames.values.astype(str) for m in ds_all.keys()])))
 
