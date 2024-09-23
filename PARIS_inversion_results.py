@@ -193,7 +193,7 @@ def set_model_colors_2(models,model_colors):
 
 #####################################################################
 
-def read_flux(data_dir,species,models,s_data,m_data,period_override=None):
+def read_flux(data_dir,species,models,s_data,m_data,period_override=None,verbose=True):
     """
     Extracts flux and country flux timeseries from each model.
     
@@ -211,6 +211,8 @@ def read_flux(data_dir,species,models,s_data,m_data,period_override=None):
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
+        verbose (logical) (optional):
+            If True, print execution tracking messages.
                                        
     Returns:
         ds_all (dictionary of datasets): 
@@ -235,7 +237,7 @@ def read_flux(data_dir,species,models,s_data,m_data,period_override=None):
     ds_all = {}
 
     for m in models:
-        print(f'\nAttempting to read data from {m}')
+        if verbose: print(f'\nAttempting to read data from {m}')
         
         m0 = m.split('_')[0]
         
@@ -244,10 +246,10 @@ def read_flux(data_dir,species,models,s_data,m_data,period_override=None):
         try:
             filepath = glob.glob(os.path.join(data_dir,model_dir,species,
                                               f'{m_data[m]["filename"]}_{s_data[species]["model_species"][m0]}_{period_all[m]}.nc'))
-            print(f'Reading data from: {filepath[0]}')
+            if verbose: print(f'Reading data from: {filepath[0]}')
             with xr.open_dataset(filepath[0]) as in_ds:
                 ds_all[m] = in_ds
-                print('Done!')
+                if verbose: print('Done!')
         except:
             try:
                 if (m_data[m]["filename"].split('_')[-1] == 'std*'):
@@ -328,7 +330,7 @@ def slice_flux(ds_all,start_date,end_date,s_data,
 
 #####################################################################
 
-def read_flux_total_fgases(data_dir,species,models,regions,s_data,
+def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
                            start_date,end_date,period_override=None):
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
@@ -422,9 +424,9 @@ def read_flux_total_fgases(data_dir,species,models,regions,s_data,
             
                 try:
                     model_read = f'{model}_{species_filenames[species]}'
-                    ds_in[model] = read_flux(data_dir,species,[model_read],period_override[s])[model_read]    #edit read_flux so that it searches for correct filename per gas
+                    ds_in[model] = read_flux(data_dir,species,[model_read],s_data,m_data,period_override[s],verbose=False)[model_read]    #edit read_flux so that it searches for correct filename per gas
                     with io.capture_output() as captured:
-                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],scale_units=False,species=None)[model]
+                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],s_data,scale_units=False,species=None)[model]
                 
                 except:
                     print(f'No standard run file for {model} {species}, so looking for {model}_name_edgar')
@@ -557,7 +559,7 @@ def read_flux_total_fgases(data_dir,species,models,regions,s_data,
             try:
                     country_shortnames.append(countrycodes_dict[c])
             except:
-                country_shortnames.append(regions_dict_old[country])
+                country_shortnames.append(regions_dict_old[c])
                 
         ds_all[model] = xr.Dataset({'country_flux_total_prior':(['time',country_coord_name],ds_out_species_total['region_flux_total_prior_out'].values),
                                     'country_flux_total_posterior':(['time',country_coord_name],ds_out_species_total['region_flux_total_posterior_out'].values),
