@@ -260,11 +260,11 @@ def read_flux(data_dir,species,models,s_data,m_data,period_override=None,verbose
                         ds_all[m] = in_ds
                     print('Done!')
                 else:
-                    print(f'Failed!')
-                    print(f'Cannot find {m} file for {species}. This data will not be included')
+                    print(f'\nFailed!')
+                    print(f'Cannot find {m} file for {species}. This data will not be included.')
             except:
                 print(f'Failed!')
-                print(f'Cannot find {m} file for {species}. This data will not be included')
+                print(f'Cannot find {m} file for {species}. This data will not be included.')
     
     return ds_all
 
@@ -429,10 +429,11 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
                         ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],s_data,scale_units=False,species=None)[model]
                 
                 except:
-                    print(f'No standard run file for {model} {species}, so looking for {model}_name_edgar')
-                    ds_in[model] = read_flux(data_dir,species,[f'{model}_name_edgar'],period_override[s])[f'{model}_name_edgar']    #edit read_flux so that it searches for correct filename per gas
+                    print(f'Looking for {model}_name_edgar.')
+                    ds_in[model] = read_flux(data_dir,species,[f'{model}_name_edgar'],s_data,m_data,period_override[s],verbose=False)[f'{model}_name_edgar']    #edit read_flux so that it searches for correct filename per gas
                     with io.capture_output() as captured:
-                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],scale_units=False,species=None)[model]
+                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],s_data,scale_units=False,species=None)[model]
+                    print('Done!')
             except:
                 ds_in[model] = None
                 if species not in missing_species[model]:
@@ -443,7 +444,7 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
                 try:
                     region_time,region_flux_total_posterior,region_flux_total_prior,\
                     region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
-                    region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region)
+                    region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region,verbose=False)
                     
                     region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
                     region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
@@ -576,11 +577,13 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
     for model in models:
         if missing_species[model] != []:
             missing.append(model)
+        else:
+            print(f'\nAll species succesfully read for {model}!')
             
     for m in missing:
         print(f'\nWARNING: Model {m} is missing species: {missing_species[model]}')
 
-    print('To change the files used as the standard for each HFC/PFC, edit the species_filename variable in PARIS_inversion_results.py')
+    print('\nTo change the files used as the standard for each HFC/PFC, edit the species_filename variable in PARIS_inversion_results.py')
 
     return ds_all
     
@@ -1639,7 +1642,7 @@ def plot_stats_mf(pearson,nrmse,species,
 
 #####################################################################
 
-def extract_region_flux(ds_all,m,m0,country):
+def extract_region_flux(ds_all,m,m0,country,verbose=True):
     """
     Finds the index of a chosen region name and extracts the country flux
     variables for this region.
@@ -1661,8 +1664,8 @@ def extract_region_flux(ds_all,m,m0,country):
             try:
                 if m0 == 'intem' and country == 'BELGIUM':
                     country_search = 'BEL-LUX'
-                    print(f'\nNOTE: InTEM does not estimate separate BELGIUM emissions.')
-                    print(f'So a population ratio of {bel_pop_r} is being used to scale InTEM\'s total BELGIUM+LUXEMBOURG estimate.\n')
+                    if verbose: print(f'\nNOTE: InTEM does not estimate separate BELGIUM emissions.')
+                    if verbose: print(f'So a population ratio of {bel_pop_r} is being used to scale InTEM\'s total BELGIUM+LUXEMBOURG estimate.\n')
                     r = bel_pop_r
                 else:
                     country_search = countrycodes_dict[country]
@@ -1697,7 +1700,7 @@ def extract_region_flux(ds_all,m,m0,country):
         
         try:
             region_search = regions_dict[country]
-            print(f'{country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
+            if verbose: print(f'{country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
 
             country_list = region_search.split('-')
 
