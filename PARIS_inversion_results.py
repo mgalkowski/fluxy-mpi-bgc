@@ -1971,6 +1971,9 @@ def plot_country_flux(ds_all,species,plot_regions,
     elif len(plot_regions) < 4:
         n_cols = len(plot_regions)
         n_rows = 1
+    elif len(plot_regions) == 6:
+        n_cols = 3
+        n_rows = 2
     elif len(plot_regions) > 4:
         n_cols = 4
         n_rows = math.ceil(len(plot_regions)/4)
