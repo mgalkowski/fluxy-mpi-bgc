@@ -323,7 +323,7 @@ def slice_flux(ds_all,start_date,end_date,s_data,
     skip_var = ['flux_total_prior','flux_total_posterior','percentile_flux_total_prior',
                 'percentile_flux_total_posterior','countryname','country',
                 'country_fraction','outer_region_fraction',
-                'covariance_country_flux_total_posterior']
+                'covariance_country_flux_total_posterior','flux_total_posterior_inversion_grid']
 
     for m in ds_all.keys():
         
@@ -2101,21 +2101,22 @@ def plot_country_flux(ds_all,species,plot_regions,
                                     region_flux_total_posterior,
                                     label=include_label,color=model_colors[m][0])
                         
-                        ax.plot(region_time,
-                                    region_flux_total_prior,
-                                    label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
+                        if not(plot_combined):
+                            ax.plot(region_time,
+                                        region_flux_total_prior,
+                                        label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
                         
-                        ax.fill_between(region_time,
-                                            region_flux_total_posterior_lower,
-                                            region_flux_total_posterior_upper,
-                                            alpha=0.3,color=model_colors[m][0])
-
-                        if add_prior_unc:
                             ax.fill_between(region_time,
-                                                region_flux_total_prior_lower,
-                                                region_flux_total_prior_upper,
-                                                alpha=0.1,color=model_colors[m][0])
-                            max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
+                                                region_flux_total_posterior_lower,
+                                                region_flux_total_posterior_upper,
+                                                alpha=0.3,color=model_colors[m][0])
+
+                            if add_prior_unc:
+                                ax.fill_between(region_time,
+                                                    region_flux_total_prior_lower,
+                                                    region_flux_total_prior_upper,
+                                                    alpha=0.1,color=model_colors[m][0])
+                                max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
                             
                     
                     min_x.append(np.min(region_time).astype('datetime64[M]'))
@@ -2160,7 +2161,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                 ax.fill_between(region_time.astype('datetime64[ns]'),
                                                 min_country_flux_total_lower,
                                                 max_country_flux_total_upper,
-                                                alpha=0.3,color='black',label='Min/max of post uncertainty')
+                                                alpha=0.3,color='grey',label='Min/max of post uncertainty')
                 '''
                 ax.plot(region_time.astype('datetime64[ns]'),
                                     pdf_mean,
@@ -2247,9 +2248,11 @@ def plot_country_flux(ds_all,species,plot_regions,
             ncol=0   
             if (plot_separate or resample):
                 ncol=len(ds_all.keys())
-            if plot_combined:
-                ncol=ncol+3
-            if plot_inventory == True:
+            if (plot_combined and plot_separate):
+                ncol=math.floor(len(ds_all.keys())/2)+2
+            elif plot_combined:
+                ncol=3
+            if plot_inventory:
                 ncol=ncol+1
             leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,bbox_to_anchor=legend_loc)
             if plot_inventory == True:
