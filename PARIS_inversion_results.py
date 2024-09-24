@@ -12,6 +12,7 @@ import cartopy
 from json import load
 import inspect
 from IPython.utils import io
+import sys
 
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
@@ -496,7 +497,6 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
                  
                 if r == 0:
                     country_out = np.array([region])
-                    region_time_out = region_time
                     region_flux_total_posterior_out = np.expand_dims(region_flux_total_posterior,axis=1)
                     region_flux_total_prior_out = np.expand_dims(region_flux_total_prior,axis=1)
                     region_flux_total_posterior_lower_out = np.expand_dims(region_flux_total_posterior_lower,axis=1)
@@ -558,7 +558,7 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
         country_shortnames = []
         for c in ds_out_species_total['country_out'].values:
             try:
-                    country_shortnames.append(countrycodes_dict[c])
+                country_shortnames.append(countrycodes_dict[c])
             except:
                 country_shortnames.append(regions_dict_old[c])
                 
@@ -704,10 +704,6 @@ def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
             offset = int(np.mean(ds_all[m]['Yav'].values))
         else:
             offset = (ds_all[m].time.values[1].astype('datetime64[h]') - ds_all[m].time.values[0].astype('datetime64[h]')).astype(int)
-
-        # fix to move elris timestamps back to the middle of av period - to be removed once fixed in .nc files
-        if 'elris_old' in m:
-            ds_all[m]['time'] = ds_all[m]['time'] - np.timedelta64(offset,'h')/2
 
         # round seconds to integer (correction for elris)
         if 'elris' in m:
