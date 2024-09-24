@@ -67,15 +67,16 @@ bel_pop = np.array([11.399,11.455,11.522,11.555,11.618,11.723])
 lux_pop = np.array([0.602,0.614,0.626,0.635,0.645,0.661])
 bel_pop_r = np.round(np.mean(bel_pop/(bel_pop+lux_pop)),3)
 
-font = {'size':12}
-plt.rc('font', **font)
-
 #####################################################################
 
-def initialize_settings():
+def initialize_settings(ppt_mode=False):
     """
     Extracts species and models info from json files.
     Defines standard colors for plotting.
+
+    Args:
+        ppt_mode (logical) (optional):
+            If True, use bigger fonts (ideal for presentation slides)
 
     Returns:
         s_data (dict of dict):
@@ -118,6 +119,27 @@ def initialize_settings():
                     'rhime':[['darkgreen','green'],
                              ['limegreen','palegreen'],
                              ['olive','lightgreen']]}
+
+    ### font settings
+
+    if (ppt_mode):
+        plt.rc('font', size=15)
+        plt.rc('axes', titlesize=18)
+        plt.rc('axes', labelsize=16)
+        plt.rc('xtick', labelsize=15)
+        plt.rc('ytick', labelsize=15)
+        plt.rc('legend', fontsize=14)
+
+        print('''WARNING: Using bigger fonts.
+         For the histograms, you will have to adapt the variable annotate_coords manually.
+         For the spatial maps, you might need to shrink the labels.''')
+    else:
+        plt.rc('font', size=12)
+        plt.rc('axes', titlesize=12)
+        plt.rc('axes', labelsize=12)
+        plt.rc('xtick', labelsize=12)
+        plt.rc('ytick', labelsize=12)
+        plt.rc('legend', fontsize=10)
 
     return s_data,m_data,model_colors
 
@@ -852,7 +874,7 @@ def extract_site_info(sites):
 #####################################################################
 
 def plot_obs_modelled_separate(ds_all,species,site,
-                               model_colors,s_data,m_data,
+                               model_colors,s_data,m_data,ppt_mode=False,
                              include=['Yobs','Yapriori','Yapost'],
                              diff_include=['Yapriori','Yapost'],
                              add_unc=True,
@@ -877,6 +899,8 @@ def plot_obs_modelled_separate(ds_all,species,site,
             Dictionary of species with information for plotting (read from json file).
         m_data (dict of dict):
             Dictionary of inversion runs with filename and plot label (read from json file).
+        ppt_mode (logical) (optional):
+            If True, adjust annotation position to accomodate bigger fonts.
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1067,7 +1091,11 @@ def plot_obs_modelled_separate(ds_all,species,site,
 
         # Write number of obs to plot
         n_obs = (~np.isnan(ds_all[m]['Yobs'].values)).sum()
-        ax2.annotate('\n$N_{obs}$: '+str(n_obs),xy=[0.65,1.05],xycoords='axes fraction',color='k')
+        if (ppt_mode):
+            pos_xy = [0.57,1.05]
+        else:
+            pos_xy = [0.65,1.05]
+        ax2.annotate('\n$N_{obs}$: '+str(n_obs),xy=pos_xy,xycoords='axes fraction',color='k')
 
         ax2.set_xlabel(legend_hist)
     
@@ -1090,6 +1118,8 @@ def plot_obs_modelled_separate(ds_all,species,site,
             ax.xaxis.set_major_locator(YearLocator())
         else:
             ax.xaxis.set_major_locator(MonthLocator())
+            if (ppt_mode):
+                ax.tick_params(axis='x', rotation=70)
                     
     if y_lim == None:    
         for i in range(len(models)):
@@ -1837,7 +1867,7 @@ def extract_region_inventory_flux(country,data_dir,species,
 
 def plot_country_flux(ds_all,species,plot_regions,
                       s_data,m_data,model_colors,
-                      start_date,end_date,
+                      start_date,end_date,ppt_mode=False,
                       plot_inventory=True,inventory_years=None,
                       data_dir=None,fix_y_axes=False,
                       add_prior_unc=False, set_global_leg=False,
@@ -1864,6 +1894,8 @@ def plot_country_flux(ds_all,species,plot_regions,
         start_date (str) and end_date (str):
             Start and end dates of the data to plot.
             Used to slice inventory data.
+        ppt_mode (logical) (optional):
+            If True, adjust global legend position to accomodate bigger fonts.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         plot_inventory (bool):
@@ -2164,7 +2196,7 @@ def plot_country_flux(ds_all,species,plot_regions,
         
         ncol = 2
         if set_global_leg == False:
-            leg = ax.legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
+            leg = ax.legend(ncol=ncol,borderpad=.4,columnspacing=1.0)
             if plot_inventory == True:
                 for l in leg.legendHandles[:-1]:
                     l.set_linewidth(3.0)
@@ -2205,7 +2237,10 @@ def plot_country_flux(ds_all,species,plot_regions,
         
         if set_global_leg:
             if n_rows > 1:
-                legend_loc = (0.5, 1.07)
+                if (ppt_mode):
+                    legend_loc = (0.5, 1.1)
+                else:
+                    legend_loc = (0.5, 1.07)
             else:
                 legend_loc = (0.5, 1.15)
             handles, labels = ax.get_legend_handles_labels()
@@ -2216,7 +2251,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                 ncol=ncol+3
             if plot_inventory == True:
                 ncol=ncol+1
-            leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,bbox_to_anchor=legend_loc)
+            leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,bbox_to_anchor=legend_loc)
             if plot_inventory == True:
                 for l in leg.legendHandles:
                     l.set_linewidth(3.0)
@@ -2495,7 +2530,7 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
 
 #####################################################################
 
-def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,
+def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode=False,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
                                  plot_site_locations=False,plot_point_markers=None):
     """
@@ -2520,6 +2555,8 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,
             Dictionary of species with information for plotting (read from json file).
         m_data (dict of dict):
             Dictionary of inversion runs with filename and plot label (read from json file).
+        ppt_mode (logical) (optional):
+            If True, adjust label position to accomodate bigger fonts.
         cmap (str):
             Colour map for flux plots.
         cmap_diff (str):
@@ -2692,11 +2729,16 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,
     cbar.set_array(levels)
     cbar.set_clim(s_data[species]['fluxlim'])
 
+    if (ppt_mode):
+        labelpad_v = 20
+    else:
+        labelpad_v = 5
+
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[0],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)', labelpad=labelpad_v)
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[1],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)',labelpad=labelpad_v)
 
     #difference colorbar
     levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
@@ -2705,7 +2747,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,
     cbar_diff.set_clim(s_data[species]['difflim'])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='horizontal',extend='both',ax=ax[2],shrink=0.9,pad=0.01)
-    color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)',labelpad=labelpad_v)
     
     return fig
 
@@ -3001,9 +3043,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                 ax_var.set_title(f'{time_out}')
                 if i == 0:
                     if '\n' in m_data[m]["label"]:
-                        ax_var.text(-0.14, 0.25, f'{m_data[m]["label"]}', size=14, transform=ax_var.transAxes, rotation=90)
+                        ax_var.text(-0.14, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
                     else:
-                        ax_var.text(-0.07, 0.25, f'{m_data[m]["label"]}', size=14, transform=ax_var.transAxes, rotation=90)
+                        ax_var.text(-0.07, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
                 
             # Add site location
             if plot_site_locations == True:
