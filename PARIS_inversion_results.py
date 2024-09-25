@@ -405,22 +405,6 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
               'To fix this error, set start_date and end_date as lists with the correct start and end times\nfor each model.')
         start_date = [start_date]*len(models)
         end_date = [end_date]*len(models)
-        
-    species_filenames = {'hfc134a':'name_edgar',
-                     'hfc143a':'name_edgar',
-                     'hfc125':'name_edgar',
-                     'hfc32':'name_edgar',
-                     'hfc23':'name_flat',
-                     'hfc152a':'name_flat',
-                     'hfc365mfc':'name_flat',
-                     'hfc4310mee':'name_flat',
-                     'hfc245fa':'name_flat',
-                     'hfc227ea':'name_flat',
-                     'pfc218':'name_flat',
-                     'pfc318':'name_flat',
-                     'pfc116':'name_edgarminval',
-                     'cf4':'name_edgarminval',
-                     'sf6':'name_flat'}
 
     if period_override == None:
         period_override = [None]*len(all_species)
@@ -431,11 +415,11 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
 
     for m,model in enumerate(models):
         
+        longrun = False
         if 'longrun' in model:
             model = model.split('_')[0]
             models[m] = model
-            for f in species_filenames.keys():
-                species_filenames[f] = f'{species_filenames[f]}_longrun'
+            longrun = True
 
         missing_species[model] = []
         m0 = model.split('_')[0]
@@ -446,21 +430,15 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
             #dictionary containing datasets for each species, these are then summed/averaged across the time coordinate
             ds_out = {}
             
-            #tries to read from standard filename, as listed above, if this fails, tries 'model_name_edgar', if this fails, skips this species
+            #tries to read from standard filename
             try:
-            
-                try:
-                    model_read = f'{model}_{species_filenames[species]}'
-                    ds_in[model] = read_flux(data_dir,species,[model_read],s_data,m_data,period_override[s],verbose=False)[model_read]    #edit read_flux so that it searches for correct filename per gas
-                    with io.capture_output() as captured:
-                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],s_data,scale_units=False,species=None)[model]
+                model_read = f'{model}_{s_data[species]["std_run"][m0]}'
+                if longrun: model_read = f'{model_read}_longrun'
                 
-                except:
-                    print(f'Looking for {model}_name_edgar.')
-                    ds_in[model] = read_flux(data_dir,species,[f'{model}_name_edgar'],s_data,m_data,period_override[s],verbose=False)[f'{model}_name_edgar']    #edit read_flux so that it searches for correct filename per gas
-                    with io.capture_output() as captured:
-                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],s_data,scale_units=False,species=None)[model]
-                    print('Done!')
+                ds_in[model] = read_flux(data_dir,species,[model_read],s_data,m_data,period_override[s],verbose=False)[model_read]    #edit read_flux so that it searches for correct filename per gas
+                with io.capture_output() as captured:
+                    ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],s_data,scale_units=False,species=None)[model]
+
             except:
                 ds_in[model] = None
                 if species not in missing_species[model]:
@@ -609,7 +587,7 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
     for m in missing:
         print(f'\nWARNING: Model {m} is missing species: {missing_species[model]}')
 
-    print('\nTo change the files used as the standard for each HFC/PFC, edit the species_filename variable in PARIS_inversion_results.py')
+    print('\nTo change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
 
     return ds_all
     
