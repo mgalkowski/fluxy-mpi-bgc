@@ -1359,6 +1359,8 @@ def plot_obs_modelled_together(ds_all,species,site,
         ax.xaxis.set_major_locator(YearLocator())
     else:
         ax.xaxis.set_major_locator(MonthLocator())
+        if (ppt_mode):
+            ax.tick_params(axis='x', rotation=70)
         
     if y_lim is None:
         ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
@@ -1580,6 +1582,8 @@ def plot_obs_diff(ds_all,species,site,
         ax.xaxis.set_major_locator(YearLocator())
     else:
         ax.xaxis.set_major_locator(MonthLocator())
+        if (ppt_mode):
+            ax.tick_params(axis='x', rotation=70)
         
     if y_lim is None:
         ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
