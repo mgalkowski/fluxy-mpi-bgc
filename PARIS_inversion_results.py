@@ -906,7 +906,7 @@ def plot_obs_modelled_separate(ds_all,species,site,
         annotate_coords (dict of lists):
             Coordinates to annotate histogram.
         ppt_mode (logical) (optional):
-            If True, adjust annotation position to accomodate bigger fonts.
+            If True, adjust annotation position and xlabel rotation to accomodate bigger fonts.
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1143,7 +1143,7 @@ def plot_obs_modelled_separate(ds_all,species,site,
 #####################################################################
 
 def plot_obs_modelled_together(ds_all,species,site,
-                               model_colors,s_data,m_data,annotate_coords,
+                               model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
                                include=['Yapost'],
                                diff_include=['Yapost'],
                                add_unc=True,
@@ -1170,6 +1170,8 @@ def plot_obs_modelled_together(ds_all,species,site,
             Dictionary of inversion runs with filename and plot label (read from json file).
         annotate_coords (dict of lists):
             Coordinates to annotate histogram.
+        ppt_mode (logical) (optional):
+            If True, adjust xlabel rotation to accomodate bigger fonts.
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1376,7 +1378,7 @@ def plot_obs_modelled_together(ds_all,species,site,
 #####################################################################
 
 def plot_obs_diff(ds_all,species,site,
-                               model_colors,s_data,m_data,annotate_coords,
+                               model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
                                include=['Yapost'],
                                diff_include=['Yapost'],
                                y_lim=None):
@@ -1404,6 +1406,8 @@ def plot_obs_diff(ds_all,species,site,
             Dictionary of inversion runs with filename and plot label (read from json file).
         annotate_coords (dict of lists):
             Coordinates to annotate histogram.
+        ppt_mode (logical) (optional):
+            If True, adjust xlabel rotation to accomodate bigger fonts.
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
