@@ -58,10 +58,6 @@ regions_dict_old = {'CW_EU':'AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX
 
 countrycodes_dict.update(regions_dict)
 
-annotate_coords = {0:[0.6,0.80],
-                   1:[0.6,0.60],
-                   2:[0.6,0.40]}
-
 # population from 2018 to 2023 (at Jan 1 each year)
 bel_pop = np.array([11.399,11.455,11.522,11.555,11.618,11.723])
 lux_pop = np.array([0.602,0.614,0.626,0.635,0.645,0.661])
@@ -85,6 +81,8 @@ def initialize_settings(ppt_mode=False):
             Dictionary of inversion runs with filename and plot label (read from json file).
         model_colors (dict of lists):
             Default lists of colors to be used by each model.
+        annotate_coords (dict of lists):
+            Coordinates to annotate histogram.
     """
 
     ### read in species info file
@@ -120,7 +118,7 @@ def initialize_settings(ppt_mode=False):
                              ['limegreen','palegreen'],
                              ['olive','lightgreen']]}
 
-    ### font settings
+    ### font settings & annotate_coords
 
     if (ppt_mode):
         plt.rc('font', size=15)
@@ -130,9 +128,11 @@ def initialize_settings(ppt_mode=False):
         plt.rc('ytick', labelsize=15)
         plt.rc('legend', fontsize=14)
 
-        print('''WARNING: Using bigger fonts.
-         For the histograms, you will have to adapt the variable annotate_coords manually.
-         For the spatial maps, you might need to shrink the labels.''')
+        annotate_coords = {0:[0.58,0.65],
+                           1:[0.58,0.40],
+                           2:[0.58,0.15]}
+
+        print('WARNING: Using big fonts. You might need to shrink the labels.')
     else:
         plt.rc('font', size=12)
         plt.rc('axes', titlesize=12)
@@ -141,7 +141,11 @@ def initialize_settings(ppt_mode=False):
         plt.rc('ytick', labelsize=12)
         plt.rc('legend', fontsize=10)
 
-    return s_data,m_data,model_colors
+        annotate_coords = {0:[0.6,0.80],
+                           1:[0.6,0.60],
+                           2:[0.6,0.40]}
+
+    return s_data,m_data,model_colors,annotate_coords
 
 #####################################################################
 
@@ -874,7 +878,7 @@ def extract_site_info(sites):
 #####################################################################
 
 def plot_obs_modelled_separate(ds_all,species,site,
-                               model_colors,s_data,m_data,ppt_mode=False,
+                               model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
                              include=['Yobs','Yapriori','Yapost'],
                              diff_include=['Yapriori','Yapost'],
                              add_unc=True,
@@ -899,6 +903,8 @@ def plot_obs_modelled_separate(ds_all,species,site,
             Dictionary of species with information for plotting (read from json file).
         m_data (dict of dict):
             Dictionary of inversion runs with filename and plot label (read from json file).
+        annotate_coords (dict of lists):
+            Coordinates to annotate histogram.
         ppt_mode (logical) (optional):
             If True, adjust annotation position to accomodate bigger fonts.
         include (list of str):
@@ -1137,7 +1143,7 @@ def plot_obs_modelled_separate(ds_all,species,site,
 #####################################################################
 
 def plot_obs_modelled_together(ds_all,species,site,
-                               model_colors,s_data,m_data,
+                               model_colors,s_data,m_data,annotate_coords,
                                include=['Yapost'],
                                diff_include=['Yapost'],
                                add_unc=True,
@@ -1162,6 +1168,8 @@ def plot_obs_modelled_together(ds_all,species,site,
             Dictionary of species with information for plotting (read from json file).
         m_data (dict of dict):
             Dictionary of inversion runs with filename and plot label (read from json file).
+        annotate_coords (dict of lists):
+            Coordinates to annotate histogram.
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1366,7 +1374,7 @@ def plot_obs_modelled_together(ds_all,species,site,
 #####################################################################
 
 def plot_obs_diff(ds_all,species,site,
-                               model_colors,s_data,m_data,
+                               model_colors,s_data,m_data,annotate_coords,
                                include=['Yapost'],
                                diff_include=['Yapost'],
                                y_lim=None):
@@ -1392,6 +1400,8 @@ def plot_obs_diff(ds_all,species,site,
             Dictionary of species with information for plotting (read from json file).
         m_data (dict of dict):
             Dictionary of inversion runs with filename and plot label (read from json file).
+        annotate_coords (dict of lists):
+            Coordinates to annotate histogram.
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
