@@ -315,9 +315,9 @@
             "fluxlim":[0,5e-14],
             "difflim":[-5e-14,5e-14],
             "gwp":11100,
-            "std_run":{"intem":"name_edgar_minval",
-                       "rhime":"name_edgar_minval",
-                       "elris":"name_edgar_minval"}
+            "std_run":{"intem":"name_edgarminval",
+                       "rhime":"name_edgarminval",
+                       "elris":"name_edgarminval"}
             },   
     "cf4":{
             "species_print":"PFC-14",
@@ -337,9 +337,9 @@
             "fluxlim":[0,5e-14],
             "difflim":[-5e-14,5e-14],
             "gwp":6630,
-            "std_run":{"intem":"name_edgar_minval",
-                       "rhime":"name_edgar_minval",
-                       "elris":"name_edgar_minval"}
+            "std_run":{"intem":"name_edgarminval",
+                       "rhime":"name_edgarminval",
+                       "elris":"name_edgarminval"}
             },   
 
     "sf6":{
