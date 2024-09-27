@@ -443,7 +443,7 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
                 ds_in[model] = None
                 if species not in missing_species[model]:
                     missing_species[model].append(species)
-                        
+
             for r,region in enumerate(regions):
                 
                 try:
@@ -585,7 +585,7 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
             print(f'\nAll species succesfully read for {model}!')
             
     for m in missing:
-        print(f'\nWARNING: Model {m} is missing species: {missing_species[model]}')
+        print(f'\nWARNING: Model {m} is missing species: {missing_species[m]}')
 
     print('\nTo change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
 
