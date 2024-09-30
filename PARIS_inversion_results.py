@@ -1868,7 +1868,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                       s_data,m_data,model_colors,
                       start_date,end_date,ppt_mode=False,
                       plot_inventory=True,inventory_years=None,
-                      data_dir=None,fix_y_axes=False,
+                      data_dir=None,fix_y_axes=False,add_prior=True,
                       add_prior_unc=False, set_global_leg=False,
                       country_codes_as_titles=None,plot_separate=True,
                       plot_combined=False,resample=None,
@@ -1906,16 +1906,22 @@ def plot_country_flux(ds_all,species,plot_regions,
             Path to top data directory, used to read inventory data files.
         fix_y_axes (bool):
             If True, uses a consistent y axis for all plots.
+        add_prior (bool):
+            If True, plots prior as dashed lines.
         add_prior_unc (bool):
             If True, plots prior uncertainty as shaded area.
         set_global_leg (bool):
             If True, plots one single legend instead of one legend per subplot.
         country_codes_as_titles (bool)
             If True, uses list of country codes as titles, instead of the region names.
-        plot_separate (bool):
-            If True, plots model results as separate lines.
-        plot_combined (bool):
-            If True, plots combined average results from all models.
+        plot_separate (list of bool or bool):
+            If True, plots model result as separate line.
+            List must be of same size as models, e.g. [True, False, False].
+            If a single boolean is provided, the same flag is assumed for all models.
+        plot_combined (list of bool or bool):
+            If True, the model is included in combined average result to be plotted.
+            List must be of same size as models, e.g. [False, True, True].
+            If a single boolean is provided, the same flag is assumed for all models.
         resample (str):
             Option to be passed to resample built-in function of xarray Dataset. 
             For yearly average, 'YS' option should be used; 'QS-DEC' for seasonaly average.
@@ -1931,6 +1937,21 @@ def plot_country_flux(ds_all,species,plot_regions,
             A plot per country/region.
     """
     
+    # Check input flags
+    if type(plot_separate) == list:
+        if len(plot_separate) != len(ds_all.keys()):
+            print('ERROR: plot_separate must be a boolean or a list of booleans of the same length as models.')
+            return None
+    else:
+        plot_separate = [plot_separate]*len(ds_all.keys())
+
+    if type(plot_combined) == list:
+        if len(plot_combined) != len(ds_all.keys()):
+            print('ERROR: plot_combined must be a boolean or a list of booleans of the same length as models.')
+            return None
+    else:
+        plot_combined = [plot_combined]*len(ds_all.keys())
+
     # Create annual mean xarrays if needed
     if resample is not None:
 
@@ -1997,11 +2018,13 @@ def plot_country_flux(ds_all,species,plot_regions,
     else:
         ds_all_p = ds_all.copy()
 
+    # Initialize variables
     max_cf = np.zeros(len(plot_regions))
     min_x = []
     max_x = []
     period_all = {}
     
+    # Create figure
     if len(plot_regions) == 4:
         n_cols = 2
         n_rows = 2
@@ -2054,6 +2077,7 @@ def plot_country_flux(ds_all,species,plot_regions,
         for ds in all_datasets:
         
             post_pdfs = {}
+            k = 0
             
             for j,m in enumerate(ds.keys()):
                 
@@ -2076,13 +2100,14 @@ def plot_country_flux(ds_all,species,plot_regions,
                 
                 if region_time is not None:
             
-                    if plot_combined == True:
+                    if plot_combined[j] == True:
                 
-                        if j == 0:
+                        if k == 0:
                             all_region_flux_total_posterior = region_flux_total_posterior
                             all_region_flux_total_prior = region_flux_total_prior
                             all_region_flux_total_lower = region_flux_total_posterior_lower
                             all_region_flux_total_upper = region_flux_total_posterior_upper
+                            k+=1
                         else:
                             all_region_flux_total_posterior = np.vstack((all_region_flux_total_posterior,
                                                                         region_flux_total_posterior))
@@ -2097,8 +2122,10 @@ def plot_country_flux(ds_all,species,plot_regions,
                                                                                 scale=np.mean(np.array([region_flux_total_posterior[t]-region_flux_total_posterior_lower[t],
                                                                                                         region_flux_total_posterior_upper[t]-region_flux_total_posterior[t]])),
                                                                                 size=1000) for t in range(region_time.shape[0])])
+                    else:
+                        post_pdfs[m] = None
                                 
-                    if plot_separate == True:
+                    if plot_separate[j] == True:
                         if ds_count == 0:
                             include_label = m_data[m]["label"]
                             include_label_prior = f'{m_data[m]["label"]} prior'
@@ -2110,22 +2137,23 @@ def plot_country_flux(ds_all,species,plot_regions,
                                     region_flux_total_posterior,
                                     label=include_label,color=model_colors[m][0])
                         
-                        if not(plot_combined):
-                            ax.plot(region_time,
-                                        region_flux_total_prior,
-                                        label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
-                        
+                        if not(plot_combined[j]):
                             ax.fill_between(region_time,
                                                 region_flux_total_posterior_lower,
                                                 region_flux_total_posterior_upper,
                                                 alpha=0.3,color=model_colors[m][0])
 
-                            if add_prior_unc:
-                                ax.fill_between(region_time,
-                                                    region_flux_total_prior_lower,
-                                                    region_flux_total_prior_upper,
-                                                    alpha=0.1,color=model_colors[m][0])
-                                max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
+                            if add_prior:
+                                ax.plot(region_time,
+                                            region_flux_total_prior,
+                                            label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
+
+                                if add_prior_unc:
+                                    ax.fill_between(region_time,
+                                                        region_flux_total_prior_lower,
+                                                        region_flux_total_prior_upper,
+                                                        alpha=0.1,color=model_colors[m][0])
+                                    max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
                             
                     
                     min_x.append(np.min(region_time).astype('datetime64[M]'))
@@ -2136,7 +2164,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                         if inventory_flux is not None:
                             max_cf[i] = np.nanmax((max_cf[i],np.nanmax(inventory_flux)))
 
-            if plot_combined == True:
+            if sum(plot_combined) != 0:
                 
                 #if i == 0:
                     #print('\nNOTE: This currently assumes that posterior PDFs are Gaussian. The average percentile is used '+
@@ -2149,6 +2177,10 @@ def plot_country_flux(ds_all,species,plot_regions,
                 min_country_flux_total_lower = np.min(all_region_flux_total_lower,axis=0)
                 max_country_flux_total_upper = np.max(all_region_flux_total_upper,axis=0)
                 '''
+                # NOTE: This section of code is not prepared for type(plot_combined) == list
+                #       When plot_combined[j] == False, post_pdfs[m] = None
+                #       Plese revise the implementation before uncommenting.
+
                 for j,m in enumerate(ds.keys()):
                     if j == 0:
                         pdf_all = np.array([np.random.choice(post_pdfs[m][t,:],500) for t in range(post_pdfs[m].shape[0])])
@@ -2162,9 +2194,10 @@ def plot_country_flux(ds_all,species,plot_regions,
                 ax.plot(region_time.astype('datetime64[ns]'),
                                 mean_country_flux_total_posterior,
                                 label='Mean posterior',color='black',linewidth=3.5)
-                ax.plot(region_time.astype('datetime64[ns]'),
-                                    mean_country_flux_total_prior,
-                                    label='Mean prior',color='black',linestyle='dashed')
+                if add_prior:
+                    ax.plot(region_time.astype('datetime64[ns]'),
+                                        mean_country_flux_total_prior,
+                                        label='Mean prior',color='black',linestyle='dashed')
                 
                 ax.fill_between(region_time.astype('datetime64[ns]'),
                                                 min_country_flux_total_lower,
