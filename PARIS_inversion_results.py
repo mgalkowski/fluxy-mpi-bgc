@@ -12,15 +12,7 @@ import cartopy
 from json import load
 import inspect
 from IPython.utils import io
-
-model_colors = {'intem':[['navy','dodgerblue'],
-                         ['dodgerblue','skyblue']],
-                'elris':[['purple','mediumpurple'],
-                         ['deeppink','pink'],
-                         ['darkorange','red']],
-                'rhime':[['darkgreen','green'],
-                         ['limegreen','palegreen'],
-                         ['olive','lightgreen']]}
+import sys
 
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
@@ -28,7 +20,7 @@ model_q_indices = {'intem':[0,1],
 
 point_source_dict = {'paris':[2.340430,48.860050],
                      'london':[-0.127799,51.507593],
-                 'nw_england':[-2.796870,53.774820]}
+                     'nw_england':[-2.796870,53.774820]}
 
 countrycodes_dict = {'IRELAND':'IRL',
                      'UK':'GBR',
@@ -66,43 +58,98 @@ regions_dict_old = {'CW_EU':'AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX
 
 countrycodes_dict.update(regions_dict)
 
-annotate_coords = {0:[0.6,0.80],
-                   1:[0.6,0.60],
-                   2:[0.6,0.40]}
-
 # population from 2018 to 2023 (at Jan 1 each year)
 bel_pop = np.array([11.399,11.455,11.522,11.555,11.618,11.723])
 lux_pop = np.array([0.602,0.614,0.626,0.635,0.645,0.661])
 bel_pop_r = np.round(np.mean(bel_pop/(bel_pop+lux_pop)),3)
 
-font = {'size':12}
-plt.rc('font', **font)
+#####################################################################
 
-### read in species info file
+def initialize_settings(ppt_mode=False):
+    """
+    Extracts species and models info from json files.
+    Defines standard colors for plotting.
 
-filename = os.path.join(os.getcwd(),'species_info.json')
+    Args:
+        ppt_mode (logical) (optional):
+            If True, use bigger fonts (ideal for presentation slides)
 
-if os.path.exists(filename) == False:
-    print('ERROR: Cannot find species_info.json file. Check that this exists in the same directory as your notebook.')
+    Returns:
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
+        model_colors (dict of lists):
+            Default lists of colors to be used by each model.
+        annotate_coords (dict of lists):
+            Coordinates to annotate histogram.
+    """
 
-with open(filename, "r") as f:
-    s_data = load(f)
+    ### read in species info file
 
-### read in models info file
+    filename = os.path.join(os.getcwd(),'species_info.json')
 
-filename = os.path.join(os.getcwd(),'models_info.json')
+    if os.path.exists(filename) == False:
+        print('ERROR: Cannot find species_info.json file. Check that this exists in the same directory as your notebook.')
 
-if os.path.exists(filename) == False:
-    print('ERROR: Cannot find models_info.json file. Check that this exists in the same directory as your notebook.')
+    with open(filename, "r") as f:
+        s_data = load(f)
 
-with open(filename, "r") as f:
-    m_data = load(f)
+    ### read in models info file
 
-print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
+    filename = os.path.join(os.getcwd(),'models_info.json')
+
+    if os.path.exists(filename) == False:
+        print('ERROR: Cannot find models_info.json file. Check that this exists in the same directory as your notebook.')
+
+    with open(filename, "r") as f:
+        m_data = load(f)
+
+    print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
+
+    ### define colors
+
+    model_colors = {'intem':[['navy','dodgerblue'],
+                             ['dodgerblue','skyblue']],
+                    'elris':[['purple','mediumpurple'],
+                             ['deeppink','pink'],
+                             ['darkorange','red']],
+                    'rhime':[['darkgreen','green'],
+                             ['limegreen','palegreen'],
+                             ['olive','lightgreen']]}
+
+    ### font settings & annotate_coords
+
+    if (ppt_mode):
+        plt.rc('font', size=15)
+        plt.rc('axes', titlesize=18)
+        plt.rc('axes', labelsize=16)
+        plt.rc('xtick', labelsize=15)
+        plt.rc('ytick', labelsize=15)
+        plt.rc('legend', fontsize=14)
+
+        annotate_coords = {0:[0.58,0.65],
+                           1:[0.58,0.40],
+                           2:[0.58,0.15]}
+
+        print('WARNING: Using big fonts. You might need to shrink the labels.')
+    else:
+        plt.rc('font', size=12)
+        plt.rc('axes', titlesize=12)
+        plt.rc('axes', labelsize=12)
+        plt.rc('xtick', labelsize=12)
+        plt.rc('ytick', labelsize=12)
+        plt.rc('legend', fontsize=10)
+
+        annotate_coords = {0:[0.6,0.80],
+                           1:[0.6,0.60],
+                           2:[0.6,0.40]}
+
+    return s_data,m_data,model_colors,annotate_coords
 
 #####################################################################
 
-def set_model_colors(models):
+def set_model_colors(models,model_colors):
     cList = [['darkslateblue','dodgerblue'],
              ['red','lightsalmon'],
              ['green','lightgreen'],
@@ -118,13 +165,15 @@ def set_model_colors(models):
 
 #####################################################################
 
-def set_model_colors_2(models):
+def set_model_colors_2(models,model_colors):
     """
     Sets plotting colors for each model (updates model_colors).
 
     Args:
         models (list of str):
             Keys specifying model names, e.g. ['intem','elris']
+        model_colors (dict of lists):
+            Default lists of colors to be used by each model.
 
     Returns:
         mc (dict of lists):
@@ -171,7 +220,7 @@ def set_model_colors_2(models):
 
 #####################################################################
 
-def read_flux(data_dir,species,models,period_override=None):
+def read_flux(data_dir,species,models,s_data,m_data,period_override=None,verbose=True):
     """
     Extracts flux and country flux timeseries from each model.
     
@@ -182,9 +231,15 @@ def read_flux(data_dir,species,models,period_override=None):
             Gas species, e.g. 'ch4'.
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
+        verbose (logical) (optional):
+            If True, print execution tracking messages.
                                        
     Returns:
         ds_all (dictionary of datasets): 
@@ -209,7 +264,7 @@ def read_flux(data_dir,species,models,period_override=None):
     ds_all = {}
 
     for m in models:
-        print(f'\nAttempting to read data from {m}')
+        if verbose: print(f'\nAttempting to read data from {m}')
         
         m0 = m.split('_')[0]
         
@@ -218,10 +273,10 @@ def read_flux(data_dir,species,models,period_override=None):
         try:
             filepath = glob.glob(os.path.join(data_dir,model_dir,species,
                                               f'{m_data[m]["filename"]}_{s_data[species]["model_species"][m0]}_{period_all[m]}.nc'))
-            print(f'Reading data from: {filepath[0]}')
+            if verbose: print(f'Reading data from: {filepath[0]}')
             with xr.open_dataset(filepath[0]) as in_ds:
                 ds_all[m] = in_ds
-                print('Done!')
+                if verbose: print('Done!')
         except:
             try:
                 if (m_data[m]["filename"].split('_')[-1] == 'std*'):
@@ -232,17 +287,17 @@ def read_flux(data_dir,species,models,period_override=None):
                         ds_all[m] = in_ds
                     print('Done!')
                 else:
-                    print(f'Failed!')
-                    print(f'Cannot find {m} file for {species}. This data will not be included')
+                    print(f'\nFailed!')
+                    print(f'Cannot find {m} file for {species}. This data will not be included.')
             except:
                 print(f'Failed!')
-                print(f'Cannot find {m} file for {species}. This data will not be included')
+                print(f'Cannot find {m} file for {species}. This data will not be included.')
     
     return ds_all
 
 #####################################################################
 
-def slice_flux(ds_all,start_date,end_date,
+def slice_flux(ds_all,start_date,end_date,s_data,
                scale_units=True,species=None):
     """
     Slices the flux datasets to within given time limits and 
@@ -256,6 +311,8 @@ def slice_flux(ds_all,start_date,end_date,
         end_date (str): 
             Date to slice data to, e.g. '2022-01-01' would include all
             data up to 2021-12-31.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
         scale_units (bool): 
             If True, scales country fluxes to Tg or Gy per year.
         species (str):
@@ -270,7 +327,7 @@ def slice_flux(ds_all,start_date,end_date,
     skip_var = ['flux_total_prior','flux_total_posterior','percentile_flux_total_prior',
                 'percentile_flux_total_posterior','countryname','country',
                 'country_fraction','outer_region_fraction',
-                'covariance_country_flux_total_posterior']
+                'covariance_country_flux_total_posterior','flux_total_posterior_inversion_grid']
 
     for m in ds_all.keys():
         
@@ -300,7 +357,7 @@ def slice_flux(ds_all,start_date,end_date,
 
 #####################################################################
 
-def read_flux_total_fgases(data_dir,species,models,regions,
+def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
                            start_date,end_date,period_override=None):
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
@@ -316,6 +373,13 @@ def read_flux_total_fgases(data_dir,species,models,regions,
             Keys specifying model names, e.g. ['intem','elris']
         regions (list of str):
             Region names used to extract fluxes. Only these regions can then be plotted.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        start_date (str):
+            Date to slice data from, e.g. '2021-01-01'
+        end_date (str):
+            Date to slice data to, e.g. '2022-01-01' would include all
+            data up to 2021-12-31.
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -341,22 +405,6 @@ def read_flux_total_fgases(data_dir,species,models,regions,
               'To fix this error, set start_date and end_date as lists with the correct start and end times\nfor each model.')
         start_date = [start_date]*len(models)
         end_date = [end_date]*len(models)
-        
-    species_filenames = {'hfc134a':'name_edgar',
-                     'hfc143a':'name_edgar',
-                     'hfc125':'name_edgar',
-                     'hfc32':'name_edgar',
-                     'hfc23':'name_flat',
-                     'hfc152a':'name_flat',
-                     'hfc365mfc':'name_flat',
-                     'hfc4310mee':'name_flat',
-                     'hfc245fa':'name_flat',
-                     'hfc227ea':'name_flat',
-                     'pfc218':'name_flat',
-                     'pfc318':'name_flat',
-                     'pfc116':'name_edgarminval',
-                     'cf4':'name_edgarminval',
-                     'sf6':'name_flat'}
 
     if period_override == None:
         period_override = [None]*len(all_species)
@@ -367,11 +415,11 @@ def read_flux_total_fgases(data_dir,species,models,regions,
 
     for m,model in enumerate(models):
         
+        longrun = False
         if 'longrun' in model:
             model = model.split('_')[0]
             models[m] = model
-            for f in species_filenames.keys():
-                species_filenames[f] = f'{species_filenames[f]}_longrun'
+            longrun = True
 
         missing_species[model] = []
         m0 = model.split('_')[0]
@@ -382,34 +430,26 @@ def read_flux_total_fgases(data_dir,species,models,regions,
             #dictionary containing datasets for each species, these are then summed/averaged across the time coordinate
             ds_out = {}
             
-            #tries to read from standard filename, as listed above, if this fails, tries 'model_name_edgar', if this fails, skips this species
+            #tries to read from standard filename
             try:
-            
-                try:
-                    model_read = f'{model}_{species_filenames[species]}'
-                    ds_in[model] = read_flux(data_dir,species,[model_read],period_override[s])[model_read]    #edit read_flux so that it searches for correct filename per gas
-                    with io.capture_output() as captured:
-                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],scale_units=False,species=None)[model]
+                model_read = f'{model}_{s_data[species]["std_run"][m0]}'
+                if longrun: model_read = f'{model_read}_longrun'
                 
-                except:
-                    print(f'No standard run file for {model} {species}, so looking for {model}_name_edgar')
-                    ds_in[model] = read_flux(data_dir,species,[f'{model}_name_edgar'],period_override[s])[f'{model}_name_edgar']    #edit read_flux so that it searches for correct filename per gas
-                    with io.capture_output() as captured:
-                        ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],scale_units=False,species=None)[model]
+                ds_in[model] = read_flux(data_dir,species,[model_read],s_data,m_data,period_override[s],verbose=False)[model_read]    #edit read_flux so that it searches for correct filename per gas
+                with io.capture_output() as captured:
+                    ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],s_data,scale_units=False,species=None)[model]
+
             except:
                 ds_in[model] = None
                 if species not in missing_species[model]:
                     missing_species[model].append(species)
-                        
+
             for r,region in enumerate(regions):
                 
                 try:
                     region_time,region_flux_total_posterior,region_flux_total_prior,\
                     region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
-                    region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region)
-                    
-                    region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
-                    region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
+                    region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region,verbose=False)
                     
                     #for percentiles, first convert to upper and lower standard deviations (difference from mean)
                     region_flux_total_posterior_lower = (region_flux_total_posterior-region_flux_total_posterior_lower) * 1e3 * s_data[species]['gwp'] * 1e-12
@@ -458,7 +498,6 @@ def read_flux_total_fgases(data_dir,species,models,regions,
                  
                 if r == 0:
                     country_out = np.array([region])
-                    region_time_out = region_time
                     region_flux_total_posterior_out = np.expand_dims(region_flux_total_posterior,axis=1)
                     region_flux_total_prior_out = np.expand_dims(region_flux_total_prior,axis=1)
                     region_flux_total_posterior_lower_out = np.expand_dims(region_flux_total_posterior_lower,axis=1)
@@ -520,9 +559,9 @@ def read_flux_total_fgases(data_dir,species,models,regions,
         country_shortnames = []
         for c in ds_out_species_total['country_out'].values:
             try:
-                    country_shortnames.append(countrycodes_dict[c])
+                country_shortnames.append(countrycodes_dict[c])
             except:
-                country_shortnames.append(regions_dict_old[country])
+                country_shortnames.append(regions_dict_old[c])
                 
         ds_all[model] = xr.Dataset({'country_flux_total_prior':(['time',country_coord_name],ds_out_species_total['region_flux_total_prior_out'].values),
                                     'country_flux_total_posterior':(['time',country_coord_name],ds_out_species_total['region_flux_total_posterior_out'].values),
@@ -539,15 +578,19 @@ def read_flux_total_fgases(data_dir,species,models,regions,
     for model in models:
         if missing_species[model] != []:
             missing.append(model)
+        else:
+            print(f'\nAll species succesfully read for {model}!')
             
     for m in missing:
-        print(f'\nWARNING: Model {m} is missing species: {missing_species[model]}')
-        
+        print(f'\nWARNING: Model {m} is missing species: {missing_species[m]}')
+
+    print('\nTo change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
+
     return ds_all
     
 #####################################################################
 
-def read_mf(data_dir,species,models,period_override=None):
+def read_mf(data_dir,species,models,s_data,m_data,period_override=None):
     """
     Extracts mole fraction timeseries data from each model.
     Args:
@@ -557,6 +600,10 @@ def read_mf(data_dir,species,models,period_override=None):
             Gas species, e.g. 'ch4'.
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -612,7 +659,7 @@ def read_mf(data_dir,species,models,period_override=None):
 
 #####################################################################
 
-def slice_mf(ds_all,start_date=None,end_date=None,site=None,
+def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
              baseline_site=None,data_dir=None,
              scale_units=False,
              species=None):
@@ -623,6 +670,8 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
     Args:
         ds_all (dictionary of datasets): 
             xarray datasets read directly from each model's flux netCDF.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
         start_date (str): 
             Date to slice data from, e.g. '2021-01-01'
         end_date (str): 
@@ -656,10 +705,6 @@ def slice_mf(ds_all,start_date=None,end_date=None,site=None,
             offset = int(np.mean(ds_all[m]['Yav'].values))
         else:
             offset = (ds_all[m].time.values[1].astype('datetime64[h]') - ds_all[m].time.values[0].astype('datetime64[h]')).astype(int)
-
-        # fix to move elris timestamps back to the middle of av period - to be removed once fixed in .nc files
-        if 'elris_old' in m:
-            ds_all[m]['time'] = ds_all[m]['time'] - np.timedelta64(offset,'h')/2
 
         # round seconds to integer (correction for elris)
         if 'elris' in m:
@@ -808,7 +853,7 @@ def extract_site_info(sites):
 #####################################################################
 
 def plot_obs_modelled_separate(ds_all,species,site,
-                               model_colors,
+                               model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
                              include=['Yobs','Yapriori','Yapost'],
                              diff_include=['Yapriori','Yapost'],
                              add_unc=True,
@@ -829,6 +874,14 @@ def plot_obs_modelled_separate(ds_all,species,site,
             Obs site, e.g. 'MHD'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
+        annotate_coords (dict of lists):
+            Coordinates to annotate histogram.
+        ppt_mode (logical) (optional):
+            If True, adjust annotation position and xlabel rotation to accomodate bigger fonts.
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1019,7 +1072,11 @@ def plot_obs_modelled_separate(ds_all,species,site,
 
         # Write number of obs to plot
         n_obs = (~np.isnan(ds_all[m]['Yobs'].values)).sum()
-        ax2.annotate('\n$N_{obs}$: '+str(n_obs),xy=[0.65,1.05],xycoords='axes fraction',color='k')
+        if (ppt_mode):
+            pos_xy = [0.57,1.05]
+        else:
+            pos_xy = [0.65,1.05]
+        ax2.annotate('\n$N_{obs}$: '+str(n_obs),xy=pos_xy,xycoords='axes fraction',color='k')
 
         ax2.set_xlabel(legend_hist)
     
@@ -1042,6 +1099,8 @@ def plot_obs_modelled_separate(ds_all,species,site,
             ax.xaxis.set_major_locator(YearLocator())
         else:
             ax.xaxis.set_major_locator(MonthLocator())
+            if (ppt_mode):
+                ax.tick_params(axis='x', rotation=70)
                     
     if y_lim == None:    
         for i in range(len(models)):
@@ -1059,7 +1118,7 @@ def plot_obs_modelled_separate(ds_all,species,site,
 #####################################################################
 
 def plot_obs_modelled_together(ds_all,species,site,
-                               model_colors,
+                               model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
                                include=['Yapost'],
                                diff_include=['Yapost'],
                                add_unc=True,
@@ -1080,6 +1139,14 @@ def plot_obs_modelled_together(ds_all,species,site,
             Obs site, e.g. 'MHD'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
+        annotate_coords (dict of lists):
+            Coordinates to annotate histogram.
+        ppt_mode (logical) (optional):
+            If True, adjust xlabel rotation to accomodate bigger fonts.
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1269,6 +1336,8 @@ def plot_obs_modelled_together(ds_all,species,site,
         ax.xaxis.set_major_locator(YearLocator())
     else:
         ax.xaxis.set_major_locator(MonthLocator())
+        if (ppt_mode):
+            ax.tick_params(axis='x', rotation=70)
         
     if y_lim is None:
         ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
@@ -1284,7 +1353,7 @@ def plot_obs_modelled_together(ds_all,species,site,
 #####################################################################
 
 def plot_obs_diff(ds_all,species,site,
-                               model_colors,
+                               model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
                                include=['Yapost'],
                                diff_include=['Yapost'],
                                y_lim=None):
@@ -1306,6 +1375,14 @@ def plot_obs_diff(ds_all,species,site,
             Obs site, e.g. 'MHD'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
+        annotate_coords (dict of lists):
+            Coordinates to annotate histogram.
+        ppt_mode (logical) (optional):
+            If True, adjust xlabel rotation to accomodate bigger fonts.
         include (list of str):
             Variables included in the plot, options for 'Yobs', 'Yapriori',
             'Yapost', 'YaprioriBC', 'YapostBC'.
@@ -1484,6 +1561,8 @@ def plot_obs_diff(ds_all,species,site,
         ax.xaxis.set_major_locator(YearLocator())
     else:
         ax.xaxis.set_major_locator(MonthLocator())
+        if (ppt_mode):
+            ax.tick_params(axis='x', rotation=70)
         
     if y_lim is None:
         ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
@@ -1499,7 +1578,7 @@ def plot_obs_diff(ds_all,species,site,
 #####################################################################
 
 def plot_stats_mf(pearson,nrmse,species,
-                  model_colors,
+                  model_colors,s_data,m_data,
                   start_date=None,end_date=None):
     """
     Plots fit statistics for all sites, for all models.
@@ -1513,6 +1592,10 @@ def plot_stats_mf(pearson,nrmse,species,
             Gas species, e.g. 'ch4'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         start_date (str) and end_date (str):
             Dates used to title the plot. 
     Returns:
@@ -1578,7 +1661,7 @@ def plot_stats_mf(pearson,nrmse,species,
 
 #####################################################################
 
-def extract_region_flux(ds_all,m,m0,country):
+def extract_region_flux(ds_all,m,m0,country,verbose=True):
     """
     Finds the index of a chosen region name and extracts the country flux
     variables for this region.
@@ -1600,8 +1683,8 @@ def extract_region_flux(ds_all,m,m0,country):
             try:
                 if m0 == 'intem' and country == 'BELGIUM':
                     country_search = 'BEL-LUX'
-                    print(f'\nNOTE: InTEM does not estimate separate BELGIUM emissions.')
-                    print(f'So a population ratio of {bel_pop_r} is being used to scale InTEM\'s total BELGIUM+LUXEMBOURG estimate.\n')
+                    if verbose: print(f'\nNOTE: InTEM does not estimate separate BELGIUM emissions.')
+                    if verbose: print(f'So a population ratio of {bel_pop_r} is being used to scale InTEM\'s total BELGIUM+LUXEMBOURG estimate.\n')
                     r = bel_pop_r
                 else:
                     country_search = countrycodes_dict[country]
@@ -1631,12 +1714,15 @@ def extract_region_flux(ds_all,m,m0,country):
         #print(region_time)
         #print(region_flux_total_posterior)
         
+        region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
+        region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
+
     #calculate values for region names that don't exist in the file
     except:
         
         try:
             region_search = regions_dict[country]
-            print(f'{country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
+            if verbose: print(f'{country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
 
             country_list = region_search.split('-')
 
@@ -1688,6 +1774,9 @@ def extract_region_flux(ds_all,m,m0,country):
             region_flux_total_prior_lower = region_flux_total_prior - sigma_region_flux_total_prior
             region_flux_total_prior_upper = region_flux_total_prior + sigma_region_flux_total_prior
 
+            region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
+            region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
+
         except:
             #print(f'ERROR: Could not find {country} emissions for {m}.')
             print(f'Skipping read in of {m}.')
@@ -1704,6 +1793,7 @@ def extract_region_flux(ds_all,m,m0,country):
 #####################################################################
 
 def extract_region_inventory_flux(country,data_dir,species,
+                                  s_data,start_date,end_date,
                                   inventory_year=None):
     """
     Extracts inventory flux values for regions that exists,
@@ -1729,6 +1819,7 @@ def extract_region_inventory_flux(country,data_dir,species,
             inventory_time = None
 
     try:
+        inv_ds = inv_ds.sel(time=slice(start_date,end_date))
         inv_c_index = np.where(inv_ds['country'].values == country)[0][0]
         inventory_flux = inv_ds['inventory'].values[:,inv_c_index]/s_data[species]["units_scaling"]["intem"]
         inventory_time = inv_ds.time.values
@@ -1774,7 +1865,8 @@ def extract_region_inventory_flux(country,data_dir,species,
 #####################################################################
 
 def plot_country_flux(ds_all,species,plot_regions,
-                      model_colors,
+                      s_data,m_data,model_colors,
+                      start_date,end_date,ppt_mode=False,
                       plot_inventory=True,inventory_years=None,
                       data_dir=None,fix_y_axes=False,
                       add_prior_unc=False, set_global_leg=False,
@@ -1794,6 +1886,15 @@ def plot_country_flux(ds_all,species,plot_regions,
             Gas species, e.g. 'ch4'.
         plot_regions (list of str):
             Country or regions to plot, e.g. ['UNITED KINGDOM','SWITZERLAND']
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
+        start_date (str) and end_date (str):
+            Start and end dates of the data to plot.
+            Used to slice inventory data.
+        ppt_mode (logical) (optional):
+            If True, adjust global legend position to accomodate bigger fonts.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         plot_inventory (bool):
@@ -1832,34 +1933,44 @@ def plot_country_flux(ds_all,species,plot_regions,
     
     # Create annual mean xarrays if needed
     if resample is not None:
+
+        # Check resample option
+        if (resample == 'year'):
+            rtime = 'YS'
+        elif (resample == 'season'):
+            rtime = 'QS-DEC'
+        else:
+            print(f'ERROR: Option resample=\'{resample}\' is not available. Try \'year\' or \'season\'.')
+            return None
+
         tmp = {m:ds_all[m].copy() for m in ds_all.keys()}
                 
         if period_override is not None: 
             for m in ds_all.keys():
                 if 'elris' in m:
                     del tmp[m]['covariance_country_flux_total_posterior']
-            ds_all_p = {m:tmp[m].resample(time=resample).mean(dim="time") if period_override[i] == 'monthly' else tmp[m] for i,m in enumerate(ds_all.keys())}
+            ds_all_p = {m:tmp[m].resample(time=rtime).mean(dim="time") if period_override[i] == 'monthly' else tmp[m] for i,m in enumerate(ds_all.keys())}
             for i,m in enumerate(ds_all.keys()):
                 if 'elris' in m and period_override[i] == 'monthly':
                     ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
                     ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
                     ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
-                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=resample).mean(dim="time")})
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=rtime).mean(dim="time")})
                     
         elif s_data[species]["period"]=='monthly':
             for m in ds_all.keys():
                 if 'elris' in m:
                     del tmp[m]['covariance_country_flux_total_posterior']
-            ds_all_p = {m:tmp[m].resample(time=resample).mean(dim="time") for m in ds_all.keys()}
+            ds_all_p = {m:tmp[m].resample(time=rtime).mean(dim="time") for m in ds_all.keys()}
             for m in ds_all.keys():
                 if 'elris' in m:
                     ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
                     ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
                     ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
-                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=resample).mean(dim="time")})
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=rtime).mean(dim="time")})
         
         else:
-            ds_all_p = ds_all
+            ds_all_p = ds_all.copy()
             
         del tmp
         
@@ -1897,6 +2008,9 @@ def plot_country_flux(ds_all,species,plot_regions,
     elif len(plot_regions) < 4:
         n_cols = len(plot_regions)
         n_rows = 1
+    elif len(plot_regions) == 6:
+        n_cols = 3
+        n_rows = 2
     elif len(plot_regions) > 4:
         n_cols = 4
         n_rows = math.ceil(len(plot_regions)/4)
@@ -1921,7 +2035,8 @@ def plot_country_flux(ds_all,species,plot_regions,
             
             for y,i_year in enumerate(inventory_years):
             
-                inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,
+                inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,s_data,
+                                                                              start_date,end_date,
                                                                               inventory_year=i_year)
                 
                 if inventory_flux is not None:
@@ -1995,21 +2110,22 @@ def plot_country_flux(ds_all,species,plot_regions,
                                     region_flux_total_posterior,
                                     label=include_label,color=model_colors[m][0])
                         
-                        ax.plot(region_time,
-                                    region_flux_total_prior,
-                                    label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
+                        if not(plot_combined):
+                            ax.plot(region_time,
+                                        region_flux_total_prior,
+                                        label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
                         
-                        ax.fill_between(region_time,
-                                            region_flux_total_posterior_lower,
-                                            region_flux_total_posterior_upper,
-                                            alpha=0.3,color=model_colors[m][0])
-
-                        if add_prior_unc:
                             ax.fill_between(region_time,
-                                                region_flux_total_prior_lower,
-                                                region_flux_total_prior_upper,
-                                                alpha=0.1,color=model_colors[m][0])
-                            max_cf.append(np.max(region_flux_total_prior_upper))
+                                                region_flux_total_posterior_lower,
+                                                region_flux_total_posterior_upper,
+                                                alpha=0.3,color=model_colors[m][0])
+
+                            if add_prior_unc:
+                                ax.fill_between(region_time,
+                                                    region_flux_total_prior_lower,
+                                                    region_flux_total_prior_upper,
+                                                    alpha=0.1,color=model_colors[m][0])
+                                max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
                             
                     
                     min_x.append(np.min(region_time).astype('datetime64[M]'))
@@ -2017,8 +2133,8 @@ def plot_country_flux(ds_all,species,plot_regions,
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_posterior_upper)))
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
                     if plot_inventory == True:
-                        max_cf[i] = np.max((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
-                                                                                        inventory_time <= np.max(region_time))])))
+                        if inventory_flux is not None:
+                            max_cf[i] = np.nanmax((max_cf[i],np.nanmax(inventory_flux)))
 
             if plot_combined == True:
                 
@@ -2053,7 +2169,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                 ax.fill_between(region_time.astype('datetime64[ns]'),
                                                 min_country_flux_total_lower,
                                                 max_country_flux_total_upper,
-                                                alpha=0.3,color='black',label='Min/max of post uncertainty')
+                                                alpha=0.3,color='grey',label='Min/max of post uncertainty')
                 '''
                 ax.plot(region_time.astype('datetime64[ns]'),
                                     pdf_mean,
@@ -2080,7 +2196,7 @@ def plot_country_flux(ds_all,species,plot_regions,
         
         ax.set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}${y_label_append})')
         
-        if period_all[list(ds.keys())[0]] == 'monthly' and resample != 'YS':
+        if period_all[list(ds.keys())[0]] == 'monthly' and resample != 'year':
             ax.set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
                             np.max(max_x)+np.timedelta64(1,'M')])
         else: #period_all[list(ds.keys())[0]] == 'yearly':
@@ -2089,7 +2205,7 @@ def plot_country_flux(ds_all,species,plot_regions,
         
         ncol = 2
         if set_global_leg == False:
-            leg = ax.legend(ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10)
+            leg = ax.legend(ncol=ncol,borderpad=.4,columnspacing=1.0)
             if plot_inventory == True:
                 for l in leg.legendHandles[:-1]:
                     l.set_linewidth(3.0)
@@ -2130,18 +2246,23 @@ def plot_country_flux(ds_all,species,plot_regions,
         
         if set_global_leg:
             if n_rows > 1:
-                legend_loc = (0.5, 1.07)
+                if (ppt_mode):
+                    legend_loc = (0.5, 1.1)
+                else:
+                    legend_loc = (0.5, 1.07)
             else:
                 legend_loc = (0.5, 1.15)
             handles, labels = ax.get_legend_handles_labels()
             ncol=0   
             if (plot_separate or resample):
                 ncol=len(ds_all.keys())
-            if plot_combined:
-                ncol=ncol+3
-            if plot_inventory == True:
+            if (plot_combined and plot_separate):
+                ncol=math.floor(len(ds_all.keys())/2)+2
+            elif plot_combined:
+                ncol=3
+            if plot_inventory:
                 ncol=ncol+1
-            leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,fontsize=10,bbox_to_anchor=legend_loc)
+            leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,bbox_to_anchor=legend_loc)
             if plot_inventory == True:
                 for l in leg.legendHandles:
                     l.set_linewidth(3.0)
@@ -2165,7 +2286,7 @@ def plot_country_flux(ds_all,species,plot_regions,
 
 #####################################################################
 
-def plot_spatial_flux(ds_all,species,plot_area,cmap=None,
+def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
                       plot_site_locations=False,plot_point_markers=None,
                       season=None):
@@ -2186,6 +2307,10 @@ def plot_spatial_flux(ds_all,species,plot_area,cmap=None,
             Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
             'NWEU','CWEU','EUROPE'.
             A list with [min_lon, max_lon, min_lat, max_lat] can also be provided.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         cmap (str):
             Colour map for flux plots.
         cmap_diff (str):
@@ -2416,7 +2541,7 @@ def plot_spatial_flux(ds_all,species,plot_area,cmap=None,
 
 #####################################################################
 
-def plot_spatial_flux_comparison(ds_all,species,plot_area,
+def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode=False,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
                                  plot_site_locations=False,plot_point_markers=None):
     """
@@ -2437,6 +2562,12 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,
         plot_area (str):
             Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
             'NWEU','CWEU'.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
+        ppt_mode (logical) (optional):
+            If True, adjust label position to accomodate bigger fonts.
         cmap (str):
             Colour map for flux plots.
         cmap_diff (str):
@@ -2609,11 +2740,16 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,
     cbar.set_array(levels)
     cbar.set_clim(s_data[species]['fluxlim'])
 
+    if (ppt_mode):
+        labelpad_v = 20
+    else:
+        labelpad_v = 5
+
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[0],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)', labelpad=labelpad_v)
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[1],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)',labelpad=labelpad_v)
 
     #difference colorbar
     levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
@@ -2622,13 +2758,13 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,
     cbar_diff.set_clim(s_data[species]['difflim'])
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='horizontal',extend='both',ax=ax[2],shrink=0.9,pad=0.01)
-    color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)',labelpad=labelpad_v)
     
     return fig
 
 #####################################################################
 
-def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,
+def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_data,
                                     cmap='viridis',c_border='floralwhite',
                                     var='flux_total_posterior',
                                     chop_by='year',dt=1,period_override=None,
@@ -2649,6 +2785,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,
         end_date (str):
             End date of sliced data, e.g. '2022-01-01' would include all
             data up to 2021-12-31.
+        s_data (dict of dict):
+            Dictionary of species with information for plotting (read from json file).
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
         cmap (str):
             Colour map for flux plots.
         c_border (str):
@@ -2914,9 +3054,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,
                 ax_var.set_title(f'{time_out}')
                 if i == 0:
                     if '\n' in m_data[m]["label"]:
-                        ax_var.text(-0.14, 0.25, f'{m_data[m]["label"]}', size=14, transform=ax_var.transAxes, rotation=90)
+                        ax_var.text(-0.14, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
                     else:
-                        ax_var.text(-0.07, 0.25, f'{m_data[m]["label"]}', size=14, transform=ax_var.transAxes, rotation=90)
+                        ax_var.text(-0.07, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
                 
             # Add site location
             if plot_site_locations == True:
@@ -2979,7 +3119,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,
 
 #####################################################################
 
-def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors):
+def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,m_data):
     """
     Plot the timeseries of data available for each site and model.
     
@@ -2995,6 +3135,8 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors):
             data up to 2021-12-31.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
+        m_data (dict of dict):
+            Dictionary of inversion runs with filename and plot label (read from json file).
     """
     siteList = np.sort(np.unique(np.concatenate([ds_all[m].sitenames.values.astype(str) for m in ds_all.keys()])))
 
