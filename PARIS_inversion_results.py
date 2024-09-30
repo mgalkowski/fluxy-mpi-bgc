@@ -451,9 +451,6 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
                     region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
                     region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region,verbose=False)
                     
-                    region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
-                    region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
-                    
                     #for percentiles, first convert to upper and lower standard deviations (difference from mean)
                     region_flux_total_posterior_lower = (region_flux_total_posterior-region_flux_total_posterior_lower) * 1e3 * s_data[species]['gwp'] * 1e-12
                     region_flux_total_posterior_upper = (region_flux_total_posterior_upper-region_flux_total_posterior) * 1e3 * s_data[species]['gwp'] * 1e-12
@@ -1717,6 +1714,9 @@ def extract_region_flux(ds_all,m,m0,country,verbose=True):
         #print(region_time)
         #print(region_flux_total_posterior)
         
+        region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
+        region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
+
     #calculate values for region names that don't exist in the file
     except:
         
@@ -1773,6 +1773,9 @@ def extract_region_flux(ds_all,m,m0,country,verbose=True):
             region_flux_total_posterior_upper = region_flux_total_posterior + sigma_region_flux_total_posterior
             region_flux_total_prior_lower = region_flux_total_prior - sigma_region_flux_total_prior
             region_flux_total_prior_upper = region_flux_total_prior + sigma_region_flux_total_prior
+
+            region_flux_total_posterior_lower[region_flux_total_posterior_lower < 0.] = 0.
+            region_flux_total_prior_lower[region_flux_total_prior_lower < 0.] = 0.
 
         except:
             #print(f'ERROR: Could not find {country} emissions for {m}.')
@@ -1930,31 +1933,41 @@ def plot_country_flux(ds_all,species,plot_regions,
     
     # Create annual mean xarrays if needed
     if resample is not None:
+
+        # Check resample option
+        if (resample == 'year'):
+            rtime = 'YS'
+        elif (resample == 'season'):
+            rtime = 'QS-DEC'
+        else:
+            print(f'ERROR: Option resample=\'{resample}\' is not available. Try \'year\' or \'season\'.')
+            return None
+
         tmp = {m:ds_all[m].copy() for m in ds_all.keys()}
                 
         if period_override is not None: 
             for m in ds_all.keys():
                 if 'elris' in m:
                     del tmp[m]['covariance_country_flux_total_posterior']
-            ds_all_p = {m:tmp[m].resample(time=resample).mean(dim="time") if period_override[i] == 'monthly' else tmp[m] for i,m in enumerate(ds_all.keys())}
+            ds_all_p = {m:tmp[m].resample(time=rtime).mean(dim="time") if period_override[i] == 'monthly' else tmp[m] for i,m in enumerate(ds_all.keys())}
             for i,m in enumerate(ds_all.keys()):
                 if 'elris' in m and period_override[i] == 'monthly':
                     ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
                     ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
                     ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
-                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=resample).mean(dim="time")})
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=rtime).mean(dim="time")})
                     
         elif s_data[species]["period"]=='monthly':
             for m in ds_all.keys():
                 if 'elris' in m:
                     del tmp[m]['covariance_country_flux_total_posterior']
-            ds_all_p = {m:tmp[m].resample(time=resample).mean(dim="time") for m in ds_all.keys()}
+            ds_all_p = {m:tmp[m].resample(time=rtime).mean(dim="time") for m in ds_all.keys()}
             for m in ds_all.keys():
                 if 'elris' in m:
                     ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
                     ds_all_p[m]['country_fraction'] = ds_all_p[m]['country_fraction'].isel(time=0).drop('time')
                     ds_all_p[m] = ds_all_p[m].assign({'covariance_country_flux_total_posterior':
-                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=resample).mean(dim="time")})
+                                                      ds_all[m]['covariance_country_flux_total_posterior'].resample(time=rtime).mean(dim="time")})
         
         else:
             ds_all_p = ds_all.copy()
@@ -2121,8 +2134,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
                     if plot_inventory == True:
                         if inventory_flux is not None:
-                            max_cf[i] = np.max((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
-                                                                                        inventory_time <= np.max(region_time))])))
+                            max_cf[i] = np.nanmax((max_cf[i],np.nanmax(inventory_flux)))
 
             if plot_combined == True:
                 
@@ -2184,7 +2196,7 @@ def plot_country_flux(ds_all,species,plot_regions,
         
         ax.set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}${y_label_append})')
         
-        if period_all[list(ds.keys())[0]] == 'monthly' and resample != 'YS':
+        if period_all[list(ds.keys())[0]] == 'monthly' and resample != 'year':
             ax.set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
                             np.max(max_x)+np.timedelta64(1,'M')])
         else: #period_all[list(ds.keys())[0]] == 'yearly':

@@ -111,7 +111,7 @@
         "gwp":138,
         "std_run":{"intem":"name_flat",
                    "rhime":"name_flat",
-                   "elris":"name_edgar"}
+                   "elris":"name_flat"}
         },
 
     "hfc32":{
@@ -157,7 +157,7 @@
         "gwp":3350,
         "std_run":{"intem":"name_flat",
                    "rhime":"name_flat",
-                   "elris":"name_edgar"}
+                   "elris":"name_flat"}
         }, 
 
     "hfc23":{
@@ -203,7 +203,7 @@
         "gwp":858,
         "std_run":{"intem":"name_flat",
                    "rhime":"name_flat",
-                   "elris":"name_edgar"}
+                   "elris":"name_flat"}
         },   
 
     "hfc365mfc":{
@@ -226,7 +226,7 @@
         "gwp":804,
         "std_run":{"intem":"name_flat",
                    "rhime":"name_flat",
-                   "elris":"name_edgar"}
+                   "elris":"name_flat"}
         },
 
     "hfc4310mee":{
@@ -249,7 +249,7 @@
         "gwp":1650,
         "std_run":{"intem":"name_flat",
                    "rhime":"name_flat",
-                   "elris":"name_edgar"}
+                   "elris":"name_flat"}
         },   
 
     "pfc218":{
