@@ -2020,6 +2020,8 @@ def plot_country_flux(ds_all,species,plot_regions,
 
     # Initialize variables
     max_cf = np.zeros(len(plot_regions))
+    start_year = [9999]*len(plot_regions)
+    end_year = [0]*len(plot_regions)
     min_x = []
     max_x = []
     period_all = {}
@@ -2154,7 +2156,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                                                         region_flux_total_prior_upper,
                                                         alpha=0.1,color=model_colors[m][0])
                                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
-                            
+
                     
                     min_x.append(np.min(region_time).astype('datetime64[M]'))
                     max_x.append(np.max(region_time).astype('datetime64[M]'))
@@ -2163,6 +2165,11 @@ def plot_country_flux(ds_all,species,plot_regions,
                     if plot_inventory == True:
                         if inventory_flux is not None:
                             max_cf[i] = np.nanmax((max_cf[i],np.nanmax(inventory_flux)))
+
+                    y0 = ((region_time[0]).astype('datetime64[Y]')).astype(int)+1970
+                    y1 = ((region_time[-1]).astype('datetime64[Y]')).astype(int)+1970
+                    start_year[i] = min(start_year[i],y0)
+                    end_year[i] = max(end_year[i],y1)
 
             if sum(plot_combined) != 0:
                 
@@ -2265,8 +2272,10 @@ def plot_country_flux(ds_all,species,plot_regions,
                 ax.set_title(f'{print_country}')
             
         ax.grid(visible=True,which='major',alpha=0.4)
-            
-        if (region_time[-1]-region_time[0]).astype('timedelta64[Y]') > 8:
+
+        if (end_year[i]-start_year[i]) > 8:
+            years_list = list(range(start_year[i],end_year[i]+2))
+            region_time = np.array([np.datetime64(str(year), 'Y') for year in years_list])
             ax.set_xticks(region_time[::2])
             ax.set_xticklabels(region_time[::2].astype('datetime64[Y]'))
             ax.xaxis.set_minor_formatter(NullFormatter())
