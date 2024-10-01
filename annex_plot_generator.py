@@ -36,7 +36,7 @@ ppt_mode = False
 
 ### Settings for country fluxes
 models_country_fluxes = ['intem_longrun', 'intem', 'elris', 'rhime'] # NOTE: only options are basic model names w/ and w/o longrun
-plot_inventory = True # TODO: Add inventory uncertainty to netcdf file of all_hfc/pfc. Implement plotting of error bars if they exist.
+plot_inventory = True
 inventory_years = None
 fix_y_axes = False
 add_prior = False
@@ -69,7 +69,7 @@ models = models_country_fluxes
 for species in monthly_species:
 
     # Long time window
-    start_date = '1990-01-01'
+    start_date = '2008-01-01'
     end_date   = '2024-01-01'
 
     ds_all_flux = {}
@@ -95,7 +95,7 @@ for species in monthly_species:
     # Annual averages
     resample = 'year'
 
-    # 1.1) Plot annual country fluxes from 1990 to 2023 from intem_longrun and combined from 3 std_run
+    # 1.1) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
     fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
                                  s_data,m_data,model_colors,start_date,end_date,ppt_mode,
                                  plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
@@ -107,13 +107,17 @@ for species in monthly_species:
 
     start_year = start_date.split('-')[0]
     end_year = end_date.split('-')[0]
-    plot_name = f'{species}_country_flux_annual_{start_year}_{end_year}.png'
+    plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
 
     # PARIS time window
     start_date = '2018-01-01'
-    end_date   = '2024-01-01' # NOTE: I'm not slicing the data again so intem_long run will extend until the y-axis
+    end_date   = '2024-01-01'
+
+    ### Re-slice the data
+    for model_read in models_std:
+        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,species=species)[model_read]
 
     # 1.2) Plot annual country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
     fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
@@ -127,7 +131,7 @@ for species in monthly_species:
 
     start_year = start_date.split('-')[0]
     end_year = end_date.split('-')[0]
-    plot_name = f'{species}_country_flux_annual_{start_year}_{end_year}.png'
+    plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
 
@@ -146,7 +150,7 @@ for species in monthly_species:
 
     start_year = start_date.split('-')[0]
     end_year = end_date.split('-')[0]
-    plot_name = f'{species}_country_flux_monthly_{start_year}_{end_year}.png'
+    plot_name = f'{species}_country_flux_monthly_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
 
@@ -189,6 +193,6 @@ for species in annual_species:
 
     start_year = start_date.split('-')[0]
     end_year = end_date.split('-')[0]
-    plot_name = f'{species}_country_flux_annual_{start_year}_{end_year}.png'
+    plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
