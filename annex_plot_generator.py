@@ -18,6 +18,8 @@ annual_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
                   'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee',
                   'cf4','pfc116','pfc218','pfc318','sf6']
 
+combined_species = ['all_hfc','all_pfc']
+
 # Cities to plot
 point_markers = {'UK': ['london'],
                  'SWITZERLAND': ['bern'],
@@ -193,6 +195,38 @@ for species in annual_species:
 
     start_year = start_date.split('-')[0]
     end_year = end_date.split('-')[0]
+    plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+    full_path = os.path.join(output_path, plot_name)
+    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+
+### Total HFCs/PFCs
+start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
+end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
+
+for species in combined_species:
+
+    ds_all_flux_scaled = {}
+
+    ### Read and scale fluxes
+    ds_all_flux_scaled = func.read_flux_total_fgases(data_dir,species,models,s_data,m_data,
+                                                    regions,start_date,end_date,
+                                                    period_override=period_override)
+
+    ### Define plotting colors
+    model_colors = func.set_model_colors_2(models,m_colors)
+
+    # 4) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
+    fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                s_data,m_data,model_colors,start_date,end_date,ppt_mode,
+                                plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                plot_separate=plot_separate,plot_combined=plot_combined,
+                                resample=resample,
+                                plot_resample_and_original=plot_resample_and_original,
+                                period_override=period_override)
+
+    start_year = start_date[0].split('-')[0]
+    end_year = end_date[0].split('-')[0]
     plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)

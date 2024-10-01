@@ -254,7 +254,12 @@
     "rhime":{
             "filename":"None",
             "label":"RHIME"
-            }
+            },
+
+    "intem_longrun":{
+        "filename":"None",
+        "label":"InTEM"
+        }
  }
     
 
