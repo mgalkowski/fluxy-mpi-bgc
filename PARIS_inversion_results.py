@@ -2255,13 +2255,14 @@ def plot_country_flux(ds_all,species,plot_regions,
         else:
             print_country = country
         
-        if country_codes_as_titles == True:
-            try:
-                ax.set_title(f'{print_country}\n{regions_dict[country]}')
-            except:
+        if country_codes_as_titles != None:
+            if country_codes_as_titles == True:
+                try:
+                    ax.set_title(f'{print_country}\n{regions_dict[country]}')
+                except:
+                    ax.set_title(f'{print_country}')
+            else:
                 ax.set_title(f'{print_country}')
-        else:        
-            ax.set_title(f'{print_country}')
             
         ax.grid(visible=True,which='major',alpha=0.4)
             
