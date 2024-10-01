@@ -415,11 +415,11 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
 
     for m,model in enumerate(models):
         
-        longrun = False
-        if 'longrun' in model:
-            model = model.split('_')[0]
-            models[m] = model
-            longrun = True
+        #longrun = False
+        #if 'longrun' in model:
+        #    model = model.split('_')[0]
+        #    models[m] = model
+        #    longrun = True
 
         missing_species[model] = []
         m0 = model.split('_')[0]
@@ -432,8 +432,8 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
             
             #tries to read from standard filename
             try:
-                model_read = f'{model}_{s_data[species]["std_run"][m0]}'
-                if longrun: model_read = f'{model_read}_longrun'
+                model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
+                if 'longrun' in model: model_read = f'{model_read}_longrun'
                 
                 ds_in[model] = read_flux(data_dir,species,[model_read],s_data,m_data,period_override[s],verbose=False)[model_read]    #edit read_flux so that it searches for correct filename per gas
                 with io.capture_output() as captured:
@@ -1819,7 +1819,7 @@ def extract_region_inventory_flux(country,data_dir,species,
             inventory_time = None
 
     try:
-        inv_ds = inv_ds.sel(time=slice(start_date,end_date))
+        #inv_ds = inv_ds.sel(time=slice(start_date,end_date))
         inv_c_index = np.where(inv_ds['country'].values == country)[0][0]
         inventory_flux = inv_ds['inventory'].values[:,inv_c_index]/s_data[species]["units_scaling"]["intem"]
         inventory_time = inv_ds.time.values
@@ -2164,7 +2164,8 @@ def plot_country_flux(ds_all,species,plot_regions,
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
                     if plot_inventory == True:
                         if inventory_flux is not None:
-                            max_cf[i] = np.nanmax((max_cf[i],np.nanmax(inventory_flux)))
+                            max_cf[i] = np.nanmax((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
+                                                                                        inventory_time <= np.max(region_time))])))
 
                     y0 = ((region_time[0]).astype('datetime64[Y]')).astype(int)+1970
                     y1 = ((region_time[-1]).astype('datetime64[Y]')).astype(int)+1970
