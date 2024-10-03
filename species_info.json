@@ -541,7 +541,7 @@
     },
     "sf6": {
         "species_print": "SF$_6$",
-        "period": "monthly",
+        "period": "yearly",
         "units_scaling": {
             "intem": 1000000.0,
             "rhime": 1000000.0,
