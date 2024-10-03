@@ -38,6 +38,7 @@ ppt_mode = False
 
 ### Settings for country fluxes
 models_country_fluxes = ['intem_longrun', 'intem', 'elris', 'rhime'] # NOTE: only options are basic model names w/ and w/o longrun
+scale_co2eq = True
 plot_inventory = True
 inventory_years = None
 fix_y_axes = False
@@ -49,7 +50,6 @@ plot_separate = [True,False,False,False] # NOTE: labels of models to plot separa
 plot_combined = [False,True,True,True]
 plot_resample_and_original = False
 period_override = None
-# TODO: make necessary changes to plot in CO2-eq (use GWP in species_info?)
 
 ### Settings for spatial maps
 models_spatial_maps = ['intem', 'elris', 'rhime']
@@ -89,7 +89,8 @@ for species in monthly_species:
 
         # use model_read instead of model
         ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
-        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,species=species)[model_read]
+        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                         scale_co2eq=scale_co2eq,species=species)[model_read]
 
     ### Define plotting colors
     model_colors = func.set_model_colors_2(models_std,m_colors)
@@ -99,7 +100,7 @@ for species in monthly_species:
 
     # 1.1) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
     fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,
+                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
                                  plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                  add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                  plot_separate=plot_separate,plot_combined=plot_combined,
@@ -119,11 +120,12 @@ for species in monthly_species:
 
     ### Re-slice the data
     for model_read in models_std:
-        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,species=species)[model_read]
+        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                         scale_co2eq=scale_co2eq,species=species)[model_read]
 
     # 1.2) Plot annual country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
     fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,
+                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
                                  plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                  add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                  plot_separate=plot_separate,plot_combined=plot_combined,
@@ -142,7 +144,7 @@ for species in monthly_species:
 
     # 2) Plot monthly country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
     fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,
+                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
                                  plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                  add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                  plot_separate=plot_separate,plot_combined=plot_combined,
@@ -178,14 +180,15 @@ for species in annual_species:
 
         # use model_read instead of model
         ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
-        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,species=species)[model_read]
+        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                         scale_co2eq=scale_co2eq,species=species)[model_read]
 
     ### Define plotting colors
     model_colors = func.set_model_colors_2(models_std,m_colors)
 
     # 3) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
     fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,
+                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
                                  plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                  add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                  plot_separate=plot_separate,plot_combined=plot_combined,
@@ -200,6 +203,7 @@ for species in annual_species:
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
 
 ### Total HFCs/PFCs
+resample   = None
 start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
 end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
 
@@ -217,7 +221,7 @@ for species in combined_species:
 
     # 4) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
     fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                s_data,m_data,model_colors,start_date,end_date,ppt_mode,
+                                s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
                                 plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                 add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                 plot_separate=plot_separate,plot_combined=plot_combined,
