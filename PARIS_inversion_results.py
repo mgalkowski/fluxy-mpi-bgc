@@ -298,7 +298,7 @@ def read_flux(data_dir,species,models,s_data,m_data,period_override=None,verbose
 #####################################################################
 
 def slice_flux(ds_all,start_date,end_date,s_data,
-               scale_units=True,species=None):
+               scale_units=True,scale_co2eq=False,species=None):
     """
     Slices the flux datasets to within given time limits and 
     scales fluxes into Tg/Gg based on the species.
@@ -315,6 +315,8 @@ def slice_flux(ds_all,start_date,end_date,s_data,
             Dictionary of species with information for plotting (read from json file).
         scale_units (bool): 
             If True, scales country fluxes to Tg or Gy per year.
+        scale_co2eq (bool):
+            If True, converts country fluxes to CO2-eq in Tg per year.
         species (str):
             Gas species, used to choose scaling units, e.g. 'ch4'.
     Returns:
@@ -342,16 +344,27 @@ def slice_flux(ds_all,start_date,end_date,s_data,
             print(f'Skipping {m}')
             
         if scale_units == True:
-            print(f'Scaling {m} units by {s_data[species]["units_scaling"][m0]}')
+            gwp = 1
+            scale_factor = s_data[species]["units_scaling"][m0]
+
+            # Update scaling factors
+            if (scale_co2eq):
+                gwp = s_data[species]["gwp"]
+                if (s_data[species]["units_print"] == "G"): #units_print is expected to be either G or T
+                    scale_factor = scale_factor * 1e3 #Convert to Tg
+                    # Note: units_print is not re-written because it would go back to
+                    #       its original value if initialize_settings is re-run.
+
+            print(f'Scaling {m} country fluxes by {scale_factor*gwp}')
             if ds_all[m] is not None:
                 var_names = [k for k in ds_all[m].keys() if k not in skip_var]
                 for v in var_names:
-                    ds_all[m][v].values = ds_all[m][v].values/s_data[species]["units_scaling"][m0]
+                    ds_all[m][v].values = ds_all[m][v].values/scale_factor * gwp
 
                 cov_var = 'covariance_country_flux_total_posterior'
                 if cov_var in ds_all[m].keys():
-                    ds_all[m][cov_var].values = ds_all[m][cov_var].values/s_data[species]["units_scaling"][m0]**2
-                    print(f'Scaling covariance units in {m} by {s_data[species]["units_scaling"][m0]**2}')
+                    ds_all[m][cov_var].values = ds_all[m][cov_var].values/scale_factor**2 * gwp**2
+                    print(f'Scaling covariance in {m} by {scale_factor**2 * gwp**2}')
         
     return ds_all
 
@@ -1793,13 +1806,22 @@ def extract_region_flux(ds_all,m,m0,country,verbose=True):
 #####################################################################
 
 def extract_region_inventory_flux(country,data_dir,species,
-                                  s_data,start_date,end_date,
+                                  s_data,scale_co2eq,start_date,end_date,
                                   inventory_year=None):
     """
     Extracts inventory flux values for regions that exists,
     or calculates total inventory flux values for aggregated regions.
     """
     
+    gwp = 1
+    scale_factor = s_data[species]["units_scaling"]["intem"]
+
+    # Update scaling factors
+    if scale_co2eq and ('all' not in species):
+        gwp = s_data[species]["gwp"]
+        if (s_data[species]["units_print"] == "G"): #units_print is expected to be either G or T
+            scale_factor = scale_factor * 1e3 #Convert to Tg
+
     if inventory_year == None:
         
         try:
@@ -1821,7 +1843,7 @@ def extract_region_inventory_flux(country,data_dir,species,
     try:
         #inv_ds = inv_ds.sel(time=slice(start_date,end_date))
         inv_c_index = np.where(inv_ds['country'].values == country)[0][0]
-        inventory_flux = inv_ds['inventory'].values[:,inv_c_index]/s_data[species]["units_scaling"]["intem"]
+        inventory_flux = inv_ds['inventory'].values[:,inv_c_index]/scale_factor * gwp
         inventory_time = inv_ds.time.values
 
     except:
@@ -1844,7 +1866,7 @@ def extract_region_inventory_flux(country,data_dir,species,
                         print(f'WARNING: Inventory data for {inv_key[0]} is NaN. Inventory value for {country} will not include {inv_key[0]} contributions.')
 
                     inv_c_value = inv_c_value + inv_c_temp
-                    inventory_flux = inv_c_value/s_data[species]["units_scaling"]["intem"]
+                    inventory_flux = inv_c_value/scale_factor * gwp
                     inventory_time = inv_ds.time.values
 
                 except:
@@ -1866,7 +1888,7 @@ def extract_region_inventory_flux(country,data_dir,species,
 
 def plot_country_flux(ds_all,species,plot_regions,
                       s_data,m_data,model_colors,
-                      start_date,end_date,ppt_mode=False,
+                      start_date,end_date,ppt_mode=False,scale_co2eq=False,
                       plot_inventory=True,inventory_years=None,
                       data_dir=None,fix_y_axes=False,add_prior=True,
                       add_prior_unc=False, set_global_leg=False,
@@ -1895,6 +1917,8 @@ def plot_country_flux(ds_all,species,plot_regions,
             Used to slice inventory data.
         ppt_mode (logical) (optional):
             If True, adjust global legend position to accomodate bigger fonts.
+        scale_co2eq (bool):
+            If True, adapt y-axis label to CO2-eq.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         plot_inventory (bool):
@@ -2060,7 +2084,7 @@ def plot_country_flux(ds_all,species,plot_regions,
             
             for y,i_year in enumerate(inventory_years):
             
-                inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,s_data,
+                inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,s_data,scale_co2eq,
                                                                               start_date,end_date,
                                                                               inventory_year=i_year)
                 
@@ -2230,12 +2254,16 @@ def plot_country_flux(ds_all,species,plot_regions,
             ds_count += 1
             
         #format each subplot
+        units_print = s_data[species]["units_print"]
         if 'all' in species:
             y_label_append = ' CO$_2$-eq'
+        elif scale_co2eq:
+            y_label_append = ' CO$_2$-eq'
+            units_print = "T"
         else:
             y_label_append = ''
         
-        ax.set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}${y_label_append})')
+        ax.set_ylabel(f'{s_data[species]["species_print"]} ({units_print}g y$^{{-1}}${y_label_append})')
         
         if period_all[list(ds.keys())[0]] == 'monthly' and resample != 'year':
             ax.set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
