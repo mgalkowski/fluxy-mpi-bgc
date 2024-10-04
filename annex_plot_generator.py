@@ -53,11 +53,9 @@ period_override = None
 
 ### Settings for spatial maps
 models_spatial_maps = ['intem', 'elris', 'rhime']
-plot_area = regions[0]        # TODO: define options for all focus countries
+plot_area = regions[0]
 plot_site_locations = True
-plot_point_markers = point_markers[regions[0]]
-# TODO: implement combined option to average over all models [plot_combined = True]
-# TODO: add all cities in point_markers and their coordinates to point_source_dict
+plot_point_markers = None #point_markers[regions[0]] # TODO: add all cities in point_markers and their coordinates to point_source_dict
 
 ###########################################
 
@@ -234,3 +232,69 @@ for species in combined_species:
     plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+
+### Models for spatial maps
+models = models_spatial_maps
+
+start_date = '2018-01-01'
+end_date   = '2024-01-01'
+
+all_species = monthly_species + annual_species
+
+# Settings for average posterior
+cmap = 'viridis'
+c_border = 'floralwhite'
+chop_by = 'year'
+dt = 6
+var = 'flux_total_posterior'
+plot_combined = True
+
+# All species
+for species in all_species:
+
+    ds_all_flux = {}
+    ds_all_flux_scaled = {}
+    models_std = []
+
+    save_end_date = end_date
+    save_dt = dt
+    if species == "hfc4310mee":
+        end_date = '2023-01-01'
+        dt = 5
+
+    ### Read and scale fluxes
+    for m,model in enumerate(models):
+
+        m0 = model.split('_')[0]
+
+        model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
+        models_std.append(model_read)
+
+        # use model_read instead of model
+        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
+        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                         species=species)[model_read]
+
+    # 6) Plot spatial map of the posterior fluxes averaged between 2018 and 2023 (combined from 3 std_run)
+    fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
+                                                cmap=cmap,c_border=c_border,var=var,
+                                                plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
+                                                plot_site_locations=plot_site_locations,
+                                                plot_point_markers=plot_point_markers)
+
+    start_year = start_date.split('-')[0]
+    end_year = end_date.split('-')[0]
+    plot_name = f'{species}_posterior_map_{regions[0]}_{start_year}_{end_year}.png'
+    full_path = os.path.join(output_path, plot_name)
+    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+
+    end_date = save_end_date
+    dt = save_dt
+
+# Settings for seasonal difference to the mean
+cmap = 'coolwarm'
+c_border = 'dimgrey'
+chop_by = 'season'
+dt = [[12,1,2],[3,4,5],[6,7,8],[9,10,11]]
+var = 'posterior_mean_diff' # TODO: implement option to subtract the mean value
+plot_combined = True
