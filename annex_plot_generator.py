@@ -66,11 +66,12 @@ s_data,m_data,m_colors,annotate_coords = func.initialize_settings(ppt_mode)
 models = models_country_fluxes
 
 ### CH4 and N2O
+print('\n--- PLOTTING COUNTRY FLUXES FOR CH4/N2O ---')
 for species in monthly_species:
 
     # Long time window
     start_date = '2008-01-01'
-    end_date   = '2024-01-01'
+    end_date   = '2023-12-01' # NOTE: there are no ELRIS CH4/N2O runs for Dec 2023
 
     ds_all_flux = {}
     ds_all_flux_scaled = {}
@@ -114,7 +115,7 @@ for species in monthly_species:
 
     # PARIS time window
     start_date = '2018-01-01'
-    end_date   = '2024-01-01'
+    end_date   = '2023-12-01' # NOTE: there are no ELRIS CH4/N2O runs for Dec 2023
 
     ### Re-slice the data
     for model_read in models_std:
@@ -161,6 +162,7 @@ start_date = '2008-01-01'
 end_date   = '2024-01-01'
 resample   = None
 
+print('\n--- PLOTTING COUNTRY FLUXES FOR ALL F-GASES ---')
 for species in annual_species:
 
     ds_all_flux = {}
@@ -200,11 +202,12 @@ for species in annual_species:
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
 
-### Total HFCs/PFCs
+### Total HFCs/PFCs (w/o HFC-4310mee)
 resample   = None
 start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
 end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
 
+print('\n--- PLOTTING COUNTRY FLUXES FOR TOTAL HFC/PFC ---')
 for species in combined_species:
 
     ds_all_flux_scaled = {}
@@ -237,30 +240,35 @@ for species in combined_species:
 models = models_spatial_maps
 
 start_date = '2018-01-01'
-end_date   = '2024-01-01'
 
 all_species = monthly_species + annual_species
 
 # Settings for average posterior
 cmap = 'viridis'
 c_border = 'floralwhite'
-chop_by = 'year'
-dt = 6
 var = 'flux_total_posterior'
 plot_combined = True
 
 # All species
+print('\n--- PLOTTING MEAN POSTERIOR MAP FOR ALL SPECIES ---')
 for species in all_species:
 
     ds_all_flux = {}
     ds_all_flux_scaled = {}
     models_std = []
 
-    save_end_date = end_date
-    save_dt = dt
-    if species == "hfc4310mee":
+    if species in monthly_species:
+        end_date = '2024-01-01'
+        chop_by = ['2018-01-01'] # NOTE: this setting can deal with no ELRIS CH4/N2O runs in Dec 2023
+        dt = None
+    elif species == "hfc4310mee":
         end_date = '2023-01-01'
+        chop_by = 'year'
         dt = 5
+    else:
+        end_date = '2024-01-01'
+        chop_by = 'year'
+        dt = 6
 
     ### Read and scale fluxes
     for m,model in enumerate(models):
@@ -287,9 +295,6 @@ for species in all_species:
     plot_name = f'{species}_posterior_map_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
-
-    end_date = save_end_date
-    dt = save_dt
 
 # Settings for seasonal difference to the mean
 cmap = 'coolwarm'
