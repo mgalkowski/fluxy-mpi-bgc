@@ -2111,9 +2111,9 @@ def plot_country_flux(ds_all,species,plot_regions,
 
                 # Get inversion period
                 if period_override is not None:
-                    if period_override[i] == 'monthly':
+                    if period_override[j] == 'monthly':
                         period_all[m] = 'monthly'
-                    elif period_override[i] == 'yearly':
+                    elif period_override[j] == 'yearly':
                         period_all[m] = 'yearly'
                     else:
                         period_all[m] = s_data[species]["period"]

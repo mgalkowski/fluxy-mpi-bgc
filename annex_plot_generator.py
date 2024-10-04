@@ -49,7 +49,6 @@ country_codes_as_titles = None
 plot_separate = [True,False,False,False] # NOTE: labels of models to plot separate might need to be adapted
 plot_combined = [False,True,True,True]
 plot_resample_and_original = False
-period_override = None
 
 ### Settings for spatial maps
 models_spatial_maps = ['intem', 'elris', 'rhime']
@@ -64,6 +63,8 @@ s_data,m_data,m_colors,annotate_coords = func.initialize_settings(ppt_mode)
 
 ### Models for country fluxes
 models = models_country_fluxes
+
+period_override = None
 
 ### CH4 and N2O
 print('\n--- PLOTTING COUNTRY FLUXES FOR CH4/N2O ---')
@@ -169,6 +170,11 @@ for species in annual_species:
     ds_all_flux_scaled = {}
     models_std = []
 
+    if species == 'sf6':
+        period_override = ['monthly','yearly','yearly','yearly']
+    else:
+        period_override = None
+
     ### Read and scale fluxes
     for m,model in enumerate(models):
 
@@ -179,7 +185,7 @@ for species in annual_species:
         models_std.append(model_read)
 
         # use model_read instead of model
-        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
+        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=[period_override[m]])[model_read]
         ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
                                                          scale_co2eq=scale_co2eq,species=species)[model_read]
 
@@ -203,7 +209,8 @@ for species in annual_species:
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
 
 ### Total HFCs/PFCs (w/o HFC-4310mee)
-resample   = None
+resample = None
+period_override = None
 start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
 end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
 
