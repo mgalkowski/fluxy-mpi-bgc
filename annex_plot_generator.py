@@ -239,15 +239,14 @@ for species in combined_species:
 ### Models for spatial maps
 models = models_spatial_maps
 
-start_date = '2018-01-01'
-
-all_species = monthly_species + annual_species
-
 # Settings for average posterior
 cmap = 'viridis'
 c_border = 'floralwhite'
 var = 'flux_total_posterior'
 plot_combined = True
+
+start_date  = '2018-01-01'
+all_species = monthly_species + annual_species
 
 # All species
 print('\n--- PLOTTING MEAN POSTERIOR MAP FOR ALL SPECIES ---')
@@ -301,5 +300,25 @@ cmap = 'coolwarm'
 c_border = 'dimgrey'
 chop_by = 'season'
 dt = [[12,1,2],[3,4,5],[6,7,8],[9,10,11]]
-var = 'posterior_mean_diff' # TODO: implement option to subtract the mean value
+var = 'posterior_mean_diff'
 plot_combined = True
+
+# CH4 and N2O
+start_date = '2018-01-01'
+end_date   = '2024-01-01'
+
+print('\n--- PLOTTING SEASONAL POSTERIOR MAP FOR CH4/N2O ---')
+for species in monthly_species:
+
+    # 7) Plot spatial maps of the seasonal posterior fluxes (averaged between 2018 and 2023) subtracted by the mean (combined from 3 std_run)
+    fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
+                                                cmap=cmap,c_border=c_border,var=var,
+                                                plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
+                                                plot_site_locations=plot_site_locations,
+                                                plot_point_markers=plot_point_markers)
+
+    start_year = start_date.split('-')[0]
+    end_year = end_date.split('-')[0]
+    plot_name = f'{species}_seasonal_map_{regions[0]}_{start_year}_{end_year}.png'
+    full_path = os.path.join(output_path, plot_name)
+    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)

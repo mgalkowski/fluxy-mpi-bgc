@@ -2922,7 +2922,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
 
     var_labels = {'flux_total_prior':'Prior mean',
                   'flux_total_posterior':'Posterior mean',
-                  'posterior_prior_diff':'Posterior-prior'}
+                  'posterior_prior_diff':'Posterior-prior',
+                  'posterior_mean_diff':'Posterior-mean'}
 
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
@@ -2941,7 +2942,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
     month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
 
     # Define variable specific settings
-    if var == 'posterior_prior_diff':
+    if var in ['posterior_prior_diff','posterior_mean_diff']:
         lim = s_data[species]['difflim']
         extend ='both'
     else:
@@ -3100,6 +3101,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                 if var == 'posterior_prior_diff':
                     var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_prior'][indexes[m][i],:,:],axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
+                elif var == 'posterior_mean_diff':
+                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
                     var_plot = np.mean(ds_all[m][var][indexes[m][i],:,:],axis=0)
 
@@ -3114,6 +3118,11 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     slice_apost   = ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
                     slice_apriori = ds_all[m]['flux_total_prior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
                     var_plot      = np.mean(slice_apost,axis=0) - np.mean(slice_apriori,axis=0)
+                    var_plot[np.where(var_plot) == np.nan] = 0.
+                elif var == 'posterior_mean_diff':
+                    mean_slice_apost = np.mean(ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                    mean_apost       = np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    var_plot         = mean_slice_apost - mean_apost
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
                     var_plot = np.mean(ds_all[m][var].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
