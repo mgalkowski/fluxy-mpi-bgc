@@ -404,7 +404,7 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
     
     if species == 'all_hfc':
         all_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
-                       'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee']
+                       'hfc227ea','hfc245fa','hfc32','hfc365mfc'] #,'hfc4310mee']
     elif species == 'all_pfc':
         all_species = ['cf4','pfc116','pfc218','pfc318']
     else:
@@ -2434,6 +2434,10 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'NETHERLANDS':[3,8,50,54],
+                    'IRELAND':[-12,-4,51,56],
+                    'HUNGARY':[15,24,44.5,50],
+                    'NORWAY':[3,32,55,72],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -2689,6 +2693,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'NETHERLANDS':[3,8,50,54],
+                    'IRELAND':[-12,-4,51,56],
+                    'HUNGARY':[15,24,44.5,50],
+                    'NORWAY':[3,32,55,72],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -2838,7 +2846,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
 
 def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_data,
                                     cmap='viridis',c_border='floralwhite',
-                                    var='flux_total_posterior',
+                                    var='flux_total_posterior', plot_combined=False,
                                     chop_by='year',dt=1,period_override=None,
                                     plot_site_locations=False,plot_point_markers=False):
     """
@@ -2868,6 +2876,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
         var (str):
             Variable to be plotted; options for 'flux_total_prior',
             'flux_total_posterior', 'posterior_prior_diff'
+        plot_combined (bool):
+            If True, plots the mean over all models at each time step.
         chop_by (str or list):
             Time units to perform the average, options for 'year', 'month' and 'season'.
             Option 'season' will perform the average over specific months/seasons (e.g. Jan-Jun, Jul-Dec).
@@ -2919,6 +2929,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'NETHERLANDS':[3,8,50,54],
+                    'IRELAND':[-12,-4,51,56],
+                    'HUNGARY':[15,24,44.5,50],
+                    'NORWAY':[3,32,55,72],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -2936,6 +2950,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
 
     # Figure size and averaging period
     n_lines = len(ds_all.keys())
+    if plot_combined: n_lines = 1
     t0_date = {}
     t1_date = {}
     start_print = {}
@@ -2956,7 +2971,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
 
     else:
         # NOTE: It will only work properly if the data is complete between start_date and end_date
-        nt = np.zeros(n_lines)
+        nt = np.zeros(len(ds_all.keys()))
         for i,m in enumerate(ds_all.keys()):
             total_times = len(ds_all[m].time)
 
@@ -3109,26 +3124,74 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                 else:
                     time_out = (f'{start_print[m][i]} - {end_print[m][i]}')
 
-            # Make plot
-            if n_cols == 1 and n_lines == 1:
-                ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
-                ax.set_title(f'{m_data[m]["label"]}\n{time_out}')
+            # Concatenate all models 2D-array
+            if (plot_combined):
+                if j == 0:
+                    all_var_plot = np.expand_dims(var_plot, axis=0)
+                else:
+                    all_var_plot = np.concatenate((all_var_plot, np.expand_dims(var_plot, axis=0)),axis=0)
+
+            # Make separate plots
+            if not(plot_combined):
+                if n_cols == 1 and n_lines == 1:
+                    ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                    ax.set_title(f'{m_data[m]["label"]}\n{time_out}')
+                    ax_var = ax
+                else:
+                    if n_lines == 1:
+                        ax_var = ax[i] 
+                    elif n_cols == 1:
+                        ax_var = ax[j]
+                    else:
+                        ax_var = ax[j,i]
+
+                    ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                    ax_var.set_title(f'{time_out}')
+                    if i == 0:
+                        if '\n' in m_data[m]["label"]:
+                            ax_var.text(-0.14, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
+                        else:
+                            ax_var.text(-0.07, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
+                    
+                # Add site location
+                if plot_site_locations == True:
+                    if sites_info[m] is not None:
+                        for s in sites_info[m]:
+                            ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
+                                            edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
+                            ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
+                                        edgecolor='black',marker='o',s=30,zorder=2)
+                    
+                # Add markers at specific locations
+                if plot_point_markers is not None:
+                    if i == 0:
+                        print(f'\nPlotting markers for: {plot_point_markers}')
+                        print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
+                    for p in plot_point_markers:
+                        if type(p) == list:
+                            ax_var.scatter(p[0],p[1],color='black',marker='o',s=2,zorder=2)
+                        elif type(p) == str:
+                            if p not in point_source_dict.keys():
+                                print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
+                            else:
+                                ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=2,zorder=2)
+
+            #except:
+            #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
+            #    print(f'Skipping plotting {m}.')
+
+        # Plot combined
+        if plot_combined:
+            mean_var_plot = np.mean(all_var_plot,axis=0)
+
+            if n_cols == 1:
+                ax.pcolormesh(lon,lat,mean_var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
                 ax_var = ax
             else:
-                if n_lines == 1:
-                    ax_var = ax[i] 
-                elif n_cols == 1:
-                    ax_var = ax[j]
-                else:
-                    ax_var = ax[j,i]
+                ax_var = ax[i]
+                ax_var.pcolormesh(lon,lat,mean_var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
 
-                ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
-                ax_var.set_title(f'{time_out}')
-                if i == 0:
-                    if '\n' in m_data[m]["label"]:
-                        ax_var.text(-0.14, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
-                    else:
-                        ax_var.text(-0.07, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
+            ax_var.set_title(f'{time_out}')
                 
             # Add site location
             if plot_site_locations == True:
@@ -3152,10 +3215,6 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                             print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                         else:
                             ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=2,zorder=2)
-
-            #except:
-            #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
-            #    print(f'Skipping plotting {m}.')
 
     #flux colorbar
     cbar = plt.cm.ScalarMappable(cmap=cmap)
