@@ -310,6 +310,23 @@ end_date   = '2024-01-01'
 print('\n--- PLOTTING SEASONAL POSTERIOR MAP FOR CH4/N2O ---')
 for species in monthly_species:
 
+    ds_all_flux = {}
+    ds_all_flux_scaled = {}
+    models_std = []
+
+    ### Read and scale fluxes
+    for m,model in enumerate(models):
+
+        m0 = model.split('_')[0]
+
+        model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
+        models_std.append(model_read)
+
+        # use model_read instead of model
+        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
+        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                         species=species)[model_read]
+
     # 7) Plot spatial maps of the seasonal posterior fluxes (averaged between 2018 and 2023) subtracted by the mean (combined from 3 std_run)
     fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
                                                 cmap=cmap,c_border=c_border,var=var,
