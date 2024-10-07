@@ -1,4 +1,5 @@
 import os
+import matplotlib.pyplot as plt
 import PARIS_inversion_results as func
 
 ### Define region of interest
@@ -113,6 +114,7 @@ for species in monthly_species:
     plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+    plt.close()
 
     # PARIS time window
     start_date = '2018-01-01'
@@ -138,6 +140,7 @@ for species in monthly_species:
     plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+    plt.close()
 
     # Monthly country fluxes
     resample = None
@@ -157,9 +160,9 @@ for species in monthly_species:
     plot_name = f'{species}_country_flux_monthly_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+    plt.close()
 
 ### F-gases
-start_date = '2008-01-01'
 end_date   = '2024-01-01'
 resample   = None
 
@@ -170,10 +173,16 @@ for species in annual_species:
     ds_all_flux_scaled = {}
     models_std = []
 
+    if species == 'hfc4310mee':
+        start_date = '2011-01-01' # Fix for InTEM longrun which is zero in 2010
+    else:
+        start_date = '2008-01-01'
+
     if species == 'sf6':
         period_override = ['monthly','yearly','yearly','yearly']
     else:
         period_override = None
+        model_period = None
 
     ### Read and scale fluxes
     for m,model in enumerate(models):
@@ -184,8 +193,10 @@ for species in annual_species:
         if 'longrun' in model: model_read = f'{model_read}_longrun'
         models_std.append(model_read)
 
+        if period_override != None: model_period = [period_override[m]]
+
         # use model_read instead of model
-        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=[period_override[m]])[model_read]
+        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=model_period)[model_read]
         ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
                                                          scale_co2eq=scale_co2eq,species=species)[model_read]
 
@@ -207,6 +218,7 @@ for species in annual_species:
     plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+    plt.close()
 
 ### Total HFCs/PFCs (w/o HFC-4310mee)
 resample = None
@@ -242,6 +254,7 @@ for species in combined_species:
     plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+    plt.close()
 
 ### Models for spatial maps
 models = models_spatial_maps
@@ -289,7 +302,7 @@ for species in all_species:
         ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
                                                          species=species)[model_read]
 
-    # 6) Plot spatial map of the posterior fluxes averaged between 2018 and 2023 (combined from 3 std_run)
+    # 5) Plot spatial map of the posterior fluxes averaged between 2018 and 2023 (combined from 3 std_run)
     fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
                                                 cmap=cmap,c_border=c_border,var=var,
                                                 plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
@@ -301,6 +314,7 @@ for species in all_species:
     plot_name = f'{species}_posterior_map_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+    plt.close()
 
 # Settings for seasonal difference to the mean
 cmap = 'coolwarm'
@@ -334,7 +348,7 @@ for species in monthly_species:
         ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
                                                          species=species)[model_read]
 
-    # 7) Plot spatial maps of the seasonal posterior fluxes (averaged between 2018 and 2023) subtracted by the mean (combined from 3 std_run)
+    # 6) Plot spatial maps of the seasonal posterior fluxes (averaged between 2018 and 2023) subtracted by the mean (combined from 3 std_run)
     fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
                                                 cmap=cmap,c_border=c_border,var=var,
                                                 plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
@@ -346,3 +360,6 @@ for species in monthly_species:
     plot_name = f'{species}_seasonal_map_{regions[0]}_{start_year}_{end_year}.png'
     full_path = os.path.join(output_path, plot_name)
     fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+    plt.close()
+
+print('\n--- ALL PLOTS WERE GENERATED SUCCESSFULLY! ---')
