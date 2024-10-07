@@ -134,11 +134,11 @@ def initialize_settings(ppt_mode=False):
 
         print('WARNING: Using big fonts. You might need to shrink the labels.')
     else:
-        plt.rc('font', size=12)
-        plt.rc('axes', titlesize=12)
-        plt.rc('axes', labelsize=12)
-        plt.rc('xtick', labelsize=12)
-        plt.rc('ytick', labelsize=12)
+        plt.rc('font', size=11)
+        plt.rc('axes', titlesize=11)
+        plt.rc('axes', labelsize=10)
+        plt.rc('xtick', labelsize=11)
+        plt.rc('ytick', labelsize=11)
         plt.rc('legend', fontsize=10)
 
         annotate_coords = {0:[0.6,0.80],
@@ -2173,6 +2173,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                                 ax.plot(region_time,
                                             region_flux_total_prior,
                                             label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
+                                max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
 
                                 if add_prior_unc:
                                     ax.fill_between(region_time,
@@ -2185,7 +2186,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                     min_x.append(np.min(region_time).astype('datetime64[M]'))
                     max_x.append(np.max(region_time).astype('datetime64[M]'))
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_posterior_upper)))
-                    max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
+
                     if plot_inventory == True:
                         if inventory_flux is not None:
                             max_cf[i] = np.nanmax((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
@@ -2344,13 +2345,15 @@ def plot_country_flux(ds_all,species,plot_regions,
 
     # loop through plots again to fix min/max axis values
     
+    fac = 1.1
+    if not(set_global_leg): fac = 1.2
     for i,country in enumerate(plot_regions):
         if fix_y_axes == True:
-            fig.axes[i].set_ylim([0,np.nanmax(max_cf)*1.1])  
+            fig.axes[i].set_ylim([0,np.nanmax(max_cf)*fac])  
         elif (type(fix_y_axes) == list) == True:
             fig.axes[i].set_ylim(fix_y_axes)
         elif fix_y_axes == False:
-            fig.axes[i].set_ylim([0,max_cf[i]*1.1])  
+            fig.axes[i].set_ylim([0,max_cf[i]*fac])  
     
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim parameter')
     
