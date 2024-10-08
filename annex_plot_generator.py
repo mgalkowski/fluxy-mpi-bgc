@@ -2,16 +2,9 @@ import os
 import matplotlib.pyplot as plt
 import PARIS_inversion_results as func
 
-### Define region of interest
-regions = ['UK'] # Focus countries: UK, SWITZERLAND, GERMANY, ITALY, NETHERLANDS, IRELAND, HUNGARY, NORWAY
-
-### Set output path
-output_path = '/project/paris/users/Daniela/plots_draft_annex/'
-
 ###########################################
-### SETTINGS
+### GENERAL SETTINGS
 ###########################################
-### Global settings
 # Species to plot
 monthly_species = ['ch4','n2o']
 
@@ -22,14 +15,14 @@ annual_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
 combined_species = ['all_hfc','all_pfc']
 
 # Cities to plot
-point_markers = {'UK': ['london'],
-                 'SWITZERLAND': ['bern'],
-                 'GERMANY': ['berlin'],
-                 'ITALY': ['rome'],
-                 'NETHERLANDS': ['amsterdam'],
-                 'IRELAND': ['dublin'],
-                 'HUNGARY': ['budapest'],
-                 'NORWAY': ['oslo']} # TODO: write cities to mark (highly populated cities)
+point_markers = {'UK': ['london','birmingham','liverpool','nottingham','sheffield'],
+                 'SWITZERLAND': ['bern','zurich','geneva','basel','lausanne'],
+                 'GERMANY': ['berlin','hamburg','munich','koeln','frankfurt'],
+                 'ITALY': ['rome','milan','naples','turin','palermo'],
+                 'NETHERLANDS': ['amsterdam','rotterdam','hague','utrecht','eindhoven'],
+                 'IRELAND': ['dublin','cork','dun laoghaire','luimneach','gaillimh'],
+                 'HUNGARY': ['budapest','debrecen','miskolc','szeged','pecs'],
+                 'NORWAY': ['oslo','bergen','trondheim','stavanger','drammen']}
 
 # Path to results directory 
 data_dir = '/project/paris/inverse_modelling/'
@@ -37,329 +30,331 @@ data_dir = '/project/paris/inverse_modelling/'
 # Set ppt_mode to True for bigger fonts
 ppt_mode = False
 
-### Settings for country fluxes
-models_country_fluxes = ['intem_longrun', 'intem', 'elris', 'rhime'] # NOTE: only options are basic model names w/ and w/o longrun
-scale_co2eq = True
-plot_inventory = True
-inventory_years = None
-fix_y_axes = False
-add_prior = False
-add_prior_unc = False
-set_global_leg = False
-country_codes_as_titles = None
-plot_separate = [True,False,False,False] # NOTE: labels of models to plot separate might need to be adapted
-plot_combined = [False,True,True,True]
-plot_resample_and_original = False
-
-### Settings for spatial maps
-models_spatial_maps = ['intem', 'elris', 'rhime']
-plot_area = regions[0]
-plot_site_locations = True
-plot_point_markers = None #point_markers[regions[0]] # TODO: add all cities in point_markers and their coordinates to point_source_dict
-
 ###########################################
 
-### Initialization
-s_data,m_data,m_colors,annotate_coords = func.initialize_settings(ppt_mode)
+def produce_plots(regions, output_path):
 
-### Models for country fluxes
-models = models_country_fluxes
+    ### Settings for country fluxes
+    models_country_fluxes = ['intem_longrun', 'intem', 'elris', 'rhime'] # NOTE: only options are basic model names w/ and w/o longrun
+    scale_co2eq = True
+    plot_inventory = True
+    inventory_years = None
+    fix_y_axes = False
+    add_prior = False
+    add_prior_unc = False
+    set_global_leg = False
+    country_codes_as_titles = None
+    plot_separate = [True,False,False,False] # NOTE: labels of models to plot separate might need to be adapted
+    plot_combined = [False,True,True,True]
+    plot_resample_and_original = False
 
-period_override = None
+    ### Settings for spatial maps
+    models_spatial_maps = ['intem', 'elris', 'rhime']
+    plot_area = regions[0]
+    plot_site_locations = True
+    plot_point_markers = None #point_markers[regions[0]] # TODO: add coordinates of all cities to point_source_dict
 
-### CH4 and N2O
-print('\n--- PLOTTING COUNTRY FLUXES FOR CH4/N2O ---')
-for species in monthly_species:
+    ### Initialization
+    s_data,m_data,m_colors,annotate_coords = func.initialize_settings(ppt_mode)
 
-    # Long time window
-    start_date = '2008-01-01'
-    end_date   = '2023-12-01' # NOTE: there are no ELRIS CH4/N2O runs for Dec 2023
+    ### Models for country fluxes
+    models = models_country_fluxes
 
-    ds_all_flux = {}
-    ds_all_flux_scaled = {}
-    models_std = []
+    period_override = None
 
-    ### Read and scale fluxes
-    for m,model in enumerate(models):
+    ### CH4 and N2O
+    print('\n--- PLOTTING COUNTRY FLUXES FOR CH4/N2O ---')
+    for species in monthly_species:
 
-        m0 = model.split('_')[0]
-
-        model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
-        if 'longrun' in model: model_read = f'{model_read}_longrun'
-        models_std.append(model_read)
-
-        # use model_read instead of model
-        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
-        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
-                                                         scale_co2eq=scale_co2eq,species=species)[model_read]
-
-    ### Define plotting colors
-    model_colors = func.set_model_colors_2(models_std,m_colors)
-
-    # Annual averages
-    resample = 'year'
-
-    # 1.1) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
-    fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
-                                 plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
-                                 add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
-                                 plot_separate=plot_separate,plot_combined=plot_combined,
-                                 resample=resample,
-                                 plot_resample_and_original=plot_resample_and_original,
-                                 period_override=period_override)
-
-    start_year = start_date.split('-')[0]
-    end_year = end_date.split('-')[0]
-    plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
-    full_path = os.path.join(output_path, plot_name)
-    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
-    plt.close()
-
-    # PARIS time window
-    start_date = '2018-01-01'
-    end_date   = '2023-12-01' # NOTE: there are no ELRIS CH4/N2O runs for Dec 2023
-
-    ### Re-slice the data
-    for model_read in models_std:
-        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
-                                                         scale_co2eq=scale_co2eq,species=species)[model_read]
-
-    # 1.2) Plot annual country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
-    fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
-                                 plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
-                                 add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
-                                 plot_separate=plot_separate,plot_combined=plot_combined,
-                                 resample=resample,
-                                 plot_resample_and_original=plot_resample_and_original,
-                                 period_override=period_override)
-
-    start_year = start_date.split('-')[0]
-    end_year = end_date.split('-')[0]
-    plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
-    full_path = os.path.join(output_path, plot_name)
-    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
-    plt.close()
-
-    # Monthly country fluxes
-    resample = None
-
-    # 2) Plot monthly country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
-    fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
-                                 plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
-                                 add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
-                                 plot_separate=plot_separate,plot_combined=plot_combined,
-                                 resample=resample,
-                                 plot_resample_and_original=plot_resample_and_original,
-                                 period_override=period_override)
-
-    start_year = start_date.split('-')[0]
-    end_year = end_date.split('-')[0]
-    plot_name = f'{species}_country_flux_monthly_{regions[0]}_{start_year}_{end_year}.png'
-    full_path = os.path.join(output_path, plot_name)
-    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
-    plt.close()
-
-### F-gases
-end_date   = '2024-01-01'
-resample   = None
-
-print('\n--- PLOTTING COUNTRY FLUXES FOR ALL F-GASES ---')
-for species in annual_species:
-
-    ds_all_flux = {}
-    ds_all_flux_scaled = {}
-    models_std = []
-
-    if species == 'hfc4310mee':
-        start_date = '2011-01-01' # Fix for InTEM longrun which is zero in 2010
-    else:
+        # Long time window
         start_date = '2008-01-01'
+        end_date   = '2023-12-01' # NOTE: there are no ELRIS CH4/N2O runs for Dec 2023
 
-    if species == 'sf6':
-        period_override = ['monthly','yearly','yearly','yearly']
-    else:
-        period_override = None
-        model_period = None
+        ds_all_flux = {}
+        ds_all_flux_scaled = {}
+        models_std = []
 
-    ### Read and scale fluxes
-    for m,model in enumerate(models):
+        ### Read and scale fluxes
+        for m,model in enumerate(models):
 
-        m0 = model.split('_')[0]
+            m0 = model.split('_')[0]
 
-        model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
-        if 'longrun' in model: model_read = f'{model_read}_longrun'
-        models_std.append(model_read)
+            model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
+            if 'longrun' in model: model_read = f'{model_read}_longrun'
+            models_std.append(model_read)
 
-        if period_override != None: model_period = [period_override[m]]
+            # use model_read instead of model
+            ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
+            ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                             scale_co2eq=scale_co2eq,species=species)[model_read]
 
-        # use model_read instead of model
-        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=model_period)[model_read]
-        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
-                                                         scale_co2eq=scale_co2eq,species=species)[model_read]
+        ### Define plotting colors
+        model_colors = func.set_model_colors_2(models_std,m_colors)
 
-    ### Define plotting colors
-    model_colors = func.set_model_colors_2(models_std,m_colors)
+        # Annual averages
+        resample = 'year'
 
-    # 3) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
-    fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                 s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
-                                 plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
-                                 add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
-                                 plot_separate=plot_separate,plot_combined=plot_combined,
-                                 resample=resample,
-                                 plot_resample_and_original=plot_resample_and_original,
-                                 period_override=period_override)
+        # 1.1) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
+        fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                     plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                     add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                     plot_separate=plot_separate,plot_combined=plot_combined,
+                                     resample=resample,
+                                     plot_resample_and_original=plot_resample_and_original,
+                                     period_override=period_override)
 
-    start_year = start_date.split('-')[0]
-    end_year = end_date.split('-')[0]
-    plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
-    full_path = os.path.join(output_path, plot_name)
-    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
-    plt.close()
+        start_year = start_date.split('-')[0]
+        end_year = end_date.split('-')[0]
+        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+        full_path = os.path.join(output_path, plot_name)
+        fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+        plt.close()
 
-### Total HFCs/PFCs (w/o HFC-4310mee)
-resample = None
-period_override = None
-start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
-end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
+        # PARIS time window
+        start_date = '2018-01-01'
+        end_date   = '2023-12-01' # NOTE: there are no ELRIS CH4/N2O runs for Dec 2023
 
-print('\n--- PLOTTING COUNTRY FLUXES FOR TOTAL HFC/PFC ---')
-for species in combined_species:
+        ### Re-slice the data
+        for model_read in models_std:
+            ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                             scale_co2eq=scale_co2eq,species=species)[model_read]
 
-    ds_all_flux_scaled = {}
+        # 1.2) Plot annual country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
+        fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                     plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                     add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                     plot_separate=plot_separate,plot_combined=plot_combined,
+                                     resample=resample,
+                                     plot_resample_and_original=plot_resample_and_original,
+                                     period_override=period_override)
 
-    ### Read and scale fluxes
-    ds_all_flux_scaled = func.read_flux_total_fgases(data_dir,species,models,s_data,m_data,
-                                                    regions,start_date,end_date,
-                                                    period_override=period_override)
+        start_year = start_date.split('-')[0]
+        end_year = end_date.split('-')[0]
+        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+        full_path = os.path.join(output_path, plot_name)
+        fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+        plt.close()
 
-    ### Define plotting colors
-    model_colors = func.set_model_colors_2(models,m_colors)
+        # Monthly country fluxes
+        resample = None
 
-    # 4) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
-    fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
-                                plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
-                                add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
-                                plot_separate=plot_separate,plot_combined=plot_combined,
-                                resample=resample,
-                                plot_resample_and_original=plot_resample_and_original,
-                                period_override=period_override)
+        # 2) Plot monthly country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
+        fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                     plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                     add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                     plot_separate=plot_separate,plot_combined=plot_combined,
+                                     resample=resample,
+                                     plot_resample_and_original=plot_resample_and_original,
+                                     period_override=period_override)
 
-    start_year = start_date[0].split('-')[0]
-    end_year = end_date[0].split('-')[0]
-    plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
-    full_path = os.path.join(output_path, plot_name)
-    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
-    plt.close()
+        start_year = start_date.split('-')[0]
+        end_year = end_date.split('-')[0]
+        plot_name = f'{species}_country_flux_monthly_{regions[0]}_{start_year}_{end_year}.png'
+        full_path = os.path.join(output_path, plot_name)
+        fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+        plt.close()
 
-### Models for spatial maps
-models = models_spatial_maps
+    ### F-gases
+    end_date   = '2024-01-01'
+    resample   = None
 
-# Settings for average posterior
-cmap = 'viridis'
-c_border = 'floralwhite'
-var = 'flux_total_posterior'
-plot_combined = True
+    print('\n--- PLOTTING COUNTRY FLUXES FOR ALL F-GASES ---')
+    for species in annual_species:
 
-start_date  = '2018-01-01'
-all_species = monthly_species + annual_species
+        ds_all_flux = {}
+        ds_all_flux_scaled = {}
+        models_std = []
 
-# All species
-print('\n--- PLOTTING MEAN POSTERIOR MAP FOR ALL SPECIES ---')
-for species in all_species:
+        if species == 'hfc4310mee':
+            start_date = '2011-01-01' # Fix for InTEM longrun which is zero in 2010
+        else:
+            start_date = '2008-01-01'
 
-    ds_all_flux = {}
-    ds_all_flux_scaled = {}
-    models_std = []
+        if species == 'sf6':
+            period_override = ['monthly','yearly','yearly','yearly']
+        else:
+            period_override = None
+            model_period = None
 
-    if species in monthly_species:
-        end_date = '2024-01-01'
-        chop_by = ['2018-01-01'] # NOTE: this setting can deal with no ELRIS CH4/N2O runs in Dec 2023
-        dt = None
-    elif species == "hfc4310mee":
-        end_date = '2023-01-01'
-        chop_by = 'year'
-        dt = 5
-    else:
-        end_date = '2024-01-01'
-        chop_by = 'year'
-        dt = 6
+        ### Read and scale fluxes
+        for m,model in enumerate(models):
 
-    ### Read and scale fluxes
-    for m,model in enumerate(models):
+            m0 = model.split('_')[0]
 
-        m0 = model.split('_')[0]
+            model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
+            if 'longrun' in model: model_read = f'{model_read}_longrun'
+            models_std.append(model_read)
 
-        model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
-        models_std.append(model_read)
+            if period_override != None: model_period = [period_override[m]]
 
-        # use model_read instead of model
-        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
-        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
-                                                         species=species)[model_read]
+            # use model_read instead of model
+            ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=model_period)[model_read]
+            ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                             scale_co2eq=scale_co2eq,species=species)[model_read]
 
-    # 5) Plot spatial map of the posterior fluxes averaged between 2018 and 2023 (combined from 3 std_run)
-    fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
-                                                cmap=cmap,c_border=c_border,var=var,
-                                                plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
-                                                plot_site_locations=plot_site_locations,
-                                                plot_point_markers=plot_point_markers)
+        ### Define plotting colors
+        model_colors = func.set_model_colors_2(models_std,m_colors)
 
-    start_year = start_date.split('-')[0]
-    end_year = end_date.split('-')[0]
-    plot_name = f'{species}_posterior_map_{regions[0]}_{start_year}_{end_year}.png'
-    full_path = os.path.join(output_path, plot_name)
-    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
-    plt.close()
+        # 3) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
+        fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                     plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                     add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                     plot_separate=plot_separate,plot_combined=plot_combined,
+                                     resample=resample,
+                                     plot_resample_and_original=plot_resample_and_original,
+                                     period_override=period_override)
 
-# Settings for seasonal difference to the mean
-cmap = 'coolwarm'
-c_border = 'dimgrey'
-chop_by = 'season'
-dt = [[12,1,2],[3,4,5],[6,7,8],[9,10,11]]
-var = 'posterior_mean_diff'
-plot_combined = True
+        start_year = start_date.split('-')[0]
+        end_year = end_date.split('-')[0]
+        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+        full_path = os.path.join(output_path, plot_name)
+        fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+        plt.close()
 
-# CH4 and N2O
-start_date = '2018-01-01'
-end_date   = '2024-01-01'
+    ### Total HFCs/PFCs (w/o HFC-4310mee)
+    resample = None
+    period_override = None
+    start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
+    end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
 
-print('\n--- PLOTTING SEASONAL POSTERIOR MAP FOR CH4/N2O ---')
-for species in monthly_species:
+    print('\n--- PLOTTING COUNTRY FLUXES FOR TOTAL HFC/PFC ---')
+    for species in combined_species:
 
-    ds_all_flux = {}
-    ds_all_flux_scaled = {}
-    models_std = []
+        ds_all_flux_scaled = {}
 
-    ### Read and scale fluxes
-    for m,model in enumerate(models):
+        ### Read and scale fluxes
+        ds_all_flux_scaled = func.read_flux_total_fgases(data_dir,species,models,s_data,m_data,
+                                                        regions,start_date,end_date,
+                                                        period_override=period_override)
 
-        m0 = model.split('_')[0]
+        ### Define plotting colors
+        model_colors = func.set_model_colors_2(models,m_colors)
 
-        model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
-        models_std.append(model_read)
+        # 4) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
+        fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                    s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                    plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                    add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                    plot_separate=plot_separate,plot_combined=plot_combined,
+                                    resample=resample,
+                                    plot_resample_and_original=plot_resample_and_original,
+                                    period_override=period_override)
 
-        # use model_read instead of model
-        ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
-        ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
-                                                         species=species)[model_read]
+        start_year = start_date[0].split('-')[0]
+        end_year = end_date[0].split('-')[0]
+        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+        full_path = os.path.join(output_path, plot_name)
+        fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+        plt.close()
 
-    # 6) Plot spatial maps of the seasonal posterior fluxes (averaged between 2018 and 2023) subtracted by the mean (combined from 3 std_run)
-    fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
-                                                cmap=cmap,c_border=c_border,var=var,
-                                                plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
-                                                plot_site_locations=plot_site_locations,
-                                                plot_point_markers=plot_point_markers)
+    ### Models for spatial maps
+    models = models_spatial_maps
 
-    start_year = start_date.split('-')[0]
-    end_year = end_date.split('-')[0]
-    plot_name = f'{species}_seasonal_map_{regions[0]}_{start_year}_{end_year}.png'
-    full_path = os.path.join(output_path, plot_name)
-    fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
-    plt.close()
+    # Settings for average posterior
+    cmap = 'viridis'
+    c_border = 'floralwhite'
+    var = 'flux_total_posterior'
+    plot_combined = True
 
-print('\n--- ALL PLOTS WERE GENERATED SUCCESSFULLY! ---')
+    start_date  = '2018-01-01'
+    all_species = monthly_species + annual_species
+
+    # All species
+    print('\n--- PLOTTING MEAN POSTERIOR MAP FOR ALL SPECIES ---')
+    for species in all_species:
+
+        ds_all_flux = {}
+        ds_all_flux_scaled = {}
+        models_std = []
+
+        if species in monthly_species:
+            end_date = '2024-01-01'
+            chop_by = ['2018-01-01'] # NOTE: this setting can deal with no ELRIS CH4/N2O runs in Dec 2023
+            dt = None
+        elif species == "hfc4310mee":
+            end_date = '2023-01-01'
+            chop_by = 'year'
+            dt = 5
+        else:
+            end_date = '2024-01-01'
+            chop_by = 'year'
+            dt = 6
+
+        ### Read and scale fluxes
+        for m,model in enumerate(models):
+
+            m0 = model.split('_')[0]
+
+            model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
+            models_std.append(model_read)
+
+            # use model_read instead of model
+            ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
+            ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                             species=species)[model_read]
+
+        # 5) Plot spatial map of the posterior fluxes averaged between 2018 and 2023 (combined from 3 std_run)
+        fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
+                                                    cmap=cmap,c_border=c_border,var=var,
+                                                    plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
+                                                    plot_site_locations=plot_site_locations,
+                                                    plot_point_markers=plot_point_markers)
+
+        start_year = start_date.split('-')[0]
+        end_year = end_date.split('-')[0]
+        plot_name = f'{species}_posterior_map_{regions[0]}_{start_year}_{end_year}.png'
+        full_path = os.path.join(output_path, plot_name)
+        fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+        plt.close()
+
+    # Settings for seasonal difference to the mean
+    cmap = 'coolwarm'
+    c_border = 'dimgrey'
+    chop_by = 'season'
+    dt = [[12,1,2],[3,4,5],[6,7,8],[9,10,11]]
+    var = 'posterior_mean_diff'
+    plot_combined = True
+
+    # CH4 and N2O
+    start_date = '2018-01-01'
+    end_date   = '2024-01-01'
+
+    print('\n--- PLOTTING SEASONAL POSTERIOR MAP FOR CH4/N2O ---')
+    for species in monthly_species:
+
+        ds_all_flux = {}
+        ds_all_flux_scaled = {}
+        models_std = []
+
+        ### Read and scale fluxes
+        for m,model in enumerate(models):
+
+            m0 = model.split('_')[0]
+
+            model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
+            models_std.append(model_read)
+
+            # use model_read instead of model
+            ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
+            ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
+                                                             species=species)[model_read]
+
+        # 6) Plot spatial maps of the seasonal posterior fluxes (averaged between 2018 and 2023) subtracted by the mean (combined from 3 std_run)
+        fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
+                                                    cmap=cmap,c_border=c_border,var=var,
+                                                    plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
+                                                    plot_site_locations=plot_site_locations,
+                                                    plot_point_markers=plot_point_markers)
+
+        start_year = start_date.split('-')[0]
+        end_year = end_date.split('-')[0]
+        plot_name = f'{species}_seasonal_map_{regions[0]}_{start_year}_{end_year}.png'
+        full_path = os.path.join(output_path, plot_name)
+        fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+        plt.close()
+
+    print('\n--- ALL PLOTS GENERATED SUCCESSFULLY! ---')
