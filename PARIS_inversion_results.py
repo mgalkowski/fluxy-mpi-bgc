@@ -2264,7 +2264,7 @@ def plot_country_flux(ds_all,species,plot_regions,
         else:
             y_label_append = ''
         
-        ax.set_ylabel(f'{s_data[species]["species_print"]} ({units_print}g y$^{{-1}}${y_label_append})')
+        ax.set_ylabel(f'{s_data[species]["species_print"]} ({units_print}g{y_label_append} y$^{{-1}}$)')
         
         if period_all[list(ds.keys())[0]] == 'monthly' and resample != 'year':
             ax.set_xlim([np.min(min_x)-np.timedelta64(1,'M'),

@@ -32,13 +32,12 @@ ppt_mode = False
 
 ###########################################
 
-def produce_plots(regions, output_path):
+def produce_plots(regions, output_path, inventory_years):
 
     ### Settings for country fluxes
     models_country_fluxes = ['intem_longrun', 'intem', 'elris', 'rhime'] # NOTE: only options are basic model names w/ and w/o longrun
     scale_co2eq = True
     plot_inventory = True
-    inventory_years = None
     fix_y_axes = False
     add_prior = False
     add_prior_unc = False
