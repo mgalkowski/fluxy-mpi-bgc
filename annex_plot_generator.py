@@ -1,4 +1,6 @@
 import os
+import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import PARIS_inversion_results as func
 
@@ -55,6 +57,7 @@ def produce_plots(regions, output_path, inventory_years):
 
     ### Initialization
     s_data,m_data,m_colors,annotate_coords = func.initialize_settings(ppt_mode)
+    annual_res_list = list()
 
     ### Models for country fluxes
     models = models_country_fluxes
@@ -120,14 +123,15 @@ def produce_plots(regions, output_path, inventory_years):
                                                              scale_co2eq=scale_co2eq,species=species)[model_read]
 
         # 1.2) Plot annual country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
-        fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
-                                     plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
-                                     add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
-                                     plot_separate=plot_separate,plot_combined=plot_combined,
-                                     resample=resample,
-                                     plot_resample_and_original=plot_resample_and_original,
-                                     period_override=period_override)
+        fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                              plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                              add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                              plot_separate=plot_separate,plot_combined=plot_combined,
+                                              resample=resample,
+                                              plot_resample_and_original=plot_resample_and_original,
+                                              period_override=period_override,
+                                              return_res=True)
 
         start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
@@ -135,6 +139,25 @@ def produce_plots(regions, output_path, inventory_years):
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
+        
+        # Store results for .csv and table
+        comb = res_dict[regions[0]]['combined']
+        try:
+            inv = res_dict[regions[0]]['inventory']
+        except:
+            print('NO INVENTORY FOUND')
+            inv = {'time':comb['time'],
+                   'value':np.array([np.NaN,]*len(comb['time']))}
+            
+        tmp = {'species':[species,]*2,'source':['Inventory 2024','Paris mean']}
+        for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
+            paris_val = f"{comb['mean'][it]:.2f} \\pm {(comb['max'][it]-comb['min'][it])/2:.2f}"
+            inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
+            if len(inv_val)==1:
+                tmp[str(time)] = [f'{inv_val[0]:.2f}',paris_val]                            
+            else:
+                 tmp[str(time)] = [None,paris_val]      
+        annual_res_list.append(pd.DataFrame(tmp))
 
         # Monthly country fluxes
         resample = None
@@ -155,10 +178,12 @@ def produce_plots(regions, output_path, inventory_years):
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
+        
 
     ### F-gases
     end_date   = '2024-01-01'
     resample   = None
+                  
 
     print('\n--- PLOTTING COUNTRY FLUXES FOR ALL F-GASES ---')
     for species in annual_species:
@@ -198,14 +223,15 @@ def produce_plots(regions, output_path, inventory_years):
         model_colors = func.set_model_colors_2(models_std,m_colors)
 
         # 3) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
-        fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
-                                     plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
-                                     add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
-                                     plot_separate=plot_separate,plot_combined=plot_combined,
-                                     resample=resample,
-                                     plot_resample_and_original=plot_resample_and_original,
-                                     period_override=period_override)
+        fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                              plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                              add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                              plot_separate=plot_separate,plot_combined=plot_combined,
+                                              resample=resample,
+                                              plot_resample_and_original=plot_resample_and_original,
+                                              period_override=period_override,
+                                              return_res=True)
 
         start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
@@ -213,6 +239,25 @@ def produce_plots(regions, output_path, inventory_years):
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
+        
+        # Store results for .csv and table
+        comb = res_dict[regions[0]]['combined']
+        try:
+            inv = res_dict[regions[0]]['inventory']
+        except:
+            print('NO INVENTORY FOUND')
+            inv = {'time':comb['time'],
+                   'value':np.array([np.NaN,]*len(comb['time']))}
+            
+        tmp = {'species':[species,]*2,'source':['Inventory 2024','Paris mean']}
+        for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
+            paris_val = f"{comb['mean'][it]:.2f} \\pm {(comb['max'][it]-comb['min'][it])/2:.2f}"
+            inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
+            if len(inv_val)==1:
+                tmp[str(time)] = [f'{inv_val[0]:.2f}',paris_val]                            
+            else:
+                 tmp[str(time)] = [None,paris_val]      
+        annual_res_list.append(pd.DataFrame(tmp))
 
     ### Total HFCs/PFCs (w/o HFC-4310mee)
     resample = None
@@ -234,21 +279,40 @@ def produce_plots(regions, output_path, inventory_years):
         model_colors = func.set_model_colors_2(models,m_colors)
 
         # 4) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
-        fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                    s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
-                                    plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
-                                    add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
-                                    plot_separate=plot_separate,plot_combined=plot_combined,
-                                    resample=resample,
-                                    plot_resample_and_original=plot_resample_and_original,
-                                    period_override=period_override)
-
+        fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                              plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                              add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                              plot_separate=plot_separate,plot_combined=plot_combined,
+                                              resample=resample,
+                                              plot_resample_and_original=plot_resample_and_original,
+                                              period_override=period_override,
+                                              return_res=True)
         start_year = start_date[0].split('-')[0]
         end_year = end_date[0].split('-')[0]
         plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
+                              
+        # Store results for .csv and table
+        comb = res_dict[regions[0]]['combined']
+        try:
+            inv = res_dict[regions[0]]['inventory']
+        except:
+            print('NO INVENTORY FOUND')
+            inv = {'time':comb['time'],
+                   'value':np.array([np.NaN,]*len(comb['time']))}
+            
+        tmp = {'species':[species,]*2,'source':['Inventory 2024','Paris mean']}
+        for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
+            paris_val = f"{comb['mean'][it]:.2f} \\pm {(comb['max'][it]-comb['min'][it])/2:.2f}"
+            inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
+            if len(inv_val)==1:
+                tmp[str(time)] = [f'{inv_val[0]:.2f}',paris_val]                            
+            else:
+                 tmp[str(time)] = [None,paris_val]      
+        annual_res_list.append(pd.DataFrame(tmp))
 
     ### Models for spatial maps
     models = models_spatial_maps
@@ -357,3 +421,88 @@ def produce_plots(regions, output_path, inventory_years):
         plt.close()
 
     print('\n--- ALL PLOTS GENERATED SUCCESSFULLY! ---')
+                              
+                              
+    print('\n\n\n--- GENERATING TABLES ---')
+    annual_res = pd.concat(annual_res_list).fillna(value='/')
+    
+    print('\n\nTABLE HFC\n\n')
+    hfc_res = annual_res[annual_res.species.apply(lambda x : x[:3]=='hfc')]
+    make_table(hfc_res,f'{output_path}/hfc_res.txt')
+    hfc_res.to_csv(f'{output_path}/hfc_res.csv')
+    
+    print('\n\nTABLE PFC\n\n')
+    pfc_res = annual_res[annual_res.species.apply(lambda x : x[:3]=='pfc' or x=='cf4')]
+    make_table(pfc_res,f'{output_path}/pfc_res.txt')
+    pfc_res.to_csv(f'{output_path}/pfc_res.csv')
+    
+    print('\n\nTABLE main gases\n\n')
+    
+    main_gases_res = annual_res[annual_res.species.isin(['ch4','n2o','sf6','all_pfc','all_hfc'])]
+    make_table(main_gases_res,f'{output_path}/main_gases_res.txt')
+    main_gases_res.to_csv(f'{output_path}/main_gases_res.csv')
+    
+                              
+    print('\n--- TABLES GENERATED SUCCESSFULLY! ---')
+    
+
+def make_table(df,output_path,
+               descriptive_cols=['species','source'],
+               hline_place={'source':'Paris mean'}
+              ):
+    # Set latex Table env and number of cols
+    begin = '\\begin{center}\n  \\begin{tabular}{ '+len(descriptive_cols)*'l '+(len(df.columns)-len(descriptive_cols))*'r '+'}'
+    
+    # Set first line with columns title
+    header = '     '+len(descriptive_cols)*' & '
+    for y in df.columns[len(descriptive_cols):]:
+        header += y
+        if y!=df.columns[-1]: 
+            header+=' & '
+    
+    table = begin + '\n' + header + ' \\\\ \hline' + '\n'
+    
+    # Iterate over lines of dataframe
+    prev_species = ''
+    for idRow,row in df.iterrows():
+        # Indentation
+        l = '    '
+        
+        # Test if value for first column needed
+        if row[descriptive_cols[0]]==prev_species:
+            l += ' & '
+        else:
+            l += row[descriptive_cols[0]]+' & '
+        prev_species = row[descriptive_cols[0]]
+        
+        # Add values for other descriptive columns
+        for col in descriptive_cols[1:]:
+            l += row[col]+' & '
+        
+        # Add yearly values
+        for y in df.columns[len(descriptive_cols):]:
+            l += '$ '+row[y]+' $'
+            if y!=df.columns[-1]: 
+                l+=' & '
+        
+        # End line
+        l += ' \\\\ '
+        
+        # Add hline if needed
+        for key in hline_place.keys():
+            if row[key]==hline_place[key]:
+                l += ' \hline '
+        
+        # Add line to table
+        table+= l+'\n '
+    
+    # Close latex env
+    end = str('  \\end{tabular}\n\\end{center}\n')
+    
+    table += end
+    
+    table = table.replace('_','\_')
+    # print(table)
+    
+    with open(output_path, "w") as text_file:
+        text_file.write(table)
