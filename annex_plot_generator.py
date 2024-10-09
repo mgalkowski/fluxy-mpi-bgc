@@ -6,7 +6,7 @@ import PARIS_inversion_results as func
 ### GENERAL SETTINGS
 ###########################################
 # Species to plot
-monthly_species = ['ch4','n2o']
+monthly_species = ['ch4']#,'n2o']
 
 annual_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
                   'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee',
@@ -15,14 +15,14 @@ annual_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
 combined_species = ['all_hfc','all_pfc']
 
 # Cities to plot
-point_markers = {'UK': ['london','birmingham','liverpool','nottingham','sheffield'],
-                 'SWITZERLAND': ['bern','zurich','geneva','basel','lausanne'],
-                 'GERMANY': ['berlin','hamburg','munich','koeln','frankfurt'],
-                 'ITALY': ['rome','milan','naples','turin','palermo'],
-                 'NETHERLANDS': ['amsterdam','rotterdam','hague','utrecht','eindhoven'],
-                 'IRELAND': ['dublin','cork','dun laoghaire','luimneach','gaillimh'],
-                 'HUNGARY': ['budapest','debrecen','miskolc','szeged','pecs'],
-                 'NORWAY': ['oslo','bergen','trondheim','stavanger','drammen']}
+point_markers = {'UK': ['london','edinburgh','cardiff','belfast'],
+                'SWITZERLAND': ['bern','zurich','geneva','basel','lausanne'],
+                'GERMANY': ['berlin','hamburg','munich','koeln','frankfurt','essen'],
+                'ITALY': ['rome','milan','naples','turin','palermo'],
+                'NETHERLANDS': ['amsterdam','rotterdam','hague','utrecht','eindhoven'],
+                'IRELAND': ['dublin','cork','limerick','galway','waterford'],
+                'HUNGARY': ['budapest','debrecen','miskolc','szeged','pecs'],
+                'NORWAY': ['oslo','bergen','sandnes','stavanger','drammen']}
 
 # Path to results directory 
 data_dir = '/project/paris/inverse_modelling/'
@@ -51,7 +51,7 @@ def produce_plots(regions, output_path, inventory_years):
     models_spatial_maps = ['intem', 'elris', 'rhime']
     plot_area = regions[0]
     plot_site_locations = True
-    plot_point_markers = None #point_markers[regions[0]] # TODO: add coordinates of all cities to point_source_dict
+    plot_point_markers = point_markers[regions[0]] # TODO: add coordinates of all cities to point_source_dict
 
     ### Initialization
     s_data,m_data,m_colors,annotate_coords = func.initialize_settings(ppt_mode)
