@@ -18,9 +18,50 @@ model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
                    'elris':[0,1]}
 
-point_source_dict = {'paris':[2.340430,48.860050],
-                     'london':[-0.127799,51.507593],
-                     'nw_england':[-2.796870,53.774820]}
+point_source_dict = {
+                    'paris':[2.3404,48.8600],
+                    'nw_england':[-2.7969,53.7748],
+                    'london':[-0.1278, 51.5074],
+                    'edinburgh':[-3.1883, 55.9533],
+                    'cardiff':[-3.1791, 51.4816],
+                    'belfast':[-5.9301, 54.5973],
+                    'zurich': [8.5417, 47.3769],
+                    'geneva': [6.1432, 46.2044],
+                    'basel': [7.5886, 47.5596],
+                    'lausanne': [6.6323, 46.5197],
+                    'bern': [7.4474, 46.9481],
+                    'berlin': [13.4050, 52.5200],
+                    'hamburg': [9.9937, 53.5511],
+                    'munich': [11.5820, 48.1351],
+                    'koeln': [6.9603, 50.9375],
+                    'frankfurt': [8.6821, 50.1109],
+                    'essen': [7.0115, 51.4556],
+                    'rome': [12.4964, 41.9028],
+                    'milan': [9.1900, 45.4642],
+                    'naples': [14.2681, 40.8518],
+                    'turin': [7.6869, 45.0703],
+                    'palermo': [13.3615, 38.1157],
+                    'amsterdam': [4.9041, 52.3676],
+                    'rotterdam': [4.4777, 51.9244],
+                    'hague': [4.3007, 52.0705],
+                    'utrecht': [5.1214, 52.0907],
+                    'eindhoven': [5.4797, 51.4416],
+                    'dublin': [-6.2603, 53.3498],
+                    'cork': [-8.4727, 51.8985],
+                    'limerick': [-8.6305, 52.6638],
+                    'galway': [-9.0579, 53.2707],
+                    'waterford': [-7.1119, 52.2593],
+                    'budapest': [19.0402, 47.4979],
+                    'debrecen': [21.6273, 47.5316],
+                    'szeged': [20.1488, 46.2530],
+                    'miskolc': [20.7852, 48.0993],
+                    'pecs': [18.2324, 46.0784],
+                    'oslo': [10.7522, 59.9139],
+                    'bergen': [5.3241, 60.3929],
+                    'sandnes': [58.8514, 58.8500],
+                    'stavanger': [5.7382, 58.9690],
+                    'drammen': [10.2045, 59.7438],
+                    }
 
 countrycodes_dict = {'IRELAND':'IRL',
                      'UK':'GBR',
@@ -2584,16 +2625,16 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                 print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour and size')
             for p in plot_point_markers:
                 if type(p) == list:
-                    ax0.scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
-                    ax1.scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
-                    ax2.scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+                    ax0.scatter(p[0],p[1],color='red',marker='x',s=10,zorder=2)
+                    ax1.scatter(p[0],p[1],color='red',marker='x',s=10,zorder=2)
+                    ax2.scatter(p[0],p[1],color='red',marker='x',s=10,zorder=2)
                 elif type(p) == str:
                     if p not in point_source_dict.keys():
                         print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                     else:
-                        ax0.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
-                        ax1.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
-                        ax2.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                        ax0.scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
+                        ax1.scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
+                        ax2.scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
                         
     #flux colorbar
     levels = np.linspace(s_data[species]['fluxlim'][0],s_data[species]['fluxlim'][1])
@@ -2805,16 +2846,16 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
         print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
         for p in plot_point_markers:
             if type(p) == list:
-                ax[0].scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
-                ax[1].scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
-                ax[2].scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+                ax[0].scatter(p[0],p[1],color='red',marker='x',s=5,zorder=2)
+                ax[1].scatter(p[0],p[1],color='red',marker='x',s=5,zorder=2)
+                ax[2].scatter(p[0],p[1],color='red',marker='x',s=5,zorder=2)
             elif type(p) == str:
                 if p not in point_source_dict.keys():
                     print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                 else:
-                    ax[0].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
-                    ax[1].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
-                    ax[2].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                    ax[0].scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
+                    ax[1].scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
+                    ax[2].scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
                         
 
     #flux colorbar
@@ -3181,12 +3222,12 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                         print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
                     for p in plot_point_markers:
                         if type(p) == list:
-                            ax_var.scatter(p[0],p[1],color='black',marker='o',s=2,zorder=2)
+                            ax_var.scatter(p[0],p[1],color='red',marker='x',s=10,zorder=2)
                         elif type(p) == str:
                             if p not in point_source_dict.keys():
                                 print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                             else:
-                                ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=2,zorder=2)
+                                ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
 
             #except:
             #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
@@ -3221,12 +3262,12 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
                 for p in plot_point_markers:
                     if type(p) == list:
-                        ax_var.scatter(p[0],p[1],color='black',marker='o',s=2,zorder=2)
+                        ax_var.scatter(p[0],p[1],color='red',marker='x',s=2,zorder=2)
                     elif type(p) == str:
                         if p not in point_source_dict.keys():
                             print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                         else:
-                            ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=2,zorder=2)
+                            ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
 
     #flux colorbar
     cbar = plt.cm.ScalarMappable(cmap=cmap)
