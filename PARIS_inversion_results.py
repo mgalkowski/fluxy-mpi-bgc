@@ -1895,7 +1895,8 @@ def plot_country_flux(ds_all,species,plot_regions,
                       country_codes_as_titles=None,plot_separate=True,
                       plot_combined=False,resample=None,
                       plot_resample_and_original=False,
-                      period_override=None):
+                      period_override=None,
+                      return_res=False):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
     areas in plot_regions.
@@ -1956,10 +1957,15 @@ def plot_country_flux(ds_all,species,plot_regions,
         period_override (list of str, optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
+        return_res (bool, optional):
+            Wheter or not including a dictionnary with the results as output
     Returns:
         fig (figure): 
             A plot per country/region.
     """
+    if return_res:
+        res_dict = {country:dict() for country in plot_regions}
+        print('WARNING : Only return the annual combined results for now, so work only if plot_combined=True')
     
     # Check input flags
     if type(plot_separate) == list:
@@ -2092,6 +2098,9 @@ def plot_country_flux(ds_all,species,plot_regions,
                     ax.bar(inventory_time,inventory_flux,
                                 np.timedelta64(340, 'D'),color='white',edgecolor=inv_colours[y],align='edge',
                                 label=f'Inventory {i_year}',zorder=0)
+                    if return_res:
+                        res_dict[country]['inventory']= {'time':inventory_time,
+                                                         'value':inventory_flux}
         
         ds_count = 0
         
@@ -2209,6 +2218,13 @@ def plot_country_flux(ds_all,species,plot_regions,
                 mean_country_flux_total_upper = np.mean(all_region_flux_total_upper,axis=0)
                 min_country_flux_total_lower = np.min(all_region_flux_total_lower,axis=0)
                 max_country_flux_total_upper = np.max(all_region_flux_total_upper,axis=0)
+                
+                #print(return_res,region_time.astype('datetime64[Y]'))
+                if return_res :#and ((region_time.astype('datetime64[Y]')[1:]-region_time.astype('datetime64[Y]')[:-1]).astype(int)>=1).all():
+                    res_dict[country]['combined']= {'time':region_time.astype('datetime64[ns]'),
+                                                    'mean':mean_country_flux_total_posterior,
+                                                    'min':min_country_flux_total_lower,
+                                                    'max':max_country_flux_total_upper}
                 '''
                 # NOTE: This section of code is not prepared for type(plot_combined) == list
                 #       When plot_combined[j] == False, post_pdfs[m] = None
@@ -2357,7 +2373,10 @@ def plot_country_flux(ds_all,species,plot_regions,
     
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim parameter')
     
-    return fig
+    if return_res:
+        return fig,res_dict
+    else:
+        return fig
 
 #####################################################################
 
