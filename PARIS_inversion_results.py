@@ -3369,3 +3369,34 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,m_data):
     plt.legend(loc='upper right')
     
     return fig
+
+#####################################################################
+
+def convert_molar_to_mass_flux(ds, M):
+    """
+    Converts spatial flux variables in the flux dataset from mol/m²/s to kg/km²/year.
+    
+    Args:
+        ds (xarray dataset): The xarray dataset containing flux variables.
+        M (float): The molar mass in g/mol.
+    """
+    
+    # Convert the molar mass to kg/mol
+    M_kg = M * 0.001  # Convert grams to kilograms
+    
+    # List to store names of converted variables
+    converted_vars = []
+    
+    for var_name, variable in ds.items():
+        if 'units' in variable.attrs and variable.attrs['units'] == 'mol m-2 s-1':
+            # Convert the variable data
+            # Multiply by molar mass, seconds per year, and convert m² to km²
+            ds[var_name] = variable * M_kg * 31.536e6 # kg/km²/year
+            ds[var_name].attrs['units'] = 'kg km-2 yr-1' # Update the units
+            
+            # Add the variable name to the list of converted variables
+            converted_vars.append(var_name)
+
+    print("Converted variables to kg km-2 yr-1:\n", converted_vars)
+    
+    return ds
