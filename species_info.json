@@ -33,7 +33,8 @@
             "intem": "name_wetcharts_31sites",
             "rhime": "name_wetcharts_31sites",
             "elris": "name_wetcharts_31sites"
-        }
+        },
+        "molar_mass": 16.04
     },
     "hfc134a": {
         "species_print": "HFC-134a",
@@ -69,7 +70,8 @@
             "intem": "name_edgar",
             "rhime": "name_edgar",
             "elris": "name_edgar"
-        }
+        },
+        "molar_mass": 102.03
     },
     "hfc143a": {
         "species_print": "HFC-143a",
@@ -105,7 +107,8 @@
             "intem": "name_edgar",
             "rhime": "name_edgar",
             "elris": "name_edgar"
-        }
+        },
+        "molar_mass": 84.04
     },
     "hfc125": {
         "species_print": "HFC-125",
@@ -141,7 +144,8 @@
             "intem": "name_edgar",
             "rhime": "name_edgar",
             "elris": "name_edgar"
-        }
+        },
+        "molar_mass": 120.02
     },
     "hfc152a": {
         "species_print": "HFC-152a",
@@ -177,7 +181,8 @@
             "intem": "name_flat",
             "rhime": "name_flat",
             "elris": "name_flat"
-        }
+        },
+        "molar_mass": 66.05
     },
     "hfc32": {
         "species_print": "HFC-32",
@@ -213,7 +218,8 @@
             "intem": "name_edgar",
             "rhime": "name_edgar",
             "elris": "name_edgar"
-        }
+        },
+        "molar_mass": 52.02
     },
     "hfc227ea": {
         "species_print": "HFC-227ea",
@@ -249,7 +255,8 @@
             "intem": "name_flat",
             "rhime": "name_flat",
             "elris": "name_flat"
-        }
+        },
+        "molar_mass": 170.03
     },
     "hfc23": {
         "species_print": "HFC-23",
@@ -285,7 +292,8 @@
             "intem": "name_flat",
             "rhime": "name_flat",
             "elris": "name_flat"
-        }
+        },
+        "molar_mass": 70.01
     },
     "hfc245fa": {
         "species_print": "HFC-245fa",
@@ -321,7 +329,8 @@
             "intem": "name_flat",
             "rhime": "name_flat",
             "elris": "name_flat"
-        }
+        },
+        "molar_mass": 134.05
     },
     "hfc365mfc": {
         "species_print": "HFC-365mfc",
@@ -357,7 +366,8 @@
             "intem": "name_flat",
             "rhime": "name_flat",
             "elris": "name_flat"
-        }
+        },
+        "molar_mass": 148.07
     },
     "hfc4310mee": {
         "species_print": "HFC-4310mee",
@@ -393,7 +403,8 @@
             "intem": "name_flat",
             "rhime": "name_flat",
             "elris": "name_flat"
-        }
+        },
+        "molar_mass": 252.04
     },
     "pfc218": {
         "species_print": "PFC-218",
@@ -429,7 +440,8 @@
             "intem": "name_flat",
             "rhime": "name_flat",
             "elris": "name_flat"
-        }
+        },
+        "molar_mass": 188.02
     },
     "pfc318": {
         "species_print": "PFC-318",
@@ -465,7 +477,8 @@
             "intem": "name_flat",
             "rhime": "name_flat",
             "elris": "name_flat"
-        }
+        },
+        "molar_mass": 200.03
     },
     "pfc116": {
         "species_print": "PFC-116",
@@ -501,7 +514,8 @@
             "intem": "name_edgarminval",
             "rhime": "name_edgarminval",
             "elris": "name_edgarminval"
-        }
+        },
+        "molar_mass": 138.01
     },
     "cf4": {
         "species_print": "PFC-14",
@@ -537,7 +551,8 @@
             "intem": "name_edgarminval",
             "rhime": "name_edgarminval",
             "elris": "name_edgarminval"
-        }
+        },
+        "molar_mass": 88.0
     },
     "sf6": {
         "species_print": "SF$_6$",
@@ -573,7 +588,8 @@
             "intem": "name_flat",
             "rhime": "name_flat",
             "elris": "name_flat"
-        }
+        },
+        "molar_mass": 146.06
     },
     "n2o": {
         "species_print": "N$_2$O",
@@ -609,7 +625,8 @@
             "intem": "name_edgar_26sites",
             "rhime": "name_edgar_26sites",
             "elris": "name_edgar_26sites"
-        }
+        },
+        "molar_mass": 44.01
     },
     "hfc1234yf": {
         "species_print": "HFO-1234yf",
@@ -640,7 +657,8 @@
             -1e-12,
             1e-12
         ],
-        "gwp": 1
+        "gwp": 1,
+        "molar_mass": 114.04
     },
     "hfc1234zee": {
         "species_print": "HFO-1234zee",
@@ -671,7 +689,8 @@
             -1e-12,
             1e-12
         ],
-        "gwp": 1
+        "gwp": 1,
+        "molar_mass": 114.04
     },
     "hcfo1233zde": {
         "species_print": "HCFO-1233zde",
@@ -701,7 +720,8 @@
         "difflim": [
             -1e-12,
             1e-12
-        ]
+        ],
+        "molar_mass": 130.49
     },
     "clch2ch2cl": {
         "species_print": "DCA",
@@ -731,7 +751,8 @@
         "difflim": [
             -2e-12,
             2e-12
-        ]
+        ],
+        "molar_mass": 98.96
     },
     "ch3br": {
         "species_print": "CH$_3$Br",
@@ -761,7 +782,8 @@
         "difflim": [
             -1e-12,
             1e-12
-        ]
+        ],
+        "molar_mass": 94.94
     },
     "so2f2": {
         "species_print": "SO$_2$F$_2$",
@@ -791,7 +813,8 @@
         "difflim": [
             -1e-12,
             1e-12
-        ]
+        ],
+        "molar_mass": 102.06
     },
     "all_hfc": {
         "species_print": "Total HFC",
