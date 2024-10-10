@@ -19,7 +19,7 @@
             "elris": "datetime64[M]"
         },
         "mf_units_scaling": 1e-09,
-        "mf_units_print": "ppt",
+        "mf_units_print": "ppb",
         "fluxlim": [
             0,
             5e-08
