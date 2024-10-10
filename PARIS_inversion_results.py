@@ -339,7 +339,7 @@ def read_flux(data_dir,species,models,s_data,m_data,period_override=None,verbose
 #####################################################################
 
 def slice_flux(ds_all,start_date,end_date,s_data,
-               scale_units=True,scale_co2eq=False,species=None):
+               scale_units=True,scale_co2eq=False,convert_flux_units=False,species=None):
     """
     Slices the flux datasets to within given time limits and 
     scales fluxes into Tg/Gg based on the species.
@@ -358,11 +358,13 @@ def slice_flux(ds_all,start_date,end_date,s_data,
             If True, scales country fluxes to Tg or Gy per year.
         scale_co2eq (bool):
             If True, converts country fluxes to CO2-eq in Tg per year.
+        convert_flux_units (bool): 
+            If True, performs the conversion of molar flux to mass flux (default is False).
         species (str):
             Gas species, used to choose scaling units, e.g. 'ch4'.
     Returns:
         ds_all (dictionary of datasets):
-            xarray datasets, scaled and sliced between chosen dates.
+            xarray datasets, scaled, converted, and sliced between chosen dates.
     
     """
     
@@ -406,6 +408,10 @@ def slice_flux(ds_all,start_date,end_date,s_data,
                 if cov_var in ds_all[m].keys():
                     ds_all[m][cov_var].values = ds_all[m][cov_var].values/scale_factor**2 * gwp**2
                     print(f'Scaling covariance in {m} by {scale_factor**2 * gwp**2}')
+                    
+        if convert_flux_units:
+            M = s_data[species]["molar_mass"]
+            ds_all[m] = convert_molar_to_mass_flux(ds_all[m], M)
         
     return ds_all
 
