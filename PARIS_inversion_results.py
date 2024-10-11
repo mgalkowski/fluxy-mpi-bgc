@@ -2962,14 +2962,14 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     'EUROPE':[-98,40,10,80]}
 
     month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-
+         
     # Define variable specific settings
-    if var in ['posterior_prior_diff','posterior_mean_diff']:
-        lim = s_data[species]['difflim']
-        extend ='both'
-    else:
-        lim = s_data[species]['fluxlim']
-        extend = 'max'
+    # if var in ['posterior_prior_diff','posterior_mean_diff']:
+    #     lim = s_data[species]['difflim'] #ici
+    #     extend ='both'
+    # else:
+    #     lim = s_data[species]['fluxlim']
+    #     extend = 'max'
 
     # Figure size and averaging period
     n_lines = len(ds_all.keys())
@@ -3084,6 +3084,46 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                         sites_info[m] = sites_info[m2]
                     break
 
+    # Define variable specific settings
+    tmp_var_plot_list = list()
+    for i in range(n_cols):
+        for j,m in enumerate(ds_all.keys()):
+            mask = ((ds_all[m].longitude>region_limits[plot_area][0] )&
+                    (ds_all[m].longitude<region_limits[plot_area][1] )&
+                    (ds_all[m].latitude>region_limits[plot_area][2] )&
+                    (ds_all[m].latitude<region_limits[plot_area][3] ))
+            # Compute averaged quantities
+            if chop_by == 'season':
+                if var == 'posterior_prior_diff':
+                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_prior'][indexes[m][i],:,:],axis=0)
+                elif var == 'posterior_mean_diff':
+                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                else:
+                    var_plot = np.mean(ds_all[m][var][indexes[m][i],:,:],axis=0)
+            else:
+                if var == 'posterior_prior_diff':
+                    slice_apost   = ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
+                    slice_apriori = ds_all[m]['flux_total_prior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
+                    var_plot      = abs(np.mean(slice_apost,axis=0) - np.mean(slice_apriori,axis=0))
+                elif var == 'posterior_mean_diff':
+                    mean_slice_apost = np.mean(ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                    mean_apost       = np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    var_plot         = abs(mean_slice_apost - mean_apost)
+                else:
+                    var_plot = np.mean(ds_all[m][var].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                    
+            var_plot = var_plot.where(mask).dropna(dim='longitude',how='all').dropna(dim='latitude',how='all')
+            tmp_var_plot_list.append(var_plot)
+    
+    if var in ['posterior_prior_diff','posterior_mean_diff']:
+        tmp = np.quantile(tmp_var_plot_list,0.99)
+        lim = [-tmp,tmp]
+        extend ='both'
+    else:
+        lim = 0,np.quantile(tmp_var_plot_list,0.99)
+        extend = 'max'  
+    del var_plot,tmp_var_plot_list
+    
     # Create figure
     fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3), #3.25
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
@@ -3165,7 +3205,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             # Make separate plots
             if not(plot_combined):
                 if n_cols == 1 and n_lines == 1:
-                    ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                    ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],
+                                  shading='nearest')
                     ax.set_title(f'{m_data[m]["label"]}\n{time_out}')
                     ax_var = ax
                 else:
@@ -3176,7 +3217,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     else:
                         ax_var = ax[j,i]
 
-                    ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                    ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],
+                                      shading='nearest')
                     ax_var.set_title(f'{time_out}')
                     if i == 0:
                         if '\n' in m_data[m]["label"]:
@@ -3216,11 +3258,13 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             mean_var_plot = np.mean(all_var_plot,axis=0)
 
             if n_cols == 1:
-                ax.pcolormesh(lon,lat,mean_var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                ax.pcolormesh(lon,lat,mean_var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],
+                              shading='nearest')
                 ax_var = ax
             else:
                 ax_var = ax[i]
-                ax_var.pcolormesh(lon,lat,mean_var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
+                ax_var.pcolormesh(lon,lat,mean_var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],
+                                  shading='nearest')
 
             ax_var.set_title(f'{time_out}')
                 
