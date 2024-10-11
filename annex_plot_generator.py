@@ -12,7 +12,8 @@ monthly_species = ['ch4']#,'n2o']
 
 annual_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
                   'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee',
-                  'cf4','pfc116','pfc218','pfc318','sf6']
+                  'cf4','pfc116','pfc218','pfc318','sf6'
+                    ]
 
 combined_species = ['all_hfc','all_pfc']
 
