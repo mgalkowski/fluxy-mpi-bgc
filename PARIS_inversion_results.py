@@ -3441,7 +3441,7 @@ def convert_molar_to_mass_flux(ds, M):
             # Add the variable name to the list of converted variables
             converted_vars.append(var_name)
 
-    print("Converted variables to kg km-2 yr-1:\n", converted_vars)
+    print("Converting molar flux variables to mass flux (kg km-2 yr-1)")
     
     return ds
 
