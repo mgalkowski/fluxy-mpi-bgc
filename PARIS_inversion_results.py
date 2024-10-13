@@ -2430,12 +2430,12 @@ def plot_country_flux(ds_all,species,plot_regions,
 def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
                       plot_site_locations=False,plot_point_markers=None,
-                      season=None):
+                      season=None,set_fluxlim=None):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
     
-    If ds_all contains mulitple time periods for each model, the average 
+    If ds_all contains multiple time periods for each model, the average 
     across all times will be plotted.
     
     Args:
@@ -2470,6 +2470,10 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
         season (string, default None):
             If specified, plot the seasonal mean (only valable for monthly data). 
             Options are 'DJF', 'MAM', 'JJA', 'SON'.
+        set_fluxlim (str or list/tuple, optional): 
+            If provided, set the colorbar limits based on the selected options.
+            Options are 'default', 'auto', a list or tuple with two elements (min, max).
+            The default option is 'default', which is based on species_info values.
             
     Returns:
         fig (figure): 
@@ -2531,10 +2535,19 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                         print(f'No sites data available in {m} attrs, so using site data from {m2}')
                         sites_info[m] = sites_info[m2]
                     break
+                    
+    # Determine flux limits based on 'flux_total_posterior'
+    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim)
+    difflim = tuple([-fluxlim[1],fluxlim[1]])
+        
+    # Find units info in netcdf attrs
+    first_key = list(ds_all.keys())[0]
+    flux_units = ds_all[first_key]['flux_total_posterior'].attrs.get('units')
+    flux_units = flux_units.replace("-2", "$^{-2}$").replace("-1", "$^{-1}$")    
 
     fig,ax = plt.subplots(3,n_cols,constrained_layout=True,figsize=(n_cols*5,9),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
-
+    
     for i in range(3):
         for j in range(n_cols):
             if i == 2:
@@ -2589,11 +2602,11 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
             if season is None:
                 ax0.pcolormesh(lon,lat,
                                np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),
-                               cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                               cmap=cmap,vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
 
                 ax1.pcolormesh(lon,lat,
                                np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),
-                               cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                               cmap=cmap,vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
 
                 flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
                 flux_diff[np.where(flux_diff) == np.nan] = 0.
@@ -2601,11 +2614,11 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
             else :
                 ax0.pcolormesh(lon,lat,
                                ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values,
-                               cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                               cmap=cmap,vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
 
                 ax1.pcolormesh(lon,lat,
                                ds_all[m]['flux_total_posterior'].groupby("time.season").mean().sel(season=season).values,
-                               cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                               cmap=cmap,vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
                 
                 flux_diff = ds_all[m]['flux_total_posterior'].groupby("time.season").mean().sel(season=season).values \
                             -ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values
@@ -2619,7 +2632,7 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
 
             ax2.pcolormesh(lon,lat,
                             flux_diff,
-                            cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
+                            cmap=cmap_diff,vmin=difflim[0],vmax=difflim[1],shading='nearest')
 
             ax2.set_title(f'{m_data[m]["label"]}: posterior - prior')
 
@@ -2655,25 +2668,25 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                         ax2.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='x',s=10,zorder=2)
                         
     #flux colorbar
-    levels = np.linspace(s_data[species]['fluxlim'][0],s_data[species]['fluxlim'][1])
+    levels = np.linspace(fluxlim[0],fluxlim[1])
     cbar = plt.cm.ScalarMappable(cmap=cmap)
     cbar.set_array(levels)
-    cbar.set_clim(s_data[species]['fluxlim'])
+    cbar.set_clim(fluxlim)
 
     color_bar1 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[0,...],shrink=0.9,pad=0.005)
-    color_bar1.set_label(f'Prior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar1.set_label(f'Prior mean {s_data[species]["species_print"]}\n{time_out}\n({flux_units})')
 
     color_bar2 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[1,...],shrink=0.9,pad=0.005)
-    color_bar2.set_label(f'Posterior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar2.set_label(f'Posterior mean {s_data[species]["species_print"]}\n{time_out}\n({flux_units})')
 
     #difference colorbar
-    levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
+    levels_diff = np.linspace(difflim[0],difflim[1])
     cbar_diff = plt.cm.ScalarMappable(cmap=cmap_diff)
     cbar_diff.set_array(levels_diff)
-    cbar_diff.set_clim(s_data[species]['difflim'])
+    cbar_diff.set_clim(difflim)
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,...],shrink=0.9,pad=0.005)
-    color_bar3.set_label(f'Posterior - prior {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar3.set_label(f'Posterior - prior {s_data[species]["species_print"]}\n{time_out}\n({flux_units})')
     
     return fig
 
@@ -2681,12 +2694,10 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
 
 def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode=False,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
-                                 plot_site_locations=False,plot_point_markers=None):
+                                 plot_site_locations=False,plot_point_markers=None,set_fluxlim=None):
     """
     Plots posterior fluxes and the difference between these
     for two models.
-    Plots posterior and prior fluxes and the difference between these
-    for all models.
     
     If ds_all contains more than two models, only the first two will
     be plotted.
@@ -2721,6 +2732,11 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
             List of names of points to plot over larger point sources or lat/lon locations.
             See point_markers_dict for a list of options.
             e.g. ['paris','nw_england',[50.,5.]]
+        set_fluxlim (str or list/tuple, optional): 
+            If provided, set the colorbar limits based on the selected options.
+            Options are 'default', 'auto', a list or tuple with two elements (min, max).
+            The default option is 'default', which is based on species_info values.
+            
     Returns:
         fig (figure): 
             A plot of spatial flux posterior from two models a plot 
@@ -2780,6 +2796,15 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                         print(f'No sites data available in {m} attrs, so using site data from {m2}')
                         sites_info[m] = sites_info[m2]
                     break
+                    
+    # Determine flux limits based on 'flux_total_posterior'
+    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim)
+    difflim = tuple([-fluxlim[1],fluxlim[1]])
+        
+    # Find units info in netcdf attrs
+    first_key = list(ds_all.keys())[0]
+    flux_units = ds_all[first_key]['flux_total_posterior'].attrs.get('units')
+    flux_units = flux_units.replace("-2", "$^{-2}$").replace("-1", "$^{-1}$")
 
     fig,ax = plt.subplots(1,3,constrained_layout=True,figsize=(n_cols*5,9),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
@@ -2820,7 +2845,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
         
             ax[0].pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest',
+                            vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest',
                             )
 
             ax[0].set_title(f'{m_data[m]["label"]}\nPosterior mean')
@@ -2829,7 +2854,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
             
             ax[1].pcolormesh(lon,lat,
                             np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                            vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
 
             ax[1].set_title(f'{m_data[m]["label"]}\nPosterior mean')
             
@@ -2849,7 +2874,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
     
     ax[2].pcolormesh(lon,lat,
                     flux_diff,
-                    cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
+                    cmap=cmap_diff,vmin=difflim[0],vmax=difflim[1],shading='nearest')
 
     ax[2].set_title(f'{m_data[all_keys[1]]["label"]} - {m_data[all_keys[0]]["label"]}\nAbsolute difference')
 
@@ -2871,10 +2896,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                         
 
     #flux colorbar
-    levels = np.linspace(s_data[species]['fluxlim'][0],s_data[species]['fluxlim'][1])
+    levels = np.linspace(fluxlim[0],fluxlim[1])
     cbar = plt.cm.ScalarMappable(cmap=cmap)
     cbar.set_array(levels)
-    cbar.set_clim(s_data[species]['fluxlim'])
+    cbar.set_clim(fluxlim)
 
     if (ppt_mode):
         labelpad_v = 20
@@ -2882,19 +2907,19 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
         labelpad_v = 5
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[0],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)', labelpad=labelpad_v)
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n({flux_units})', labelpad=labelpad_v)
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[1],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)',labelpad=labelpad_v)
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n({flux_units})',labelpad=labelpad_v)
 
     #difference colorbar
-    levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
+    levels_diff = np.linspace(difflim[0],difflim[1])
     cbar_diff = plt.cm.ScalarMappable(cmap=cmap_diff)
     cbar_diff.set_array(levels_diff)
-    cbar_diff.set_clim(s_data[species]['difflim'])
+    cbar_diff.set_clim(difflim)
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='horizontal',extend='both',ax=ax[2],shrink=0.9,pad=0.01)
-    color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)',labelpad=labelpad_v)
+    color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n({flux_units})',labelpad=labelpad_v)
     
     return fig
 
@@ -2904,7 +2929,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                                     cmap='viridis',c_border='floralwhite',
                                     var='flux_total_posterior', plot_combined=False,
                                     chop_by='year',dt=1,period_override=None,
-                                    plot_site_locations=False,plot_point_markers=False):
+                                    plot_site_locations=False,plot_point_markers=False,set_fluxlim=None):
     """
     Plots posterior fluxes, prior fluxes or difference between these
     for all models and specific time intervals.
@@ -2952,6 +2977,11 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             List of names of points to plot over larger point sources or lat/lon locations.
             See point_markers_dict for a list of options.
             e.g. ['paris','nw_england',[50.,5.]]
+        set_fluxlim (str or list/tuple, optional): 
+            If provided, set the colorbar limits based on the selected options.
+            Options are 'default', 'auto', a list or tuple with two elements (min, max).
+            The default option is 'default', which is based on species_info values.
+            
     Returns:
         fig (figure):
             A plot of spatial flux of the variable specified in var
@@ -2996,14 +3026,18 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     'EUROPE':[-98,40,10,80]}
 
     month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-         
-    # Define variable specific settings
-    # if var in ['posterior_prior_diff','posterior_mean_diff']:
-    #     lim = s_data[species]['difflim'] #ici
-    #     extend ='both'
-    # else:
-    #     lim = s_data[species]['fluxlim']
-    #     extend = 'max'
+    
+    # Determine flux limits and define variable extend setting
+    lim = set_flux_limits(ds_all, var, region_limits[plot_area], s_data[species], option=set_fluxlim)
+    if var in ['posterior_prior_diff','posterior_mean_diff']:
+        extend ='both'
+    else:
+        extend = 'max'
+        
+    # Find units info in netcdf attrs
+    first_key = list(ds_all.keys())[0]
+    flux_units = ds_all[first_key][var].attrs.get('units')
+    flux_units = flux_units.replace("-2", "$^{-2}$").replace("-1", "$^{-1}$")
 
     # Figure size and averaging period
     n_lines = len(ds_all.keys())
@@ -3117,46 +3151,6 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                         print(f'No sites data available in {m} attrs, so using site data from {m2}')
                         sites_info[m] = sites_info[m2]
                     break
-
-    # Define variable specific settings
-    tmp_var_plot_list = list()
-    for i in range(n_cols):
-        for j,m in enumerate(ds_all.keys()):
-            mask = ((ds_all[m].longitude>region_limits[plot_area][0] )&
-                    (ds_all[m].longitude<region_limits[plot_area][1] )&
-                    (ds_all[m].latitude>region_limits[plot_area][2] )&
-                    (ds_all[m].latitude<region_limits[plot_area][3] ))
-            # Compute averaged quantities
-            if chop_by == 'season':
-                if var == 'posterior_prior_diff':
-                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_prior'][indexes[m][i],:,:],axis=0)
-                elif var == 'posterior_mean_diff':
-                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_posterior'],axis=0)
-                else:
-                    var_plot = np.mean(ds_all[m][var][indexes[m][i],:,:],axis=0)
-            else:
-                if var == 'posterior_prior_diff':
-                    slice_apost   = ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
-                    slice_apriori = ds_all[m]['flux_total_prior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
-                    var_plot      = abs(np.mean(slice_apost,axis=0) - np.mean(slice_apriori,axis=0))
-                elif var == 'posterior_mean_diff':
-                    mean_slice_apost = np.mean(ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
-                    mean_apost       = np.mean(ds_all[m]['flux_total_posterior'],axis=0)
-                    var_plot         = abs(mean_slice_apost - mean_apost)
-                else:
-                    var_plot = np.mean(ds_all[m][var].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
-                    
-            var_plot = var_plot.where(mask).dropna(dim='longitude',how='all').dropna(dim='latitude',how='all')
-            tmp_var_plot_list.append(var_plot)
-    
-    if var in ['posterior_prior_diff','posterior_mean_diff']:
-        tmp = np.quantile(tmp_var_plot_list,0.99)
-        lim = [-tmp,tmp]
-        extend ='both'
-    else:
-        lim = 0,np.quantile(tmp_var_plot_list,0.99)
-        extend = 'max'  
-    del var_plot,tmp_var_plot_list
     
     # Create figure
     fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3), #3.25
@@ -3348,7 +3342,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
         cbar_ax = fig.add_axes([f_left, f_bottom, f_width, f_height])
         color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
 
-    color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]} (mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]} ({flux_units})')
     fig.subplots_adjust(left=0.05, right=0.9, top=0.95, bottom=0.05, wspace=0.04, hspace=0.12)
 
     return fig
@@ -3450,3 +3444,86 @@ def convert_molar_to_mass_flux(ds, M):
     print("Converted variables to kg km-2 yr-1:\n", converted_vars)
     
     return ds
+
+#####################################################################
+
+def set_flux_limits(ds_all, var, region_plot, species_info, option='default'):
+    """
+    Set flux limits based on the option provided:
+    
+    1. `default` - use default values from species_info.
+    2. List or tuple with two values (e.g., [0, 1]) - use specified limits.
+    3. 'auto' - auto-calculate limits based on data percentiles.
+    
+    Args:
+        ds_all (dict): A dictionary of datasets containing the flux variables.
+        var (str): The variable name to compute limits for.
+        region_plot (list/tuple): Coordinates [lon_min, lon_max, lat_min, lat_max].
+        species_info (dict): Contains default limit values.
+        option (None, str or list/tuple): The option for setting limits.
+            - `default` for default values.
+            - A list or tuple with two elements (min, max) for specified limits.
+            - 'auto' for auto-calculated values.
+    
+    Returns:
+        tuple: A tuple containing the flux limits (min, max).
+        
+    Raises:
+        ValueError: If `fluxlim[0] >= fluxlim[1]` or an invalid option is provided.
+    """
+    
+    # If option is None, set it to 'default'
+    if option is None:
+        option = 'default'
+    
+    if option == 'default':  # Case 1: Use default values from species_info
+        if var in ['posterior_prior_diff', 'posterior_mean_diff']:
+            if 'difflim' in species_info:
+                fluxlim = tuple(species_info['difflim'])
+            else:
+                raise KeyError("Key 'difflim' not found in species_info.")
+        else:
+            if 'fluxlim' in species_info:
+                fluxlim = tuple(species_info['fluxlim'])
+            else:
+                raise KeyError("Key 'fluxlim' not found in species_info.")    
+                
+    elif isinstance(option, (list, tuple)) and len(option) == 2:  # Case 2: Use specified values [min, max]
+        fluxlim = (option[0], option[1])
+        
+    elif option == 'auto':  # Case 3: Auto-calculate limits based on percentiles
+        all_var = []
+        for j, m in enumerate(ds_all.keys()):
+            if var == 'posterior_prior_diff':
+                var_j = ds_all[m]['flux_total_posterior'] - ds_all[m]['flux_total_prior']
+            elif var == 'posterior_mean_diff':
+                var_j = ds_all[m]['flux_total_posterior'] - np.mean(ds_all[m]['flux_total_posterior'], axis=0)            
+            else:
+                var_j = ds_all[m][var]
+                
+            # Filter based on longitude and latitude of region_plot
+            mask_region = ((ds_all[m].longitude > region_plot[0]) &
+                           (ds_all[m].longitude < region_plot[1]) &
+                           (ds_all[m].latitude > region_plot[2]) &
+                           (ds_all[m].latitude < region_plot[3]))
+            var_j = var_j.where(mask_region).dropna(dim='longitude', how='all').dropna(dim='latitude', how='all')
+            all_var.append(var_j.values)
+            
+        all_var = np.concatenate(all_var, axis=0)  # Concatenate along the time axis (axis=0)
+        
+        upper_lim = np.quantile(all_var, 0.99)  # Calculate the 99th percentile
+        
+        if var in ['posterior_prior_diff', 'posterior_mean_diff']:
+            fluxlim = (-upper_lim, upper_lim)
+        else:
+            fluxlim = (0, upper_lim)
+            
+    else:
+        # Raise an error if the option is invalid
+        raise ValueError(f"Invalid option '{option}'. Use 'default', a [min, max] list/tuple, or 'auto'.")
+        
+    # Validation: Check that fluxlim[0] is smaller than fluxlim[1]
+    if fluxlim[0] >= fluxlim[1]:
+        raise ValueError(f"The lower flux limit {fluxlim[0]} must be less than the upper flux limit {fluxlim[1]}.") 
+        
+    return fluxlim
