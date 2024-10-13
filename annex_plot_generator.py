@@ -54,7 +54,9 @@ def produce_plots(regions, output_path, inventory_years):
     models_spatial_maps = ['intem', 'elris', 'rhime']
     plot_area = regions[0]
     plot_site_locations = True
-    plot_point_markers = point_markers[regions[0]] # TODO: add coordinates of all cities to point_source_dict
+    plot_point_markers = point_markers[regions[0]]
+    convert_flux_units = True
+    set_fluxlim = 'auto'
 
     ### Initialization
     s_data,m_data,m_colors,annotate_coords = func.initialize_settings(ppt_mode)
@@ -359,14 +361,15 @@ def produce_plots(regions, output_path, inventory_years):
             # use model_read instead of model
             ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
             ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
-                                                             species=species)[model_read]
+                                                             convert_flux_units=convert_flux_units,species=species)[model_read]
 
         # 5) Plot spatial map of the posterior fluxes averaged between 2018 and 2023 (combined from 3 std_run)
         fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
                                                     cmap=cmap,c_border=c_border,var=var,
                                                     plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
-                                                    plot_point_markers=plot_point_markers)
+                                                    plot_point_markers=plot_point_markers,
+                                                    set_fluxlim=set_fluxlim)
 
         start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
@@ -405,14 +408,15 @@ def produce_plots(regions, output_path, inventory_years):
             # use model_read instead of model
             ds_all_flux[model_read] = func.read_flux(data_dir,species,[model_read],s_data,m_data,period_override=period_override)[model_read]
             ds_all_flux_scaled[model_read] = func.slice_flux({model_read:ds_all_flux[model_read]},start_date,end_date,s_data,scale_units=True,
-                                                             species=species)[model_read]
+                                                             convert_flux_units=convert_flux_units,species=species)[model_read]
 
         # 6) Plot spatial maps of the seasonal posterior fluxes (averaged between 2018 and 2023) subtracted by the mean (combined from 3 std_run)
         fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
                                                     cmap=cmap,c_border=c_border,var=var,
                                                     plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
-                                                    plot_point_markers=plot_point_markers)
+                                                    plot_point_markers=plot_point_markers,
+                                                    set_fluxlim = set_fluxlim)
 
         start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
