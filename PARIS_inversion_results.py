@@ -2656,16 +2656,19 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                 print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour and size')
             for p in plot_point_markers:
                 if type(p) == list:
-                    ax0.scatter(p[0],p[1],color='red',marker='x',s=10,zorder=2)
-                    ax1.scatter(p[0],p[1],color='red',marker='x',s=10,zorder=2)
-                    ax2.scatter(p[0],p[1],color='black',marker='x',s=10,zorder=2)
+                    ax0.scatter(p[0],p[1],facecolors='none',edgecolors='red',marker='^',s=30,zorder=2)
+                    ax1.scatter(p[0],p[1],facecolors='none',edgecolors='red',marker='^',s=30,zorder=2)
+                    ax2.scatter(p[0],p[1],facecolors='none',edgecolors='black',marker='^',s=30,zorder=2)
                 elif type(p) == str:
                     if p not in point_source_dict.keys():
                         print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                     else:
-                        ax0.scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
-                        ax1.scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
-                        ax2.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='x',s=10,zorder=2)
+                        ax0.scatter(point_source_dict[p][0],point_source_dict[p][1], facecolors='none', 
+                                    edgecolors='red',marker='^',s=30,zorder=2)
+                        ax1.scatter(point_source_dict[p][0],point_source_dict[p][1], facecolors='none', 
+                                    edgecolors='red',marker='^',s=30,zorder=2)
+                        ax2.scatter(point_source_dict[p][0],point_source_dict[p][1], facecolors='none', 
+                                    edgecolors='black',marker='^',s=30,zorder=2)
                         
     #flux colorbar
     levels = np.linspace(fluxlim[0],fluxlim[1])
@@ -2883,16 +2886,19 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
         print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
         for p in plot_point_markers:
             if type(p) == list:
-                ax[0].scatter(p[0],p[1],color='red',marker='x',s=5,zorder=2)
-                ax[1].scatter(p[0],p[1],color='red',marker='x',s=5,zorder=2)
-                ax[2].scatter(p[0],p[1],color='black',marker='x',s=5,zorder=2)
+                ax[0].scatter(p[0],p[1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+                ax[1].scatter(p[0],p[1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+                ax[2].scatter(p[0],p[1],facecolor='none',edgecolor='black',marker='^',s=30,zorder=2)
             elif type(p) == str:
                 if p not in point_source_dict.keys():
                     print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                 else:
-                    ax[0].scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
-                    ax[1].scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
-                    ax[2].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='x',s=10,zorder=2)
+                    ax[0].scatter(point_source_dict[p][0],point_source_dict[p][1],
+                                  facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+                    ax[1].scatter(point_source_dict[p][0],point_source_dict[p][1],
+                                  facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+                    ax[2].scatter(point_source_dict[p][0],point_source_dict[p][1],
+                                  facecolor='none',edgecolor='black',marker='^',s=30,zorder=2)
                         
 
     #flux colorbar
@@ -3268,12 +3274,12 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                         print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
                     for p in plot_point_markers:
                         if type(p) == list:
-                            ax_var.scatter(p[0],p[1],color='red',marker='x',s=10,zorder=2)
+                            ax_var.scatter(p[0],p[1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
                         elif type(p) == str:
                             if p not in point_source_dict.keys():
                                 print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                             else:
-                                ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
+                                ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
 
             #except:
             #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
@@ -3308,12 +3314,12 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
                 for p in plot_point_markers:
                     if type(p) == list:
-                        ax_var.scatter(p[0],p[1],color='red',marker='x',s=2,zorder=2)
+                        ax_var.scatter(p[0],p[1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
                     elif type(p) == str:
                         if p not in point_source_dict.keys():
                             print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                         else:
-                            ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='red',marker='x',s=10,zorder=2)
+                            ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
 
     #flux colorbar
     cbar = plt.cm.ScalarMappable(cmap=cmap)
