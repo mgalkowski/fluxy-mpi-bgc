@@ -1935,7 +1935,8 @@ def extract_region_inventory_flux(country,data_dir,species,
 
 def plot_country_flux(ds_all,species,plot_regions,
                       s_data,m_data,model_colors,
-                      start_date,end_date,ppt_mode=False,scale_co2eq=False,
+                      start_date,end_date,ppt_mode=False,annex_mode=False,
+                      scale_co2eq=False,
                       plot_inventory=True,inventory_years=None,
                       data_dir=None,fix_y_axes=False,add_prior=True,
                       add_prior_unc=False, set_global_leg=False,
@@ -1965,6 +1966,8 @@ def plot_country_flux(ds_all,species,plot_regions,
             Used to slice inventory data.
         ppt_mode (logical) (optional):
             If True, adjust global legend position to accomodate bigger fonts.
+        annex_mode (bool) (optional):
+            If True, replace the labels with more concise versions for National Inventory Report Annexes.
         scale_co2eq (bool):
             If True, adapt y-axis label to CO2-eq.
         model_colors (dict of str):
@@ -2209,8 +2212,12 @@ def plot_country_flux(ds_all,species,plot_regions,
                                 
                     if plot_separate[j] == True:
                         if ds_count == 0:
-                            include_label = m_data[m]["label"]
-                            include_label_prior = f'{m_data[m]["label"]} prior'
+                            if annex_mode:
+                                include_label = m_data[m]["label"].split()[0]
+                                include_label_prior = f'{include_label} prior'
+                            else:
+                                include_label = m_data[m]["label"]
+                                include_label_prior = f'{m_data[m]["label"]} prior'
                         else:
                             include_label = None
                             include_label_prior = None
@@ -2258,6 +2265,15 @@ def plot_country_flux(ds_all,species,plot_regions,
                 #if i == 0:
                     #print('\nNOTE: This currently assumes that posterior PDFs are Gaussian. The average percentile is used '+
                     #    'to estimate an approximate standard deviation.\n')
+                # Define labels
+                if (annex_mode):
+                    labels_combined = {'prior':'PARIS prior',
+                                      'posterior':'PARIS mean',
+                                      'unc':'_nolegend_'}
+                else:
+                    labels_combined = {'prior':'Mean prior',
+                                      'posterior':'Mean posterior',
+                                      'unc':'Min/max of post uncertainty'}
                 
                 mean_country_flux_total_posterior = np.mean(all_region_flux_total_posterior,axis=0)
                 mean_country_flux_total_prior = np.mean(all_region_flux_total_prior,axis=0)
@@ -2289,16 +2305,16 @@ def plot_country_flux(ds_all,species,plot_regions,
                 '''                          
                 ax.plot(region_time.astype('datetime64[ns]'),
                                 mean_country_flux_total_posterior,
-                                label='Mean posterior',color='black',linewidth=3.5)
+                                label=labels_combined['posterior'],color='black',linewidth=3.5)
                 if add_prior:
                     ax.plot(region_time.astype('datetime64[ns]'),
                                         mean_country_flux_total_prior,
-                                        label='Mean prior',color='black',linestyle='dashed')
+                                        label=labels_combined['prior'],color='black',linestyle='dashed')
                 
                 ax.fill_between(region_time.astype('datetime64[ns]'),
                                                 min_country_flux_total_lower,
                                                 max_country_flux_total_upper,
-                                                alpha=0.3,color='grey',label='Min/max of post uncertainty')
+                                                alpha=0.3,color='grey',label=labels_combined['unc'])
                 '''
                 ax.plot(region_time.astype('datetime64[ns]'),
                                     pdf_mean,
@@ -2933,7 +2949,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
 
 def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_data,
                                     cmap='viridis',c_border='floralwhite',
-                                    var='flux_total_posterior', plot_combined=False,
+                                    var='flux_total_posterior', plot_combined=False, annex_mode=False,
                                     chop_by='year',dt=1,period_override=None,
                                     plot_site_locations=False,plot_point_markers=False,set_fluxlim=None):
     """
@@ -2965,6 +2981,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             'flux_total_posterior', 'posterior_prior_diff'
         plot_combined (bool):
             If True, plots the mean over all models at each time step.
+        annex_mode (bool) (optional):
+            If True, replace the labels with more concise versions for National Inventory Report Annexes.
         chop_by (str or list):
             Time units to perform the average, options for 'year', 'month' and 'season'.
             Option 'season' will perform the average over specific months/seasons (e.g. Jan-Jun, Jul-Dec).
@@ -3012,10 +3030,16 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             period_all[m] = s_data[species]["period"]
             dt_units_all[m] = s_data[species]["dt_units"][m0]
 
-    var_labels = {'flux_total_prior':'Prior mean',
-                  'flux_total_posterior':'Posterior mean',
-                  'posterior_prior_diff':'Posterior-prior',
-                  'posterior_mean_diff':'Posterior-mean'}
+    if (annex_mode) and (plot_combined):
+        var_labels = {'flux_total_prior':'PARIS prior',
+                      'flux_total_posterior':'PARIS mean',
+                      'posterior_prior_diff':'Posterior-prior',
+                      'posterior_mean_diff':'Posterior-mean'}
+    else:
+        var_labels = {'flux_total_prior':'Prior mean',
+                      'flux_total_posterior':'Posterior mean',
+                      'posterior_prior_diff':'Posterior-prior',
+                      'posterior_mean_diff':'Posterior-mean'}
 
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
