@@ -33,6 +33,9 @@ data_dir = '/project/paris/inverse_modelling/'
 # Set ppt_mode to True for bigger fonts
 ppt_mode = False
 
+# Set ppt_mode to True for shorter labels
+annex_mode = True
+
 ###########################################
 
 def produce_plots(regions, output_path, inventory_years):
@@ -101,7 +104,7 @@ def produce_plots(regions, output_path, inventory_years):
 
         # 1.1) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
         fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
                                      plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                      add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                      plot_separate=plot_separate,plot_combined=plot_combined,
@@ -127,7 +130,7 @@ def produce_plots(regions, output_path, inventory_years):
 
         # 1.2) Plot annual country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
         fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                               add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                               plot_separate=plot_separate,plot_combined=plot_combined,
@@ -167,7 +170,7 @@ def produce_plots(regions, output_path, inventory_years):
 
         # 2) Plot monthly country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
         fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                     s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
                                      plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                      add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                      plot_separate=plot_separate,plot_combined=plot_combined,
@@ -227,7 +230,7 @@ def produce_plots(regions, output_path, inventory_years):
 
         # 3) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
         fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                               add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                               plot_separate=plot_separate,plot_combined=plot_combined,
@@ -283,7 +286,7 @@ def produce_plots(regions, output_path, inventory_years):
 
         # 4) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
         fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,scale_co2eq,
+                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                               add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                               plot_separate=plot_separate,plot_combined=plot_combined,
@@ -366,7 +369,8 @@ def produce_plots(regions, output_path, inventory_years):
         # 5) Plot spatial map of the posterior fluxes averaged between 2018 and 2023 (combined from 3 std_run)
         fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
                                                     cmap=cmap,c_border=c_border,var=var,
-                                                    plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
+                                                    plot_combined=plot_combined, annex_mode=annex_mode,
+                                                    chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
                                                     set_fluxlim=set_fluxlim)
@@ -413,7 +417,8 @@ def produce_plots(regions, output_path, inventory_years):
         # 6) Plot spatial maps of the seasonal posterior fluxes (averaged between 2018 and 2023) subtracted by the mean (combined from 3 std_run)
         fig = func.plot_spatial_flux_per_timestamp(ds_all_flux_scaled,species,plot_area,end_date,s_data,m_data,
                                                     cmap=cmap,c_border=c_border,var=var,
-                                                    plot_combined=plot_combined,chop_by=chop_by,dt=dt,period_override=period_override,
+                                                    plot_combined=plot_combined,annex_mode=annex_mode,
+                                                    chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
                                                     set_fluxlim = set_fluxlim)
