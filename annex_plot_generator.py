@@ -33,7 +33,7 @@ data_dir = '/project/paris/inverse_modelling/'
 # Set ppt_mode to True for bigger fonts
 ppt_mode = False
 
-# Set ppt_mode to True for shorter labels
+# Set annex_mode to True for shorter labels
 annex_mode = True
 
 ###########################################
@@ -328,6 +328,7 @@ def produce_plots(regions, output_path, inventory_years):
     c_border = 'floralwhite'
     var = 'flux_total_posterior'
     plot_combined = True
+    period_override = None
 
     start_date  = '2018-01-01'
     all_species = monthly_species + annual_species

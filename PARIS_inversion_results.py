@@ -3066,7 +3066,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
         
     # Find units info in netcdf attrs
     first_key = list(ds_all.keys())[0]
-    flux_units = ds_all[first_key][var].attrs.get('units')
+    flux_units = ds_all[first_key]['flux_total_posterior'].attrs.get('units')
     flux_units = flux_units.replace("-2", "$^{-2}$").replace("-1", "$^{-1}$")
 
     # Figure size and averaging period
@@ -3087,8 +3087,13 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             t1_date[m] = chop_by[1:] + [end_date]
 
             # Get start/end time stamps for caption
-            start_print[m] = to_datetime(t0_date[m]).strftime('%d/%m/%Y')
-            end_print[m]   = (to_datetime(t1_date[m]) - np.timedelta64(1,'D')).strftime('%d/%m/%Y')
+            if annex_mode:
+                fmt = '%Y'
+            else:
+                fmt = '%d/%m/%Y'
+
+            start_print[m] = to_datetime(t0_date[m]).strftime(fmt)
+            end_print[m]   = (to_datetime(t1_date[m]) - np.timedelta64(1,'D')).strftime(fmt)
 
     else:
         # NOTE: It will only work properly if the data is complete between start_date and end_date
