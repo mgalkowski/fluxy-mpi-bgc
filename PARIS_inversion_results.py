@@ -2446,7 +2446,7 @@ def plot_country_flux(ds_all,species,plot_regions,
 def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
                       plot_site_locations=False,plot_point_markers=None,
-                      season=None,set_fluxlim=None):
+                      season=None,set_fluxlim='default'):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
@@ -2713,7 +2713,7 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
 
 def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode=False,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
-                                 plot_site_locations=False,plot_point_markers=None,set_fluxlim=None):
+                                 plot_site_locations=False,plot_point_markers=None,set_fluxlim='default'):
     """
     Plots posterior fluxes and the difference between these
     for two models.
@@ -2951,7 +2951,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                                     cmap='viridis',c_border='floralwhite',
                                     var='flux_total_posterior', plot_combined=False, annex_mode=False,
                                     chop_by='year',dt=1,period_override=None,
-                                    plot_site_locations=False,plot_point_markers=False,set_fluxlim=None):
+                                    plot_site_locations=False,plot_point_markers=False,set_fluxlim='default'):
     """
     Plots posterior fluxes, prior fluxes or difference between these
     for all models and specific time intervals.
@@ -3501,11 +3501,7 @@ def set_flux_limits(ds_all, var, region_plot, species_info, option='default'):
     Raises:
         ValueError: If `fluxlim[0] >= fluxlim[1]` or an invalid option is provided.
     """
-    
-    # If option is None, set it to 'default'
-    if option is None:
-        option = 'default'
-    
+   
     if option == 'default':  # Case 1: Use default values from species_info
         if var in ['posterior_prior_diff', 'posterior_mean_diff']:
             if 'difflim' in species_info:
