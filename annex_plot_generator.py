@@ -155,12 +155,12 @@ def produce_plots(regions, output_path, inventory_years):
             inv = {'time':comb['time'],
                    'value':np.array([np.NaN,]*len(comb['time']))}
             
-        tmp = {'species':[species,]*2,'source':['Inventory 2024','Paris mean']}
+        tmp = {'species':[species,]*2,'source':['NIR 2024','PARIS mean']}
         for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
-            paris_val = f"{comb['mean'][it]:.2f} \\pm {(comb['max'][it]-comb['min'][it])/2:.2f}"
+            paris_val = f"{comb['mean'][it]:.0f} \\pm {(comb['max'][it]-comb['min'][it])/2:.0f}"
             inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
             if len(inv_val)==1:
-                tmp[str(time)] = [f'{inv_val[0]:.2f}',paris_val]                            
+                tmp[str(time)] = [f'{inv_val[0]:.0f}',paris_val]                            
             else:
                  tmp[str(time)] = [None,paris_val]      
         annual_res_list.append(pd.DataFrame(tmp))
@@ -255,12 +255,12 @@ def produce_plots(regions, output_path, inventory_years):
             inv = {'time':comb['time'],
                    'value':np.array([np.NaN,]*len(comb['time']))}
             
-        tmp = {'species':[species,]*2,'source':['Inventory 2024','Paris mean']}
+        tmp = {'species':[species,]*2,'source':['NIR 2024','PARIS mean']}
         for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
-            paris_val = f"{comb['mean'][it]:.2f} \\pm {(comb['max'][it]-comb['min'][it])/2:.2f}"
+            paris_val = f"{comb['mean'][it]:.1f} \\pm {(comb['max'][it]-comb['min'][it])/2:.1f}"
             inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
             if len(inv_val)==1:
-                tmp[str(time)] = [f'{inv_val[0]:.2f}',paris_val]                            
+                tmp[str(time)] = [f'{inv_val[0]:.1f}',paris_val]                            
             else:
                  tmp[str(time)] = [None,paris_val]      
         annual_res_list.append(pd.DataFrame(tmp))
@@ -310,12 +310,12 @@ def produce_plots(regions, output_path, inventory_years):
             inv = {'time':comb['time'],
                    'value':np.array([np.NaN,]*len(comb['time']))}
             
-        tmp = {'species':[species,]*2,'source':['Inventory 2024','Paris mean']}
+        tmp = {'species':[species,]*2,'source':['NIR 2024','PARIS mean']}
         for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
-            paris_val = f"{comb['mean'][it]:.2f} \\pm {(comb['max'][it]-comb['min'][it])/2:.2f}"
+            paris_val = f"{comb['mean'][it]:.1f} \\pm {(comb['max'][it]-comb['min'][it])/2:.1f}"
             inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
             if len(inv_val)==1:
-                tmp[str(time)] = [f'{inv_val[0]:.2f}',paris_val]                            
+                tmp[str(time)] = [f'{inv_val[0]:.1f}',paris_val]                            
             else:
                  tmp[str(time)] = [None,paris_val]      
         annual_res_list.append(pd.DataFrame(tmp))
@@ -435,34 +435,48 @@ def produce_plots(regions, output_path, inventory_years):
                               
                               
     print('\n\n\n--- GENERATING TABLES ---')
-    annual_res = pd.concat(annual_res_list).fillna(value='/')
+    annual_res = pd.concat(annual_res_list).reset_index(drop=True).fillna(value=' ')
     
     print('\n\nTABLE HFC\n\n')
-    hfc_res = annual_res[annual_res.species.apply(lambda x : x[:3]=='hfc')]
-    make_table(hfc_res,f'{output_path}/hfc_res.txt')
-    hfc_res.to_csv(f'{output_path}/hfc_res.csv')
+    hfc_res = annual_res[annual_res.species.apply(lambda x : x[:3].lower()=='hfc')].copy()
+    hfc_res['species'] = hfc_res.species.apply(lambda x : x.replace('hfc','HFC-'))
+    make_table(hfc_res,f'{output_path}/hfc_res_{regions[0]}.tex')
+    hfc_res.to_csv(f'{output_path}/hfc_res_{regions[0]}.csv',index=False)
     
     print('\n\nTABLE PFC\n\n')
-    pfc_res = annual_res[annual_res.species.apply(lambda x : x[:3]=='pfc' or x=='cf4')]
-    make_table(pfc_res,f'{output_path}/pfc_res.txt')
-    pfc_res.to_csv(f'{output_path}/pfc_res.csv')
+    pfc_res = annual_res[annual_res.species.apply(lambda x : x[:3].lower()=='pfc' or x.lower()=='cf4')].copy()
+    pfc_res['species'] = pfc_res.species.apply(lambda x : x.replace('pfc','PFC-'))
+    make_table(pfc_res,f'{output_path}/pfc_res_{regions[0]}.tex')
+    pfc_res.to_csv(f'{output_path}/pfc_res_{regions[0]}.csv',index=False)
     
     print('\n\nTABLE main gases\n\n')
     
-    main_gases_res = annual_res[annual_res.species.isin(['ch4','n2o','sf6','all_pfc','all_hfc'])]
-    make_table(main_gases_res,f'{output_path}/main_gases_res.txt')
-    main_gases_res.to_csv(f'{output_path}/main_gases_res.csv')
+    main_gases_res = annual_res[annual_res.species.isin(['ch4','n2o','sf6','all_pfc','all_hfc'])].copy()
+    main_gases_res['species'] = main_gases_res.species.apply(lambda x : x.upper().replace('ALL_','Total '))
+    make_table(main_gases_res,f'{output_path}/main_gases_res_{regions[0]}.tex')
+    main_gases_res.to_csv(f'{output_path}/main_gases_res_{regions[0]}.csv',index=False)
     
                               
     print('\n--- TABLES GENERATED SUCCESSFULLY! ---')
+    return annual_res
     
 
 def make_table(df,output_path,
                descriptive_cols=['species','source'],
-               hline_place={'source':'Paris mean'}
+               hline_place={'source':'PARIS mean'}
               ):
+    if 'hfc' in output_path:
+        species = 'HFCs'
+    elif 'pfc' in output_path:
+        species = 'PFCs'
+    if 'main_gases' in output_path:
+        species = 'the main greenhouse gases of focus'
     # Set latex Table env and number of cols
-    begin = '\\begin{center}\n  \\begin{tabular}{ '+len(descriptive_cols)*'l '+(len(df.columns)-len(descriptive_cols))*'r '+'}'
+    tmp = output_path.split('/')[-1].split('.')[0]
+    label = '\n \\label{'+tmp+'}'
+    tmp = "Emissions estimation for "+species+" in ktCO$_2$eq/h according to the National Inventory Report (NIR) 2024 and the inversions done in the PARIS project. For the PARIS estimation, the mean of the 3 inversion models is displayed, along with a range of uncertainty estimated via the half distance between the maximum and minum uncertainties of the different models."  
+    caption = '\n \\caption{'+tmp+'}'
+    begin = '\\begin{table}'+label+caption+'\n \\begin{center}\n  \\begin{tabular}{ '+len(descriptive_cols)*'l '+(len(df.columns)-len(descriptive_cols))*'r '+'}'
     
     # Set first line with columns title
     header = '     '+len(descriptive_cols)*' & '
@@ -508,12 +522,9 @@ def make_table(df,output_path,
         table+= l+'\n '
     
     # Close latex env
-    end = str('  \\end{tabular}\n\\end{center}\n')
+    end = str('  \\end{tabular}\n \\end{center}\n\\end{table}')
     
     table += end
-    
-    table = table.replace('_','\_')
-    # print(table)
     
     with open(output_path, "w") as text_file:
         text_file.write(table)
