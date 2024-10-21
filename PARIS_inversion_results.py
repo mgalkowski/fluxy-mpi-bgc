@@ -3034,7 +3034,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
         var_labels = {'flux_total_prior':'PARIS prior',
                       'flux_total_posterior':'PARIS mean',
                       'posterior_prior_diff':'Posterior-prior',
-                      'posterior_mean_diff':'Posterior-mean'}
+                      'posterior_mean_diff':'Deviation'}
     else:
         var_labels = {'flux_total_prior':'Prior mean',
                       'flux_total_posterior':'Posterior mean',

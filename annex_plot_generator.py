@@ -113,7 +113,7 @@ def produce_plots(regions, output_path, inventory_years):
                                      period_override=period_override)
 
         start_year = start_date.split('-')[0]
-        end_year = end_date.split('-')[0]
+        end_year = '2024 '#end_date.split('-')[0] #NOTE: easy fix while there are no ELRIS runs for Dec
         plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
@@ -474,7 +474,7 @@ def make_table(df,output_path,
     # Set latex Table env and number of cols
     tmp = output_path.split('/')[-1].split('.')[0]
     label = '\n \\label{'+tmp+'}'
-    tmp = "Emissions estimation for "+species+" in $\\rm{TgCO}_{2}\\rm{-eq} \\cdot \\rm{yr}^{-1}$ according to the National Inventory Report (NIR) 2024 and the inversions done in the PARIS project. For the PARIS estimation, the mean of the 3 inversion models is displayed, along with a range of uncertainty estimated via the half distance between the maximum and minum uncertainties of the different models."  
+    tmp = "Emissions estimation for "+species+" in $\\rm{TgCO}_{2}\\rm{-eq} \\cdot \\rm{yr}^{-1}$ according to the National Inventory Report (NIR) 2024 and the inversions done in the PARIS project. For the PARIS estimation, the mean of the 3 inversion models is displayed, along with a range of uncertainty estimated via the half distance between the maximum and minimum uncertainties of the different models."  
     caption = '\n \\caption{'+tmp+'}'
     begin = '\\begin{table}'+label+caption+'\n \\begin{center}\n  \\begin{tabular}{ '+len(descriptive_cols)*'l '+(len(df.columns)-len(descriptive_cols))*'r '+'}'
     
