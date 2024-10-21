@@ -474,7 +474,7 @@ def make_table(df,output_path,
     # Set latex Table env and number of cols
     tmp = output_path.split('/')[-1].split('.')[0]
     label = '\n \\label{'+tmp+'}'
-    tmp = "Emissions estimation for "+species+" in ktCO$_2$eq/h according to the National Inventory Report (NIR) 2024 and the inversions done in the PARIS project. For the PARIS estimation, the mean of the 3 inversion models is displayed, along with a range of uncertainty estimated via the half distance between the maximum and minum uncertainties of the different models."  
+    tmp = "Emissions estimation for "+species+" in TgCO$_2$_{eq}/h according to the National Inventory Report (NIR) 2024 and the inversions done in the PARIS project. For the PARIS estimation, the mean of the 3 inversion models is displayed, along with a range of uncertainty estimated via the half distance between the maximum and minum uncertainties of the different models."  
     caption = '\n \\caption{'+tmp+'}'
     begin = '\\begin{table}'+label+caption+'\n \\begin{center}\n  \\begin{tabular}{ '+len(descriptive_cols)*'l '+(len(df.columns)-len(descriptive_cols))*'r '+'}'
     
