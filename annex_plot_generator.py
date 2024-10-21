@@ -140,7 +140,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               return_res=True)
 
         start_year = start_date.split('-')[0]
-        end_year = end_date.split('-')[0]
+        end_year = '2024 '#end_date.split('-')[0] #NOTE: easy fix while there are no ELRIS runs for Dec
         plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
@@ -155,7 +155,7 @@ def produce_plots(regions, output_path, inventory_years):
             inv = {'time':comb['time'],
                    'value':np.array([np.NaN,]*len(comb['time']))}
             
-        tmp = {'species':[species,]*2,'source':['NIR 2024','PARIS mean']}
+        tmp = {'species':[species,]*2,'source':['NIR '+inventory_years[0],'PARIS mean']}
         for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
             paris_val = f"{comb['mean'][it]:.0f} \\pm {(comb['max'][it]-comb['min'][it])/2:.0f}"
             inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
@@ -179,7 +179,7 @@ def produce_plots(regions, output_path, inventory_years):
                                      period_override=period_override)
 
         start_year = start_date.split('-')[0]
-        end_year = end_date.split('-')[0]
+        end_year = '2024 '#end_date.split('-')[0] #NOTE: easy fix while there are no ELRIS runs for Dec
         plot_name = f'{species}_country_flux_monthly_{regions[0]}_{start_year}_{end_year}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
@@ -255,7 +255,7 @@ def produce_plots(regions, output_path, inventory_years):
             inv = {'time':comb['time'],
                    'value':np.array([np.NaN,]*len(comb['time']))}
             
-        tmp = {'species':[species,]*2,'source':['NIR 2024','PARIS mean']}
+        tmp = {'species':[species,]*2,'source':['NIR '+inventory_years[0],'PARIS mean']}
         for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
             paris_val = f"{comb['mean'][it]:.1f} \\pm {(comb['max'][it]-comb['min'][it])/2:.1f}"
             inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
@@ -310,7 +310,7 @@ def produce_plots(regions, output_path, inventory_years):
             inv = {'time':comb['time'],
                    'value':np.array([np.NaN,]*len(comb['time']))}
             
-        tmp = {'species':[species,]*2,'source':['NIR 2024','PARIS mean']}
+        tmp = {'species':[species,]*2,'source':['NIR '+inventory_years[0],'PARIS mean']}
         for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
             paris_val = f"{comb['mean'][it]:.1f} \\pm {(comb['max'][it]-comb['min'][it])/2:.1f}"
             inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
