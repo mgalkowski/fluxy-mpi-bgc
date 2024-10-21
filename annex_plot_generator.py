@@ -113,7 +113,7 @@ def produce_plots(regions, output_path, inventory_years):
                                      period_override=period_override)
 
         start_year = start_date.split('-')[0]
-        end_year = '2024 '#end_date.split('-')[0] #NOTE: easy fix while there are no ELRIS runs for Dec
+        end_year = '2024' #end_date.split('-')[0] #NOTE: easy fix while there are no ELRIS runs for Dec
         plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
@@ -140,7 +140,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               return_res=True)
 
         start_year = start_date.split('-')[0]
-        end_year = '2024 '#end_date.split('-')[0] #NOTE: easy fix while there are no ELRIS runs for Dec
+        end_year = '2024' #end_date.split('-')[0] #NOTE: easy fix while there are no ELRIS runs for Dec
         plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
@@ -179,7 +179,7 @@ def produce_plots(regions, output_path, inventory_years):
                                      period_override=period_override)
 
         start_year = start_date.split('-')[0]
-        end_year = '2024 '#end_date.split('-')[0] #NOTE: easy fix while there are no ELRIS runs for Dec
+        end_year = '2024' #end_date.split('-')[0] #NOTE: easy fix while there are no ELRIS runs for Dec
         plot_name = f'{species}_country_flux_monthly_{regions[0]}_{start_year}_{end_year}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
