@@ -18,9 +18,50 @@ model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
                    'elris':[0,1]}
 
-point_source_dict = {'paris':[2.340430,48.860050],
-                     'london':[-0.127799,51.507593],
-                     'nw_england':[-2.796870,53.774820]}
+point_source_dict = {
+                    'paris':[2.3404,48.8600],
+                    'nw_england':[-2.7969,53.7748],
+                    'london':[-0.1278, 51.5074],
+                    'edinburgh':[-3.1883, 55.9533],
+                    'cardiff':[-3.1791, 51.4816],
+                    'belfast':[-5.9301, 54.5973],
+                    'zurich': [8.5417, 47.3769],
+                    'geneva': [6.1432, 46.2044],
+                    'basel': [7.5886, 47.5596],
+                    'lausanne': [6.6323, 46.5197],
+                    'bern': [7.4474, 46.9481],
+                    'berlin': [13.4050, 52.5200],
+                    'hamburg': [9.9937, 53.5511],
+                    'munich': [11.5820, 48.1351],
+                    'koeln': [6.9603, 50.9375],
+                    'frankfurt': [8.6821, 50.1109],
+                    'essen': [7.0115, 51.4556],
+                    'rome': [12.4964, 41.9028],
+                    'milan': [9.1900, 45.4642],
+                    'naples': [14.2681, 40.8518],
+                    'turin': [7.6869, 45.0703],
+                    'palermo': [13.3615, 38.1157],
+                    'amsterdam': [4.9041, 52.3676],
+                    'rotterdam': [4.4777, 51.9244],
+                    'hague': [4.3007, 52.0705],
+                    'utrecht': [5.1214, 52.0907],
+                    'eindhoven': [5.4797, 51.4416],
+                    'dublin': [-6.2603, 53.3498],
+                    'cork': [-8.4727, 51.8985],
+                    'limerick': [-8.6305, 52.6638],
+                    'galway': [-9.0579, 53.2707],
+                    'waterford': [-7.1119, 52.2593],
+                    'budapest': [19.0402, 47.4979],
+                    'debrecen': [21.6273, 47.5316],
+                    'szeged': [20.1488, 46.2530],
+                    'miskolc': [20.7852, 48.0993],
+                    'pecs': [18.2324, 46.0784],
+                    'oslo': [10.7522, 59.9139],
+                    'bergen': [5.3241, 60.3929],
+                    'sandnes': [58.8514, 58.8500],
+                    'stavanger': [5.7382, 58.9690],
+                    'drammen': [10.2045, 59.7438],
+                    }
 
 countrycodes_dict = {'IRELAND':'IRL',
                      'UK':'GBR',
@@ -134,11 +175,11 @@ def initialize_settings(ppt_mode=False):
 
         print('WARNING: Using big fonts. You might need to shrink the labels.')
     else:
-        plt.rc('font', size=12)
-        plt.rc('axes', titlesize=12)
-        plt.rc('axes', labelsize=12)
-        plt.rc('xtick', labelsize=12)
-        plt.rc('ytick', labelsize=12)
+        plt.rc('font', size=11)
+        plt.rc('axes', titlesize=11)
+        plt.rc('axes', labelsize=10)
+        plt.rc('xtick', labelsize=11)
+        plt.rc('ytick', labelsize=11)
         plt.rc('legend', fontsize=10)
 
         annotate_coords = {0:[0.6,0.80],
@@ -298,7 +339,7 @@ def read_flux(data_dir,species,models,s_data,m_data,period_override=None,verbose
 #####################################################################
 
 def slice_flux(ds_all,start_date,end_date,s_data,
-               scale_units=True,species=None):
+               scale_units=True,scale_co2eq=False,convert_flux_units=False,species=None):
     """
     Slices the flux datasets to within given time limits and 
     scales fluxes into Tg/Gg based on the species.
@@ -315,11 +356,15 @@ def slice_flux(ds_all,start_date,end_date,s_data,
             Dictionary of species with information for plotting (read from json file).
         scale_units (bool): 
             If True, scales country fluxes to Tg or Gy per year.
+        scale_co2eq (bool):
+            If True, converts country fluxes to CO2-eq in Tg per year.
+        convert_flux_units (bool): 
+            If True, performs the conversion of molar flux to mass flux (default is False).
         species (str):
             Gas species, used to choose scaling units, e.g. 'ch4'.
     Returns:
         ds_all (dictionary of datasets):
-            xarray datasets, scaled and sliced between chosen dates.
+            xarray datasets, scaled, converted, and sliced between chosen dates.
     
     """
     
@@ -342,16 +387,31 @@ def slice_flux(ds_all,start_date,end_date,s_data,
             print(f'Skipping {m}')
             
         if scale_units == True:
-            print(f'Scaling {m} units by {s_data[species]["units_scaling"][m0]}')
+            gwp = 1
+            scale_factor = s_data[species]["units_scaling"][m0]
+
+            # Update scaling factors
+            if (scale_co2eq):
+                gwp = s_data[species]["gwp"]
+                if (s_data[species]["units_print"] == "G"): #units_print is expected to be either G or T
+                    scale_factor = scale_factor * 1e3 #Convert to Tg
+                    # Note: units_print is not re-written because it would go back to
+                    #       its original value if initialize_settings is re-run.
+
+            print(f'Scaling {m} country fluxes by {scale_factor*gwp}')
             if ds_all[m] is not None:
                 var_names = [k for k in ds_all[m].keys() if k not in skip_var]
                 for v in var_names:
-                    ds_all[m][v].values = ds_all[m][v].values/s_data[species]["units_scaling"][m0]
+                    ds_all[m][v].values = ds_all[m][v].values/scale_factor * gwp
 
                 cov_var = 'covariance_country_flux_total_posterior'
                 if cov_var in ds_all[m].keys():
-                    ds_all[m][cov_var].values = ds_all[m][cov_var].values/s_data[species]["units_scaling"][m0]**2
-                    print(f'Scaling covariance units in {m} by {s_data[species]["units_scaling"][m0]**2}')
+                    ds_all[m][cov_var].values = ds_all[m][cov_var].values/scale_factor**2 * gwp**2
+                    print(f'Scaling covariance in {m} by {scale_factor**2 * gwp**2}')
+                    
+        if convert_flux_units:
+            M = s_data[species]["molar_mass"]
+            ds_all[m] = convert_molar_to_mass_flux(ds_all[m], M)
         
     return ds_all
 
@@ -391,7 +451,7 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
     
     if species == 'all_hfc':
         all_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
-                       'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee']
+                       'hfc227ea','hfc245fa','hfc32','hfc365mfc'] #,'hfc4310mee']
     elif species == 'all_pfc':
         all_species = ['cf4','pfc116','pfc218','pfc318']
     else:
@@ -415,11 +475,11 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
 
     for m,model in enumerate(models):
         
-        longrun = False
-        if 'longrun' in model:
-            model = model.split('_')[0]
-            models[m] = model
-            longrun = True
+        #longrun = False
+        #if 'longrun' in model:
+        #    model = model.split('_')[0]
+        #    models[m] = model
+        #    longrun = True
 
         missing_species[model] = []
         m0 = model.split('_')[0]
@@ -432,8 +492,8 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
             
             #tries to read from standard filename
             try:
-                model_read = f'{model}_{s_data[species]["std_run"][m0]}'
-                if longrun: model_read = f'{model_read}_longrun'
+                model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
+                if 'longrun' in model: model_read = f'{model_read}_longrun'
                 
                 ds_in[model] = read_flux(data_dir,species,[model_read],s_data,m_data,period_override[s],verbose=False)[model_read]    #edit read_flux so that it searches for correct filename per gas
                 with io.capture_output() as captured:
@@ -1793,13 +1853,22 @@ def extract_region_flux(ds_all,m,m0,country,verbose=True):
 #####################################################################
 
 def extract_region_inventory_flux(country,data_dir,species,
-                                  s_data,start_date,end_date,
+                                  s_data,scale_co2eq,start_date,end_date,
                                   inventory_year=None):
     """
     Extracts inventory flux values for regions that exists,
     or calculates total inventory flux values for aggregated regions.
     """
     
+    gwp = 1
+    scale_factor = s_data[species]["units_scaling"]["intem"]
+
+    # Update scaling factors
+    if scale_co2eq and ('all' not in species):
+        gwp = s_data[species]["gwp"]
+        if (s_data[species]["units_print"] == "G"): #units_print is expected to be either G or T
+            scale_factor = scale_factor * 1e3 #Convert to Tg
+
     if inventory_year == None:
         
         try:
@@ -1819,9 +1888,9 @@ def extract_region_inventory_flux(country,data_dir,species,
             inventory_time = None
 
     try:
-        inv_ds = inv_ds.sel(time=slice(start_date,end_date))
+        #inv_ds = inv_ds.sel(time=slice(start_date,end_date))
         inv_c_index = np.where(inv_ds['country'].values == country)[0][0]
-        inventory_flux = inv_ds['inventory'].values[:,inv_c_index]/s_data[species]["units_scaling"]["intem"]
+        inventory_flux = inv_ds['inventory'].values[:,inv_c_index]/scale_factor * gwp
         inventory_time = inv_ds.time.values
 
     except:
@@ -1844,7 +1913,7 @@ def extract_region_inventory_flux(country,data_dir,species,
                         print(f'WARNING: Inventory data for {inv_key[0]} is NaN. Inventory value for {country} will not include {inv_key[0]} contributions.')
 
                     inv_c_value = inv_c_value + inv_c_temp
-                    inventory_flux = inv_c_value/s_data[species]["units_scaling"]["intem"]
+                    inventory_flux = inv_c_value/scale_factor * gwp
                     inventory_time = inv_ds.time.values
 
                 except:
@@ -1866,14 +1935,16 @@ def extract_region_inventory_flux(country,data_dir,species,
 
 def plot_country_flux(ds_all,species,plot_regions,
                       s_data,m_data,model_colors,
-                      start_date,end_date,ppt_mode=False,
+                      start_date,end_date,ppt_mode=False,annex_mode=False,
+                      scale_co2eq=False,
                       plot_inventory=True,inventory_years=None,
-                      data_dir=None,fix_y_axes=False,
+                      data_dir=None,fix_y_axes=False,add_prior=True,
                       add_prior_unc=False, set_global_leg=False,
                       country_codes_as_titles=None,plot_separate=True,
                       plot_combined=False,resample=None,
                       plot_resample_and_original=False,
-                      period_override=None):
+                      period_override=None,
+                      return_res=False):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
     areas in plot_regions.
@@ -1895,6 +1966,10 @@ def plot_country_flux(ds_all,species,plot_regions,
             Used to slice inventory data.
         ppt_mode (logical) (optional):
             If True, adjust global legend position to accomodate bigger fonts.
+        annex_mode (bool) (optional):
+            If True, replace the labels with more concise versions for National Inventory Report Annexes.
+        scale_co2eq (bool):
+            If True, adapt y-axis label to CO2-eq.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
         plot_inventory (bool):
@@ -1906,16 +1981,22 @@ def plot_country_flux(ds_all,species,plot_regions,
             Path to top data directory, used to read inventory data files.
         fix_y_axes (bool):
             If True, uses a consistent y axis for all plots.
+        add_prior (bool):
+            If True, plots prior as dashed lines.
         add_prior_unc (bool):
             If True, plots prior uncertainty as shaded area.
         set_global_leg (bool):
             If True, plots one single legend instead of one legend per subplot.
         country_codes_as_titles (bool)
             If True, uses list of country codes as titles, instead of the region names.
-        plot_separate (bool):
-            If True, plots model results as separate lines.
-        plot_combined (bool):
-            If True, plots combined average results from all models.
+        plot_separate (list of bool or bool):
+            If True, plots model result as separate line.
+            List must be of same size as models, e.g. [True, False, False].
+            If a single boolean is provided, the same flag is assumed for all models.
+        plot_combined (list of bool or bool):
+            If True, the model is included in combined average result to be plotted.
+            List must be of same size as models, e.g. [False, True, True].
+            If a single boolean is provided, the same flag is assumed for all models.
         resample (str):
             Option to be passed to resample built-in function of xarray Dataset. 
             For yearly average, 'YS' option should be used; 'QS-DEC' for seasonaly average.
@@ -1926,11 +2007,31 @@ def plot_country_flux(ds_all,species,plot_regions,
         period_override (list of str, optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
+        return_res (bool, optional):
+            Wheter or not including a dictionnary with the results as output
     Returns:
         fig (figure): 
             A plot per country/region.
     """
+    if return_res:
+        res_dict = {country:dict() for country in plot_regions}
+        print('WARNING : Only return the annual combined results for now, so work only if plot_combined=True')
     
+    # Check input flags
+    if type(plot_separate) == list:
+        if len(plot_separate) != len(ds_all.keys()):
+            print('ERROR: plot_separate must be a boolean or a list of booleans of the same length as models.')
+            return None
+    else:
+        plot_separate = [plot_separate]*len(ds_all.keys())
+
+    if type(plot_combined) == list:
+        if len(plot_combined) != len(ds_all.keys()):
+            print('ERROR: plot_combined must be a boolean or a list of booleans of the same length as models.')
+            return None
+    else:
+        plot_combined = [plot_combined]*len(ds_all.keys())
+
     # Create annual mean xarrays if needed
     if resample is not None:
 
@@ -1997,11 +2098,15 @@ def plot_country_flux(ds_all,species,plot_regions,
     else:
         ds_all_p = ds_all.copy()
 
+    # Initialize variables
     max_cf = np.zeros(len(plot_regions))
+    start_year = [9999]*len(plot_regions)
+    end_year = [0]*len(plot_regions)
     min_x = []
     max_x = []
     period_all = {}
     
+    # Create figure
     if len(plot_regions) == 4:
         n_cols = 2
         n_rows = 2
@@ -2035,7 +2140,7 @@ def plot_country_flux(ds_all,species,plot_regions,
             
             for y,i_year in enumerate(inventory_years):
             
-                inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,s_data,
+                inventory_flux,inventory_time = extract_region_inventory_flux(country,data_dir,species,s_data,scale_co2eq,
                                                                               start_date,end_date,
                                                                               inventory_year=i_year)
                 
@@ -2043,6 +2148,9 @@ def plot_country_flux(ds_all,species,plot_regions,
                     ax.bar(inventory_time,inventory_flux,
                                 np.timedelta64(340, 'D'),color='white',edgecolor=inv_colours[y],align='edge',
                                 label=f'Inventory {i_year}',zorder=0)
+                    if return_res:
+                        res_dict[country]['inventory']= {'time':inventory_time,
+                                                         'value':inventory_flux}
         
         ds_count = 0
         
@@ -2054,6 +2162,7 @@ def plot_country_flux(ds_all,species,plot_regions,
         for ds in all_datasets:
         
             post_pdfs = {}
+            k = 0
             
             for j,m in enumerate(ds.keys()):
                 
@@ -2061,9 +2170,9 @@ def plot_country_flux(ds_all,species,plot_regions,
 
                 # Get inversion period
                 if period_override is not None:
-                    if period_override[i] == 'monthly':
+                    if period_override[j] == 'monthly':
                         period_all[m] = 'monthly'
-                    elif period_override[i] == 'yearly':
+                    elif period_override[j] == 'yearly':
                         period_all[m] = 'yearly'
                     else:
                         period_all[m] = s_data[species]["period"]
@@ -2076,13 +2185,14 @@ def plot_country_flux(ds_all,species,plot_regions,
                 
                 if region_time is not None:
             
-                    if plot_combined == True:
+                    if plot_combined[j] == True:
                 
-                        if j == 0:
+                        if k == 0:
                             all_region_flux_total_posterior = region_flux_total_posterior
                             all_region_flux_total_prior = region_flux_total_prior
                             all_region_flux_total_lower = region_flux_total_posterior_lower
                             all_region_flux_total_upper = region_flux_total_posterior_upper
+                            k+=1
                         else:
                             all_region_flux_total_posterior = np.vstack((all_region_flux_total_posterior,
                                                                         region_flux_total_posterior))
@@ -2097,11 +2207,17 @@ def plot_country_flux(ds_all,species,plot_regions,
                                                                                 scale=np.mean(np.array([region_flux_total_posterior[t]-region_flux_total_posterior_lower[t],
                                                                                                         region_flux_total_posterior_upper[t]-region_flux_total_posterior[t]])),
                                                                                 size=1000) for t in range(region_time.shape[0])])
+                    else:
+                        post_pdfs[m] = None
                                 
-                    if plot_separate == True:
+                    if plot_separate[j] == True:
                         if ds_count == 0:
-                            include_label = m_data[m]["label"]
-                            include_label_prior = f'{m_data[m]["label"]} prior'
+                            if annex_mode:
+                                include_label = m_data[m]["label"].split()[0]
+                                include_label_prior = f'{include_label} prior'
+                            else:
+                                include_label = m_data[m]["label"]
+                                include_label_prior = f'{m_data[m]["label"]} prior'
                         else:
                             include_label = None
                             include_label_prior = None
@@ -2110,37 +2226,54 @@ def plot_country_flux(ds_all,species,plot_regions,
                                     region_flux_total_posterior,
                                     label=include_label,color=model_colors[m][0])
                         
-                        if not(plot_combined):
-                            ax.plot(region_time,
-                                        region_flux_total_prior,
-                                        label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
-                        
+                        if not(plot_combined[j]):
                             ax.fill_between(region_time,
                                                 region_flux_total_posterior_lower,
                                                 region_flux_total_posterior_upper,
                                                 alpha=0.3,color=model_colors[m][0])
 
-                            if add_prior_unc:
-                                ax.fill_between(region_time,
-                                                    region_flux_total_prior_lower,
-                                                    region_flux_total_prior_upper,
-                                                    alpha=0.1,color=model_colors[m][0])
-                                max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
-                            
+                            if add_prior:
+                                ax.plot(region_time,
+                                            region_flux_total_prior,
+                                            label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
+                                max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
+
+                                if add_prior_unc:
+                                    ax.fill_between(region_time,
+                                                        region_flux_total_prior_lower,
+                                                        region_flux_total_prior_upper,
+                                                        alpha=0.1,color=model_colors[m][0])
+                                    max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
+
                     
                     min_x.append(np.min(region_time).astype('datetime64[M]'))
                     max_x.append(np.max(region_time).astype('datetime64[M]'))
                     max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_posterior_upper)))
-                    max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
+
                     if plot_inventory == True:
                         if inventory_flux is not None:
-                            max_cf[i] = np.nanmax((max_cf[i],np.nanmax(inventory_flux)))
+                            max_cf[i] = np.nanmax((max_cf[i],np.nanmax(inventory_flux[np.logical_and(inventory_time >= np.min(region_time),
+                                                                                        inventory_time <= np.max(region_time))])))
 
-            if plot_combined == True:
+                    y0 = ((region_time[0]).astype('datetime64[Y]')).astype(int)+1970
+                    y1 = ((region_time[-1]).astype('datetime64[Y]')).astype(int)+1970
+                    start_year[i] = min(start_year[i],y0)
+                    end_year[i] = max(end_year[i],y1)
+
+            if sum(plot_combined) != 0:
                 
                 #if i == 0:
                     #print('\nNOTE: This currently assumes that posterior PDFs are Gaussian. The average percentile is used '+
                     #    'to estimate an approximate standard deviation.\n')
+                # Define labels
+                if (annex_mode):
+                    labels_combined = {'prior':'PARIS prior',
+                                      'posterior':'PARIS mean',
+                                      'unc':'_nolegend_'}
+                else:
+                    labels_combined = {'prior':'Mean prior',
+                                      'posterior':'Mean posterior',
+                                      'unc':'Min/max of post uncertainty'}
                 
                 mean_country_flux_total_posterior = np.mean(all_region_flux_total_posterior,axis=0)
                 mean_country_flux_total_prior = np.mean(all_region_flux_total_prior,axis=0)
@@ -2148,7 +2281,18 @@ def plot_country_flux(ds_all,species,plot_regions,
                 mean_country_flux_total_upper = np.mean(all_region_flux_total_upper,axis=0)
                 min_country_flux_total_lower = np.min(all_region_flux_total_lower,axis=0)
                 max_country_flux_total_upper = np.max(all_region_flux_total_upper,axis=0)
+                
+                #print(return_res,region_time.astype('datetime64[Y]'))
+                if return_res :#and ((region_time.astype('datetime64[Y]')[1:]-region_time.astype('datetime64[Y]')[:-1]).astype(int)>=1).all():
+                    res_dict[country]['combined']= {'time':region_time.astype('datetime64[ns]'),
+                                                    'mean':mean_country_flux_total_posterior,
+                                                    'min':min_country_flux_total_lower,
+                                                    'max':max_country_flux_total_upper}
                 '''
+                # NOTE: This section of code is not prepared for type(plot_combined) == list
+                #       When plot_combined[j] == False, post_pdfs[m] = None
+                #       Plese revise the implementation before uncommenting.
+
                 for j,m in enumerate(ds.keys()):
                     if j == 0:
                         pdf_all = np.array([np.random.choice(post_pdfs[m][t,:],500) for t in range(post_pdfs[m].shape[0])])
@@ -2161,15 +2305,16 @@ def plot_country_flux(ds_all,species,plot_regions,
                 '''                          
                 ax.plot(region_time.astype('datetime64[ns]'),
                                 mean_country_flux_total_posterior,
-                                label='Mean posterior',color='black',linewidth=3.5)
-                ax.plot(region_time.astype('datetime64[ns]'),
-                                    mean_country_flux_total_prior,
-                                    label='Mean prior',color='black',linestyle='dashed')
+                                label=labels_combined['posterior'],color='black',linewidth=3.5)
+                if add_prior:
+                    ax.plot(region_time.astype('datetime64[ns]'),
+                                        mean_country_flux_total_prior,
+                                        label=labels_combined['prior'],color='black',linestyle='dashed')
                 
                 ax.fill_between(region_time.astype('datetime64[ns]'),
                                                 min_country_flux_total_lower,
                                                 max_country_flux_total_upper,
-                                                alpha=0.3,color='grey',label='Min/max of post uncertainty')
+                                                alpha=0.3,color='grey',label=labels_combined['unc'])
                 '''
                 ax.plot(region_time.astype('datetime64[ns]'),
                                     pdf_mean,
@@ -2189,12 +2334,16 @@ def plot_country_flux(ds_all,species,plot_regions,
             ds_count += 1
             
         #format each subplot
+        units_print = s_data[species]["units_print"]
         if 'all' in species:
             y_label_append = ' CO$_2$-eq'
+        elif scale_co2eq:
+            y_label_append = ' CO$_2$-eq'
+            units_print = "T"
         else:
             y_label_append = ''
         
-        ax.set_ylabel(f'{s_data[species]["species_print"]} ({s_data[species]["units_print"]}g y$^{{-1}}${y_label_append})')
+        ax.set_ylabel(f'{s_data[species]["species_print"]} ({units_print}g{y_label_append} yr$^{{-1}}$)')
         
         if period_all[list(ds.keys())[0]] == 'monthly' and resample != 'year':
             ax.set_xlim([np.min(min_x)-np.timedelta64(1,'M'),
@@ -2222,17 +2371,20 @@ def plot_country_flux(ds_all,species,plot_regions,
         else:
             print_country = country
         
-        if country_codes_as_titles == True:
-            try:
-                ax.set_title(f'{print_country}\n{regions_dict[country]}')
-            except:
+        if country_codes_as_titles != None:
+            if country_codes_as_titles == True:
+                try:
+                    ax.set_title(f'{print_country}\n{regions_dict[country]}')
+                except:
+                    ax.set_title(f'{print_country}')
+            else:
                 ax.set_title(f'{print_country}')
-        else:        
-            ax.set_title(f'{print_country}')
             
         ax.grid(visible=True,which='major',alpha=0.4)
-            
-        if (region_time[-1]-region_time[0]).astype('timedelta64[Y]') > 8:
+
+        if (end_year[i]-start_year[i]) > 8:
+            years_list = list(range(start_year[i],end_year[i]+2))
+            region_time = np.array([np.datetime64(str(year), 'Y') for year in years_list])
             ax.set_xticks(region_time[::2])
             ax.set_xticklabels(region_time[::2].astype('datetime64[Y]'))
             ax.xaxis.set_minor_formatter(NullFormatter())
@@ -2272,29 +2424,34 @@ def plot_country_flux(ds_all,species,plot_regions,
 
     # loop through plots again to fix min/max axis values
     
+    fac = 1.1
+    if not(set_global_leg): fac = 1.2
     for i,country in enumerate(plot_regions):
         if fix_y_axes == True:
-            fig.axes[i].set_ylim([0,np.nanmax(max_cf)*1.1])  
+            fig.axes[i].set_ylim([0,np.nanmax(max_cf)*fac])  
         elif (type(fix_y_axes) == list) == True:
             fig.axes[i].set_ylim(fix_y_axes)
         elif fix_y_axes == False:
-            fig.axes[i].set_ylim([0,max_cf[i]*1.1])  
+            fig.axes[i].set_ylim([0,max_cf[i]*fac])  
     
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim parameter')
     
-    return fig
+    if return_res:
+        return fig,res_dict
+    else:
+        return fig
 
 #####################################################################
 
 def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
                       plot_site_locations=False,plot_point_markers=None,
-                      season=None,plot_inversion_grid_flux=False):
+                      season=None,set_fluxlim='default',plot_inversion_grid_flux=False):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
     
-    If ds_all contains mulitple time periods for each model, the average 
+    If ds_all contains multiple time periods for each model, the average 
     across all times will be plotted.
     
     Args:
@@ -2329,6 +2486,10 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
         season (string, default None):
             If specified, plot the seasonal mean (only valable for monthly data). 
             Options are 'DJF', 'MAM', 'JJA', 'SON'.
+        set_fluxlim (str or list/tuple, optional): 
+            If provided, set the colorbar limits based on the selected options.
+            Options are 'default', 'auto', a list or tuple with two elements (min, max).
+            The default option is 'default', which is based on species_info values.
         plot_inversion_grid_flux (bool, default False):
             If True, plots fluxes at the spatial resolution of the inversion (using the 
             inversion_grid variable). If False, plots fluxes at the spatial resolution
@@ -2366,6 +2527,10 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'NETHERLANDS':[3,8,50,54],
+                    'IRELAND':[-12,-4,51,56],
+                    'HUNGARY':[15,24,44.5,50],
+                    'NORWAY':[3,32,55,72],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -2390,10 +2555,19 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                         print(f'No sites data available in {m} attrs, so using site data from {m2}')
                         sites_info[m] = sites_info[m2]
                     break
+                    
+    # Determine flux limits based on 'flux_total_posterior'
+    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim)
+    difflim = tuple([-fluxlim[1],fluxlim[1]])
+        
+    # Find units info in netcdf attrs
+    first_key = list(ds_all.keys())[0]
+    flux_units = ds_all[first_key]['flux_total_posterior'].attrs.get('units')
+    flux_units = flux_units.replace("-2", "$^{-2}$").replace("-1", "$^{-1}$")    
 
     fig,ax = plt.subplots(3,n_cols,constrained_layout=True,figsize=(n_cols*5,9),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
-
+    
     for i in range(3):
         for j in range(n_cols):
             if i == 2:
@@ -2506,7 +2680,6 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                     
                     flux_diff = ds_all[m]['flux_total_posterior'].groupby("time.season").mean().sel(season=season).values \
                                 -ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values
-                                
                 flux_diff[np.where(flux_diff) == np.nan] = 0.
                 
                 time_out = f'{season} of {time_out}'
@@ -2517,27 +2690,20 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
 
             ax2.pcolormesh(lon,lat,
                             flux_diff,
-                            cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
+                            cmap=cmap_diff,vmin=difflim[0],vmax=difflim[1],shading='nearest')
 
             ax2.set_title(f'{m_data[m]["label"]}: posterior - prior')
 
             if plot_site_locations == True:
                 if sites_info[m] is not None:
                     for s in sites_info[m]:
-                        ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                    edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
-                        ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                    edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
-                        ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                    edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
-                        ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
+                        ax0.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],facecolor='none',
+                                    edgecolor='red',marker='o',s=30,zorder=2)
+                        ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],facecolor='none',
+                                    edgecolor='red',marker='o',s=30,zorder=2)
+                        ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],facecolor='none',
                                     edgecolor='black',marker='o',s=30,zorder=2)
-                        ax1.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
-                                    edgecolor='black',marker='o',s=30,zorder=2)
-                        ax2.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
-                                    edgecolor='black',marker='o',s=30,zorder=2)
-                        
-                
+
         except:
             print(f'ERROR: Either start and end dates are incorrect or there are missing data for model {m}.')
             print(f'Skipping plotting {m}.')
@@ -2548,37 +2714,40 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                 print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour and size')
             for p in plot_point_markers:
                 if type(p) == list:
-                    ax0.scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
-                    ax1.scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
-                    ax2.scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+                    ax0.scatter(p[0],p[1],facecolors='none',edgecolors='red',marker='^',s=30,zorder=2)
+                    ax1.scatter(p[0],p[1],facecolors='none',edgecolors='red',marker='^',s=30,zorder=2)
+                    ax2.scatter(p[0],p[1],facecolors='none',edgecolors='black',marker='^',s=30,zorder=2)
                 elif type(p) == str:
                     if p not in point_source_dict.keys():
                         print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                     else:
-                        ax0.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
-                        ax1.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
-                        ax2.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                        ax0.scatter(point_source_dict[p][0],point_source_dict[p][1], facecolors='none', 
+                                    edgecolors='red',marker='^',s=30,zorder=2)
+                        ax1.scatter(point_source_dict[p][0],point_source_dict[p][1], facecolors='none', 
+                                    edgecolors='red',marker='^',s=30,zorder=2)
+                        ax2.scatter(point_source_dict[p][0],point_source_dict[p][1], facecolors='none', 
+                                    edgecolors='black',marker='^',s=30,zorder=2)
                         
     #flux colorbar
-    levels = np.linspace(s_data[species]['fluxlim'][0],s_data[species]['fluxlim'][1])
+    levels = np.linspace(fluxlim[0],fluxlim[1])
     cbar = plt.cm.ScalarMappable(cmap=cmap)
     cbar.set_array(levels)
-    cbar.set_clim(s_data[species]['fluxlim'])
+    cbar.set_clim(fluxlim)
 
     color_bar1 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[0,...],shrink=0.9,pad=0.005)
-    color_bar1.set_label(f'Prior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar1.set_label(f'Prior mean {s_data[species]["species_print"]}\n{time_out}\n({flux_units})')
 
     color_bar2 = fig.colorbar(cbar,orientation='vertical',cmap=cmap,extend='max',ax=ax[1,...],shrink=0.9,pad=0.005)
-    color_bar2.set_label(f'Posterior mean {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar2.set_label(f'Posterior mean {s_data[species]["species_print"]}\n{time_out}\n({flux_units})')
 
     #difference colorbar
-    levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
+    levels_diff = np.linspace(difflim[0],difflim[1])
     cbar_diff = plt.cm.ScalarMappable(cmap=cmap_diff)
     cbar_diff.set_array(levels_diff)
-    cbar_diff.set_clim(s_data[species]['difflim'])
+    cbar_diff.set_clim(difflim)
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='vertical',extend='both',ax=ax[2,...],shrink=0.9,pad=0.005)
-    color_bar3.set_label(f'Posterior - prior {s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar3.set_label(f'Posterior - prior {s_data[species]["species_print"]}\n{time_out}\n({flux_units})')
     
     return fig
 
@@ -2586,13 +2755,11 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
 
 def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode=False,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
-                                 plot_site_locations=False,plot_point_markers=None,
+                                 plot_site_locations=False,plot_point_markers=None,set_fluxlim='default',
                                  plot_inversion_grid_flux=False):
     """
     Plots posterior fluxes and the difference between these
     for two models.
-    Plots posterior and prior fluxes and the difference between these
-    for all models.
     
     If ds_all contains more than two models, only the first two will
     be plotted.
@@ -2631,6 +2798,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
             If True, plots fluxes at the spatial resolution of the inversion (using the 
             inversion_grid variable). If False, plots fluxes at the spatial resolution
             of the prior.
+        set_fluxlim (str or list/tuple, optional): 
+            If provided, set the colorbar limits based on the selected options.
+            Options are 'default', 'auto', a list or tuple with two elements (min, max).
+            The default option is 'default', which is based on species_info values.
     Returns:
         fig (figure): 
             A plot of spatial flux posterior from two models a plot 
@@ -2665,6 +2836,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'NETHERLANDS':[3,8,50,54],
+                    'IRELAND':[-12,-4,51,56],
+                    'HUNGARY':[15,24,44.5,50],
+                    'NORWAY':[3,32,55,72],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -2686,6 +2861,15 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                         print(f'No sites data available in {m} attrs, so using site data from {m2}')
                         sites_info[m] = sites_info[m2]
                     break
+                    
+    # Determine flux limits based on 'flux_total_posterior'
+    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim)
+    difflim = tuple([-fluxlim[1],fluxlim[1]])
+        
+    # Find units info in netcdf attrs
+    first_key = list(ds_all.keys())[0]
+    flux_units = ds_all[first_key]['flux_total_posterior'].attrs.get('units')
+    flux_units = flux_units.replace("-2", "$^{-2}$").replace("-1", "$^{-1}$")
 
     fig,ax = plt.subplots(1,3,constrained_layout=True,figsize=(n_cols*5,9),
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
@@ -2768,17 +2952,11 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
         if plot_site_locations == True:
             if sites_info[m] is not None:
                 for s in sites_info[m]:
-                    ax[0].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
-                    ax[1].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
-                    ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
-                    ax[0].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
-                                edgecolor='black',marker='o',s=30,zorder=2)
-                    ax[1].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
-                                edgecolor='black',marker='o',s=30,zorder=2)
-                    ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
+                    ax[0].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],facecolor='none',
+                                edgecolor='red',marker='o',s=30,zorder=2)
+                    ax[1].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],facecolor='none',
+                                edgecolor='red',marker='o',s=30,zorder=2)
+                    ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],facecolor='none',
                                 edgecolor='black',marker='o',s=30,zorder=2)
         
     if plot_inversion_grid_flux == True:
@@ -2799,7 +2977,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
     
     ax[2].pcolormesh(lon,lat,
                     flux_diff,
-                    cmap=cmap_diff,vmin=s_data[species]['difflim'][0],vmax=s_data[species]['difflim'][1],shading='nearest')
+                    cmap=cmap_diff,vmin=difflim[0],vmax=difflim[1],shading='nearest')
 
     ax[2].set_title(f'{m_data[all_keys[1]]["label"]} - {m_data[all_keys[0]]["label"]}\nAbsolute difference')
 
@@ -2808,23 +2986,26 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
         print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
         for p in plot_point_markers:
             if type(p) == list:
-                ax[0].scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
-                ax[1].scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
-                ax[2].scatter(p[0],p[1],color='black',marker='o',s=5,zorder=2)
+                ax[0].scatter(p[0],p[1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+                ax[1].scatter(p[0],p[1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+                ax[2].scatter(p[0],p[1],facecolor='none',edgecolor='black',marker='^',s=30,zorder=2)
             elif type(p) == str:
                 if p not in point_source_dict.keys():
                     print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                 else:
-                    ax[0].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
-                    ax[1].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
-                    ax[2].scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=5,zorder=2)
+                    ax[0].scatter(point_source_dict[p][0],point_source_dict[p][1],
+                                  facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+                    ax[1].scatter(point_source_dict[p][0],point_source_dict[p][1],
+                                  facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+                    ax[2].scatter(point_source_dict[p][0],point_source_dict[p][1],
+                                  facecolor='none',edgecolor='black',marker='^',s=30,zorder=2)
                         
 
     #flux colorbar
-    levels = np.linspace(s_data[species]['fluxlim'][0],s_data[species]['fluxlim'][1])
+    levels = np.linspace(fluxlim[0],fluxlim[1])
     cbar = plt.cm.ScalarMappable(cmap=cmap)
     cbar.set_array(levels)
-    cbar.set_clim(s_data[species]['fluxlim'])
+    cbar.set_clim(fluxlim)
 
     if (ppt_mode):
         labelpad_v = 20
@@ -2832,19 +3013,19 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
         labelpad_v = 5
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[0],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)', labelpad=labelpad_v)
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n({flux_units})', labelpad=labelpad_v)
 
     color_bar2 = fig.colorbar(cbar,orientation='horizontal',cmap=cmap,extend='max',ax=ax[1],shrink=0.9,pad=0.01)
-    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)',labelpad=labelpad_v)
+    color_bar2.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n({flux_units})',labelpad=labelpad_v)
 
     #difference colorbar
-    levels_diff = np.linspace(s_data[species]['difflim'][0],s_data[species]['difflim'][1])
+    levels_diff = np.linspace(difflim[0],difflim[1])
     cbar_diff = plt.cm.ScalarMappable(cmap=cmap_diff)
     cbar_diff.set_array(levels_diff)
-    cbar_diff.set_clim(s_data[species]['difflim'])
+    cbar_diff.set_clim(difflim)
 
     color_bar3 = fig.colorbar(cbar_diff,orientation='horizontal',extend='both',ax=ax[2],shrink=0.9,pad=0.01)
-    color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n(mol m$^{{-2}}$ s$^{{-1}}$)',labelpad=labelpad_v)
+    color_bar3.set_label(f'{s_data[species]["species_print"]}\n{time_out}\n({flux_units})',labelpad=labelpad_v)
     
     return fig
 
@@ -2852,10 +3033,11 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
 
 def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_data,
                                     cmap='viridis',c_border='floralwhite',
-                                    var='flux_total_posterior',
+                                    var='flux_total_posterior', plot_combined=False, annex_mode=False,
                                     chop_by='year',dt=1,period_override=None,
-                                    plot_site_locations=False,plot_point_markers=False,
+                                    plot_site_locations=False,plot_point_markers=False,set_fluxlim='default',
                                     plot_inversion_grid_flux=False):
+                                    plot_site_locations=False,plot_point_markers=False):
     """
     Plots posterior fluxes, prior fluxes or difference between these
     for all models and specific time intervals.
@@ -2883,6 +3065,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
         var (str):
             Variable to be plotted; options for 'flux_total_prior',
             'flux_total_posterior', 'posterior_prior_diff'
+        plot_combined (bool):
+            If True, plots the mean over all models at each time step.
+        annex_mode (bool) (optional):
+            If True, replace the labels with more concise versions for National Inventory Report Annexes.
         chop_by (str or list):
             Time units to perform the average, options for 'year', 'month' and 'season'.
             Option 'season' will perform the average over specific months/seasons (e.g. Jan-Jun, Jul-Dec).
@@ -2905,6 +3091,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             If True, plots fluxes at the spatial resolution of the inversion (using the 
             inversion_grid variable). If False, plots fluxes at the spatial resolution
             of the prior.
+        set_fluxlim (str or list/tuple, optional): 
+            If provided, set the colorbar limits based on the selected options.
+            Options are 'default', 'auto', a list or tuple with two elements (min, max).
+            The default option is 'default', which is based on species_info values.
     Returns:
         fig (figure):
             A plot of spatial flux of the variable specified in var
@@ -2929,32 +3119,48 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             period_all[m] = s_data[species]["period"]
             dt_units_all[m] = s_data[species]["dt_units"][m0]
 
-    var_labels = {'flux_total_prior':'Prior mean',
-                  'flux_total_posterior':'Posterior mean',
-                  'posterior_prior_diff':'Posterior-prior'}
+    if (annex_mode) and (plot_combined):
+        var_labels = {'flux_total_prior':'PARIS prior',
+                      'flux_total_posterior':'PARIS mean',
+                      'posterior_prior_diff':'Posterior-prior',
+                      'posterior_mean_diff':'Deviation'}
+    else:
+        var_labels = {'flux_total_prior':'Prior mean',
+                      'flux_total_posterior':'Posterior mean',
+                      'posterior_prior_diff':'Posterior-prior',
+                      'posterior_mean_diff':'Posterior-mean'}
 
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
+                    'NETHERLANDS':[3,8,50,54],
+                    'IRELAND':[-12,-4,51,56],
+                    'HUNGARY':[15,24,44.5,50],
+                    'NORWAY':[3,32,55,72],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
 
     month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-
-    # Define variable specific settings
-    if var == 'posterior_prior_diff':
-        lim = s_data[species]['difflim']
+    
+    # Determine flux limits and define variable extend setting
+    lim = set_flux_limits(ds_all, var, region_limits[plot_area], s_data[species], option=set_fluxlim)
+    if var in ['posterior_prior_diff','posterior_mean_diff']:
         extend ='both'
     else:
-        lim = s_data[species]['fluxlim']
         extend = 'max'
+        
+    # Find units info in netcdf attrs
+    first_key = list(ds_all.keys())[0]
+    flux_units = ds_all[first_key]['flux_total_posterior'].attrs.get('units')
+    flux_units = flux_units.replace("-2", "$^{-2}$").replace("-1", "$^{-1}$")
 
     # Figure size and averaging period
     n_lines = len(ds_all.keys())
+    if plot_combined: n_lines = 1
     t0_date = {}
     t1_date = {}
     start_print = {}
@@ -2970,12 +3176,17 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             t1_date[m] = chop_by[1:] + [end_date]
 
             # Get start/end time stamps for caption
-            start_print[m] = to_datetime(t0_date[m]).strftime('%d/%m/%Y')
-            end_print[m]   = (to_datetime(t1_date[m]) - np.timedelta64(1,'D')).strftime('%d/%m/%Y')
+            if annex_mode:
+                fmt = '%Y'
+            else:
+                fmt = '%d/%m/%Y'
+
+            start_print[m] = to_datetime(t0_date[m]).strftime(fmt)
+            end_print[m]   = (to_datetime(t1_date[m]) - np.timedelta64(1,'D')).strftime(fmt)
 
     else:
         # NOTE: It will only work properly if the data is complete between start_date and end_date
-        nt = np.zeros(n_lines)
+        nt = np.zeros(len(ds_all.keys()))
         for i,m in enumerate(ds_all.keys()):
             total_times = len(ds_all[m].time)
 
@@ -3064,7 +3275,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                         print(f'No sites data available in {m} attrs, so using site data from {m2}')
                         sites_info[m] = sites_info[m2]
                     break
-
+    
     # Create figure
     fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3), #3.25
                    subplot_kw={'projection':cartopy.crs.PlateCarree()})
@@ -3114,6 +3325,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                         print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
                         var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_prior'][indexes[m][i],:,:],axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
+                elif var == 'posterior_mean_diff':
+                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
                     try:
                         var_plot = np.mean(ds_all[m][f'{var}{var_append}'][indexes[m][i],:,:],axis=0)
@@ -3138,6 +3352,11 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                         slice_apriori = ds_all[m]['flux_total_prior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
                     var_plot      = np.mean(slice_apost,axis=0) - np.mean(slice_apriori,axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
+                elif var == 'posterior_mean_diff':
+                    mean_slice_apost = np.mean(ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                    mean_apost       = np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    var_plot         = mean_slice_apost - mean_apost
+                    var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
                     try:
                         var_plot = np.mean(ds_all[m][f'{var}{var_append}'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
@@ -3151,35 +3370,83 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                 else:
                     time_out = (f'{start_print[m][i]} - {end_print[m][i]}')
 
-            # Make plot
-            if n_cols == 1 and n_lines == 1:
-                ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
-                ax.set_title(f'{m_data[m]["label"]}\n{time_out}')
+            # Concatenate all models 2D-array
+            if (plot_combined):
+                if j == 0:
+                    all_var_plot = np.expand_dims(var_plot, axis=0)
+                else:
+                    all_var_plot = np.concatenate((all_var_plot, np.expand_dims(var_plot, axis=0)),axis=0)
+
+            # Make separate plots
+            if not(plot_combined):
+                if n_cols == 1 and n_lines == 1:
+                    ax.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],
+                                  shading='nearest')
+                    ax.set_title(f'{m_data[m]["label"]}\n{time_out}')
+                    ax_var = ax
+                else:
+                    if n_lines == 1:
+                        ax_var = ax[i] 
+                    elif n_cols == 1:
+                        ax_var = ax[j]
+                    else:
+                        ax_var = ax[j,i]
+
+                    ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],
+                                      shading='nearest')
+                    ax_var.set_title(f'{time_out}')
+                    if i == 0:
+                        if '\n' in m_data[m]["label"]:
+                            ax_var.text(-0.14, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
+                        else:
+                            ax_var.text(-0.07, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
+                    
+                # Add site location
+                if plot_site_locations == True:
+                    if sites_info[m] is not None:
+                        for s in sites_info[m]:
+                            ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],facecolor='none',
+                                            edgecolor='red',marker='o',s=30,zorder=2)
+                    
+                # Add markers at specific locations
+                if plot_point_markers is not None:
+                    if i == 0:
+                        print(f'\nPlotting markers for: {plot_point_markers}')
+                        print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
+                    for p in plot_point_markers:
+                        if type(p) == list:
+                            ax_var.scatter(p[0],p[1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+                        elif type(p) == str:
+                            if p not in point_source_dict.keys():
+                                print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
+                            else:
+                                ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
+
+            #except:
+            #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
+            #    print(f'Skipping plotting {m}.')
+
+        # Plot combined
+        if plot_combined:
+            mean_var_plot = np.mean(all_var_plot,axis=0)
+
+            if n_cols == 1:
+                ax.pcolormesh(lon,lat,mean_var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],
+                              shading='nearest')
                 ax_var = ax
             else:
-                if n_lines == 1:
-                    ax_var = ax[i] 
-                elif n_cols == 1:
-                    ax_var = ax[j]
-                else:
-                    ax_var = ax[j,i]
+                ax_var = ax[i]
+                ax_var.pcolormesh(lon,lat,mean_var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],
+                                  shading='nearest')
 
-                ax_var.pcolormesh(lon,lat,var_plot,cmap=cmap,vmin=lim[0],vmax=lim[1],shading='nearest')
-                ax_var.set_title(f'{time_out}')
-                if i == 0:
-                    if '\n' in m_data[m]["label"]:
-                        ax_var.text(-0.14, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
-                    else:
-                        ax_var.text(-0.07, 0.25, f'{m_data[m]["label"]}', transform=ax_var.transAxes, rotation=90)
+            ax_var.set_title(f'{time_out}')
                 
             # Add site location
             if plot_site_locations == True:
                 if sites_info[m] is not None:
                     for s in sites_info[m]:
-                        ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='white',
-                                        edgecolor='none',marker='o',s=30,zorder=2,alpha=0.5)
-                        ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],color='none',
-                                    edgecolor='black',marker='o',s=30,zorder=2)
+                        ax_var.scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],facecolor='none',
+                                        edgecolor='red',marker='o',s=30,zorder=2)
                 
             # Add markers at specific locations
             if plot_point_markers is not None:
@@ -3188,16 +3455,12 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     print(f'Edit lines below line {inspect.getframeinfo(inspect.currentframe()).lineno} to change marker colour')
                 for p in plot_point_markers:
                     if type(p) == list:
-                        ax_var.scatter(p[0],p[1],color='black',marker='o',s=2,zorder=2)
+                        ax_var.scatter(p[0],p[1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
                     elif type(p) == str:
                         if p not in point_source_dict.keys():
                             print(f'{p} is not specified in point_source_dict, edit this to add a lat/lon location.')
                         else:
-                            ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],color='black',marker='o',s=2,zorder=2)
-
-            #except:
-            #    print(f'ERROR: Either start and end dates are incorrect or there is no model output from {m}.')
-            #    print(f'Skipping plotting {m}.')
+                            ax_var.scatter(point_source_dict[p][0],point_source_dict[p][1],facecolor='none',edgecolor='red',marker='^',s=30,zorder=2)
 
     #flux colorbar
     cbar = plt.cm.ScalarMappable(cmap=cmap)
@@ -3226,7 +3489,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
         cbar_ax = fig.add_axes([f_left, f_bottom, f_width, f_height])
         color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
 
-    color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]} (mol m$^{{-2}}$ s$^{{-1}}$)')
+    color_bar.set_label(f'{var_labels[var]} {s_data[species]["species_print"]} ({flux_units})')
     fig.subplots_adjust(left=0.05, right=0.9, top=0.95, bottom=0.05, wspace=0.04, hspace=0.12)
 
     return fig
@@ -3297,3 +3560,113 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,m_data):
     plt.legend(loc='upper right')
     
     return fig
+
+#####################################################################
+
+def convert_molar_to_mass_flux(ds, M):
+    """
+    Converts spatial flux variables in the flux dataset from mol/m²/s to kg/km²/year.
+    
+    Args:
+        ds (xarray dataset): The xarray dataset containing flux variables.
+        M (float): The molar mass in g/mol.
+    """
+    
+    # Convert the molar mass to kg/mol
+    M_kg = M * 0.001  # Convert grams to kilograms
+    
+    # List to store names of converted variables
+    converted_vars = []
+    
+    for var_name, variable in ds.items():
+        if 'units' in variable.attrs and variable.attrs['units'] == 'mol m-2 s-1':
+            # Convert the variable data
+            # Multiply by molar mass, seconds per year, and convert m² to km²
+            ds[var_name] = variable * M_kg * 31.536e6 # kg/km²/year
+            ds[var_name].attrs['units'] = 'kg km-2 yr-1' # Update the units
+            
+            # Add the variable name to the list of converted variables
+            converted_vars.append(var_name)
+
+    print("Converting molar flux variables to mass flux (kg km-2 yr-1)")
+    
+    return ds
+
+#####################################################################
+
+def set_flux_limits(ds_all, var, region_plot, species_info, option='default'):
+    """
+    Set flux limits based on the option provided:
+    
+    1. `default` - use default values from species_info.
+    2. List or tuple with two values (e.g., [0, 1]) - use specified limits.
+    3. 'auto' - auto-calculate limits based on data percentiles.
+    
+    Args:
+        ds_all (dict): A dictionary of datasets containing the flux variables.
+        var (str): The variable name to compute limits for.
+        region_plot (list/tuple): Coordinates [lon_min, lon_max, lat_min, lat_max].
+        species_info (dict): Contains default limit values.
+        option (None, str or list/tuple): The option for setting limits.
+            - `default` for default values.
+            - A list or tuple with two elements (min, max) for specified limits.
+            - 'auto' for auto-calculated values.
+    
+    Returns:
+        tuple: A tuple containing the flux limits (min, max).
+        
+    Raises:
+        ValueError: If `fluxlim[0] >= fluxlim[1]` or an invalid option is provided.
+    """
+   
+    if option == 'default':  # Case 1: Use default values from species_info
+        if var in ['posterior_prior_diff', 'posterior_mean_diff']:
+            if 'difflim' in species_info:
+                fluxlim = tuple(species_info['difflim'])
+            else:
+                raise KeyError("Key 'difflim' not found in species_info.")
+        else:
+            if 'fluxlim' in species_info:
+                fluxlim = tuple(species_info['fluxlim'])
+            else:
+                raise KeyError("Key 'fluxlim' not found in species_info.")    
+                
+    elif isinstance(option, (list, tuple)) and len(option) == 2:  # Case 2: Use specified values [min, max]
+        fluxlim = (option[0], option[1])
+        
+    elif option == 'auto':  # Case 3: Auto-calculate limits based on percentiles
+        all_var = []
+        for j, m in enumerate(ds_all.keys()):
+            if var == 'posterior_prior_diff':
+                var_j = ds_all[m]['flux_total_posterior'] - ds_all[m]['flux_total_prior']
+            elif var == 'posterior_mean_diff':
+                var_j = ds_all[m]['flux_total_posterior'] - np.mean(ds_all[m]['flux_total_posterior'], axis=0)            
+            else:
+                var_j = ds_all[m][var]
+                
+            # Filter based on longitude and latitude of region_plot
+            mask_region = ((ds_all[m].longitude > region_plot[0]) &
+                           (ds_all[m].longitude < region_plot[1]) &
+                           (ds_all[m].latitude > region_plot[2]) &
+                           (ds_all[m].latitude < region_plot[3]))
+            var_j = var_j.where(mask_region).dropna(dim='longitude', how='all').dropna(dim='latitude', how='all')
+            all_var.append(var_j.values)
+            
+        all_var = np.concatenate(all_var, axis=0)  # Concatenate along the time axis (axis=0)
+        
+        upper_lim = np.quantile(all_var, 0.99)  # Calculate the 99th percentile
+        
+        if var in ['posterior_prior_diff', 'posterior_mean_diff']:
+            fluxlim = (-upper_lim, upper_lim)
+        else:
+            fluxlim = (0, upper_lim)
+            
+    else:
+        # Raise an error if the option is invalid
+        raise ValueError(f"Invalid option '{option}'. Use 'default', a [min, max] list/tuple, or 'auto'.")
+        
+    # Validation: Check that fluxlim[0] is smaller than fluxlim[1]
+    if fluxlim[0] >= fluxlim[1]:
+        raise ValueError(f"The lower flux limit {fluxlim[0]} must be less than the upper flux limit {fluxlim[1]}.") 
+        
+    return fluxlim
