@@ -3037,7 +3037,6 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                                     chop_by='year',dt=1,period_override=None,
                                     plot_site_locations=False,plot_point_markers=False,set_fluxlim='default',
                                     plot_inversion_grid_flux=False):
-                                    plot_site_locations=False,plot_point_markers=False):
     """
     Plots posterior fluxes, prior fluxes or difference between these
     for all models and specific time intervals.
