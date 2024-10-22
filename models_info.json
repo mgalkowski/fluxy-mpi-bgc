@@ -60,7 +60,7 @@
         },
 
     "intem_name_edgar_26sites":{
-        "filename":"InTEM_NAME_EUROPE_EDGAR_26sites_intem_obs_intem_baseline",
+        "filename":"InTEM_NAME_EUROPE_EDGAR_26sites_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME 26 sites (e)"
         },
 
@@ -135,9 +135,9 @@
         "label":"ELRIS InTEM obs-background-unc"
         },
 
-    "elris_name_edgar_26sites":{
-        "filename":"ELRIS_NAME_EUROPE_EDGAR_26sites",
-        "label":"ELRIS NAME 26 sites (e)"
+    "elris_name_edgar_28sites":{
+        "filename":"ELRIS_NAME_EUROPE_EDGAR_28sites",
+        "label":"ELRIS NAME 28 sites (e)"
         },
 
     "elris_name_edgar_31sites":{
@@ -150,9 +150,9 @@
         "label":"ELRIS NAME 31 sites (e+w)"
         },
 
-    "elris_flex_edgar_26sites":{
-        "filename":"ELRIS_FLEXPART_EUROPE_EDGAR_26sites",
-        "label":"ELRIS FLEXPART 26 sites (e)"
+    "elris_flex_edgar_28sites":{
+        "filename":"ELRIS_FLEXPART_EUROPE_EDGAR_28sites",
+        "label":"ELRIS FLEXPART 28 sites (e)"
         },
 
     "elris_flex_edgar_31sites":{
