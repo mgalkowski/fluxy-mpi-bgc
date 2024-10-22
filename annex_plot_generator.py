@@ -54,12 +54,13 @@ def produce_plots(regions, output_path, inventory_years):
     plot_resample_and_original = False
 
     ### Settings for spatial maps
-    models_spatial_maps = ['intem', 'elris', 'rhime']
+    models_spatial_maps = ['intem', 'elris']
     plot_area = regions[0]
     plot_site_locations = True
     plot_point_markers = point_markers[regions[0]]
     convert_flux_units = True
     set_fluxlim = 'auto'
+    plot_inversion_grid_flux = True
 
     ### Initialization
     s_data,m_data,m_colors,annotate_coords = func.initialize_settings(ppt_mode)
@@ -374,7 +375,8 @@ def produce_plots(regions, output_path, inventory_years):
                                                     chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
-                                                    set_fluxlim=set_fluxlim)
+                                                    set_fluxlim=set_fluxlim,
+                                                    plot_inversion_grid_flux=plot_inversion_grid_flux)
 
         start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
@@ -422,7 +424,8 @@ def produce_plots(regions, output_path, inventory_years):
                                                     chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
-                                                    set_fluxlim = set_fluxlim)
+                                                    set_fluxlim = set_fluxlim,
+                                                    plot_inversion_grid_flux=plot_inversion_grid_flux)
 
         start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
