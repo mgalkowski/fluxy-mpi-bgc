@@ -8,14 +8,14 @@ import PARIS_inversion_results as func
 ### GENERAL SETTINGS
 ###########################################
 # Species to plot
-monthly_species = ['ch4']#,'n2o']
+monthly_species = []#['ch4']#,'n2o']
 
-annual_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
-                  'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee',
-                  'cf4','pfc116','pfc218','pfc318','sf6'
-                    ]
+annual_species = ['hfc227ea'] #['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
+                  #'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee',
+                  #'cf4','pfc116','pfc218','pfc318','sf6'
+                  #  ]
 
-combined_species = ['all_hfc','all_pfc']
+combined_species = []#['all_hfc','all_pfc']
 
 # Cities to plot
 point_markers = {'UK': ['london','edinburgh','cardiff','belfast'],
@@ -204,12 +204,14 @@ def produce_plots(regions, output_path, inventory_years):
         else:
             start_date = '2008-01-01'
 
-        if species == 'sf6':
-            period_override = ['monthly','yearly','yearly','yearly']
-        else:
-            period_override = None
-            model_period = None
-
+        #if species == 'sf6':
+            #period_override = ['monthly','yearly','yearly','yearly']
+        #    period_override = ['yearly','yearly','yearly','yearly']
+        #else:
+        #    period_override = None
+        #    model_period = None
+        period_override = None
+        model_period = None
         ### Read and scale fluxes
         for m,model in enumerate(models):
 
