@@ -2527,15 +2527,14 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
-                    'NETHERLANDS':[3,8,50,54],
+                    'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
                     'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[3,32,55,72],
+                    'NORWAY':[1,32,55,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
-    
     
     # find site info in netcdf attrs. if none present, use site info from first model with this 
     # data available
@@ -2836,10 +2835,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
-                    'NETHERLANDS':[3,8,50,54],
+                    'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
                     'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[3,32,55,72],
+                    'NORWAY':[1,32,55,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -3128,16 +3127,16 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                       'flux_total_posterior':'Posterior mean',
                       'posterior_prior_diff':'Posterior-prior',
                       'posterior_mean_diff':'Posterior-mean'}
-
+        
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
-                    'NETHERLANDS':[3,8,50,54],
+                    'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
                     'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[3,32,55,72],
+                    'NORWAY':[1,32,55,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
