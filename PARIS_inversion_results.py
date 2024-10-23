@@ -3325,7 +3325,11 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                         var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_prior'][indexes[m][i],:,:],axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 elif var == 'posterior_mean_diff':
-                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    try:
+                        var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    except:
+                        print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                        var_plot = np.mean(ds_all[m][f'flux_total_posterior{var_append}'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m][f'flux_total_posterior{var_append}'],axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
                     try:
@@ -3352,8 +3356,13 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     var_plot      = np.mean(slice_apost,axis=0) - np.mean(slice_apriori,axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 elif var == 'posterior_mean_diff':
-                    mean_slice_apost = np.mean(ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
-                    mean_apost       = np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    try:
+                        mean_slice_apost = np.mean(ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                        mean_apost       = np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    except:
+                        print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                        mean_slice_apost = np.mean(ds_all[m][f'flux_total_posterior{var_append}'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                        mean_apost       = np.mean(ds_all[m][f'flux_total_posterior{var_append}'],axis=0)
                     var_plot         = mean_slice_apost - mean_apost
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
