@@ -647,6 +647,49 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
     print('\nTo change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
 
     return ds_all
+
+#####################################################################
+def calculate_resample_uncertainty(ds_all_original,ds_all_p,rtime,
+                                   resample_uncert_correlation=False):
+    """
+    Recalculates resampled flux uncertainty, using the assumption
+    that all periods in the resampled flux average are uncorrelated.
+    Args:
+        ds_all_original (dictionary of datasets):
+            Extracted flux datasets from flux-format netcdfs.
+        ds_all_p (dictionary of datasets):
+            Same as above, but resampled down to lower time resolution, 
+            using the .mean() method.
+        rtime (str):
+            Time used for resampling, e.g. 'YS' or 'QS-DEC'.
+        resample_uncert_correlation (bool, default False):
+            If False, recalculates resampled flux uncertainties with
+            uncorrelated assumption. If True, does not recalculate
+            uncertainties, and uses the mean uncertainty.
+    Returns:
+        ds_all_p (dictionary of datasets):
+            Same dataset as above, but with updated 'percentile_...'
+            terms.
+    """
+    
+    if resample_uncert_correlation == False:
+    
+        for m in ds_all_original.keys():
+            for v in ds_all_original[m].keys():
+                if 'percentile_country' in v:
+                    n_periods = ds_all_original[m][v].resample(time=rtime).count()[:,0,:]   #number of periods in each average
+                    lower = (ds_all_original[m][v.replace('percentile_','')] - ds_all_original[m][v][:,0,:])    #recalculate upper and low standard deviations
+                    upper = (ds_all_original[m][v][:,1,:] - ds_all_original[m][v.replace('percentile_','')])
+                    lower_resampled = np.sqrt(((lower**2).resample(time=rtime).sum(dim="time")))/n_periods  #resample using sqrt of variances,divided by number of periods
+                    upper_resampled = np.sqrt(((upper**2).resample(time=rtime).sum(dim="time")))/n_periods
+                    lower_out = ds_all_p[m][v.replace('percentile_','')] - lower_resampled  #recalculated percentile upper and lower bounds
+                    upper_out = ds_all_p[m][v.replace('percentile_','')] + upper_resampled
+                    
+                    ds_all_p[m][v] = xr.DataArray(np.concatenate((np.expand_dims(lower_out,axis=1),
+                                                                    np.expand_dims(upper_out,axis=1)),axis=1),
+                                                    dims=ds_all_p[m][v].dims)
+        
+    return ds_all_p
     
 #####################################################################
 
@@ -1942,6 +1985,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                       add_prior_unc=False, set_global_leg=False,
                       country_codes_as_titles=None,plot_separate=True,
                       plot_combined=False,resample=None,
+                      resample_uncert_correlation=False,
                       plot_resample_and_original=False,
                       period_override=None,
                       return_res=False):
@@ -2001,6 +2045,11 @@ def plot_country_flux(ds_all,species,plot_regions,
             Option to be passed to resample built-in function of xarray Dataset. 
             For yearly average, 'YS' option should be used; 'QS-DEC' for seasonaly average.
             See http://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html
+        resample_uncert_correlation (bool, default False):
+            If True, calculates the resampled uncertainty as the mean from all averaged periods.
+            If False, recalculates uncertainty assuming no correlation between all averaged periods,
+            by taking the square root of the summed variances, divided by the number of averaging 
+            periods.
         plot_resample_and_original (bool):
             If True, plots both the resampled data and the data as its original frequency.
             If False, only plots the resampled data.
@@ -2044,13 +2093,13 @@ def plot_country_flux(ds_all,species,plot_regions,
             print(f'ERROR: Option resample=\'{resample}\' is not available. Try \'year\' or \'season\'.')
             return None
 
-        tmp = {m:ds_all[m].copy() for m in ds_all.keys()}
+        ds_all_original = {m:ds_all[m].copy() for m in ds_all.keys()}
                 
         if period_override is not None: 
             for m in ds_all.keys():
                 if 'elris' in m:
-                    del tmp[m]['covariance_country_flux_total_posterior']
-            ds_all_p = {m:tmp[m].resample(time=rtime).mean(dim="time") if period_override[i] == 'monthly' else tmp[m] for i,m in enumerate(ds_all.keys())}
+                    del ds_all_original[m]['covariance_country_flux_total_posterior']
+            ds_all_p = {m:ds_all_original[m].resample(time=rtime).mean(dim="time") if period_override[i] == 'monthly' else ds_all_original[m] for i,m in enumerate(ds_all.keys())}
             for i,m in enumerate(ds_all.keys()):
                 if 'elris' in m and period_override[i] == 'monthly':
                     ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
@@ -2061,8 +2110,8 @@ def plot_country_flux(ds_all,species,plot_regions,
         elif s_data[species]["period"]=='monthly':
             for m in ds_all.keys():
                 if 'elris' in m:
-                    del tmp[m]['covariance_country_flux_total_posterior']
-            ds_all_p = {m:tmp[m].resample(time=rtime).mean(dim="time") for m in ds_all.keys()}
+                    del ds_all_original[m]['covariance_country_flux_total_posterior']
+            ds_all_p = {m:ds_all_original[m].resample(time=rtime).mean(dim="time") for m in ds_all.keys()}
             for m in ds_all.keys():
                 if 'elris' in m:
                     ds_all_p[m]['country'] = ds_all_p[m]['country'].isel(time=0).drop('time')
@@ -2073,7 +2122,10 @@ def plot_country_flux(ds_all,species,plot_regions,
         else:
             ds_all_p = ds_all.copy()
             
-        del tmp
+        ds_all_p = calculate_resample_uncertainty(ds_all_original,ds_all_p,rtime,
+                                                  resample_uncert_correlation)
+            
+        del ds_all_original
         
         # shift timestamps of averaged data forwards to centre of inversion period
         for m in ds_all.keys():
@@ -2446,7 +2498,7 @@ def plot_country_flux(ds_all,species,plot_regions,
 def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
                       plot_site_locations=False,plot_point_markers=None,
-                      season=None,set_fluxlim='default'):
+                      season=None,set_fluxlim='default',plot_inversion_grid_flux=False):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
@@ -2490,6 +2542,10 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
             If provided, set the colorbar limits based on the selected options.
             Options are 'default', 'auto', a list or tuple with two elements (min, max).
             The default option is 'default', which is based on species_info values.
+        plot_inversion_grid_flux (bool, default False):
+            If True, plots fluxes at the spatial resolution of the inversion (using the 
+            inversion_grid variable). If False, plots fluxes at the spatial resolution
+            of the prior.
             
     Returns:
         fig (figure): 
@@ -2523,15 +2579,14 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
-                    'NETHERLANDS':[3,8,50,54],
+                    'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
                     'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[3,32,55,72],
+                    'NORWAY':[1,32,55,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
-    
     
     # find site info in netcdf attrs. if none present, use site info from first model with this 
     # data available
@@ -2616,28 +2671,66 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                 ax2 = ax[2,i]
             
             if season is None:
-                ax0.pcolormesh(lon,lat,
-                               np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),
-                               cmap=cmap,vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
+                if plot_inversion_grid_flux == True:
+                    plot_original = False
+                    try:
+                        ax0.pcolormesh(lon,lat,
+                                    np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),
+                                    cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
-                ax1.pcolormesh(lon,lat,
-                               np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),
-                               cmap=cmap,vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
+                        ax1.pcolormesh(lon,lat,
+                                    np.mean(ds_all[m]['flux_total_posterior_inversion_grid'][:,:,:],axis=0),
+                                    cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
-                flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
+                        flux_diff = np.mean(ds_all[m]['flux_total_posterior_inversion_grid'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
+                    except:
+                        print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                        plot_original = True
+                else:
+                    plot_original = True
+                        
+                if plot_original == True:
+                    ax0.pcolormesh(lon,lat,
+                                np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0),
+                                cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+
+                    ax1.pcolormesh(lon,lat,
+                                np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),
+                                cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+
+                    flux_diff = np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0)-np.mean(ds_all[m]['flux_total_prior'][:,:,:],axis=0)
+                        
                 flux_diff[np.where(flux_diff) == np.nan] = 0.
                 
             else :
-                ax0.pcolormesh(lon,lat,
-                               ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values,
-                               cmap=cmap,vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
+                if plot_inversion_grid_flux == True:
+                    plot_original = False
+                try:
+                    ax0.pcolormesh(lon,lat,
+                                ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values,
+                                cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
 
-                ax1.pcolormesh(lon,lat,
-                               ds_all[m]['flux_total_posterior'].groupby("time.season").mean().sel(season=season).values,
-                               cmap=cmap,vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
-                
-                flux_diff = ds_all[m]['flux_total_posterior'].groupby("time.season").mean().sel(season=season).values \
-                            -ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values
+                    ax1.pcolormesh(lon,lat,
+                                ds_all[m]['flux_total_posterior_inversion_grid'].groupby("time.season").mean().sel(season=season).values,
+                                cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                    
+                    flux_diff = ds_all[m]['flux_total_posterior_inversion_grid'].groupby("time.season").mean().sel(season=season).values \
+                                -ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values
+                except:
+                    print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                    plot_original = True
+                    
+                if plot_original == True:
+                    ax0.pcolormesh(lon,lat,
+                                ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values,
+                                cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+
+                    ax1.pcolormesh(lon,lat,
+                                ds_all[m]['flux_total_posterior'].groupby("time.season").mean().sel(season=season).values,
+                                cmap=cmap,vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                    
+                    flux_diff = ds_all[m]['flux_total_posterior'].groupby("time.season").mean().sel(season=season).values \
+                                -ds_all[m]['flux_total_prior'].groupby("time.season").mean().sel(season=season).values
                 flux_diff[np.where(flux_diff) == np.nan] = 0.
                 
                 time_out = f'{season} of {time_out}'
@@ -2713,7 +2806,8 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
 
 def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode=False,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
-                                 plot_site_locations=False,plot_point_markers=None,set_fluxlim='default'):
+                                 plot_site_locations=False,plot_point_markers=None,set_fluxlim='default',
+                                 plot_inversion_grid_flux=False):
     """
     Plots posterior fluxes and the difference between these
     for two models.
@@ -2751,11 +2845,14 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
             List of names of points to plot over larger point sources or lat/lon locations.
             See point_markers_dict for a list of options.
             e.g. ['paris','nw_england',[50.,5.]]
+        plot_inversion_grid_flux (bool, default False):
+            If True, plots fluxes at the spatial resolution of the inversion (using the 
+            inversion_grid variable). If False, plots fluxes at the spatial resolution
+            of the prior.
         set_fluxlim (str or list/tuple, optional): 
             If provided, set the colorbar limits based on the selected options.
             Options are 'default', 'auto', a list or tuple with two elements (min, max).
             The default option is 'default', which is based on species_info values.
-            
     Returns:
         fig (figure): 
             A plot of spatial flux posterior from two models a plot 
@@ -2790,10 +2887,10 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
-                    'NETHERLANDS':[3,8,50,54],
+                    'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
                     'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[3,32,55,72],
+                    'NORWAY':[1,32,55,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -2862,19 +2959,45 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                 end_print = to_datetime(end_period).strftime("%d/%m/%Y")
                 time_out = (f'{start_print} - {end_print}')
         
-            ax[0].pcolormesh(lon,lat,
-                            np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest',
-                            )
+            if plot_inversion_grid_flux == True:
+                plot_original = False
+                try:
+                    ax[0].pcolormesh(lon,lat,
+                                    np.mean(ds_all[m]['flux_total_posterior_inversion_grid'][:,:,:],axis=0),cmap=cmap,
+                                    vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest',
+                                    )
+                except:
+                    print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                    plot_original = True
+            else:
+                plot_original = True        
+            
+            if plot_original == True:
+                ax[0].pcolormesh(lon,lat,
+                                    np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
+                                    vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest',
+                                    )
 
             ax[0].set_title(f'{m_data[m]["label"]}\nPosterior mean')
             
         elif i == 1:
+            if plot_inversion_grid_flux == True:
+                plot_original = False
+                try:
+                    ax[1].pcolormesh(lon,lat,
+                                    np.mean(ds_all[m]['flux_total_posterior_inversion_grid'][:,:,:],axis=0),cmap=cmap,
+                                    vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')
+                except:
+                    print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                    plot_original = True
+            else:
+                plot_original = True
+                    
+            if plot_original == True:
+                ax[1].pcolormesh(lon,lat,
+                                    np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
+                                    vmin=s_data[species]['fluxlim'][0],vmax=s_data[species]['fluxlim'][1],shading='nearest')  
             
-            ax[1].pcolormesh(lon,lat,
-                            np.mean(ds_all[m]['flux_total_posterior'][:,:,:],axis=0),cmap=cmap,
-                            vmin=fluxlim[0],vmax=fluxlim[1],shading='nearest')
-
             ax[1].set_title(f'{m_data[m]["label"]}\nPosterior mean')
             
         if plot_site_locations == True:
@@ -2887,8 +3010,20 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                     ax[2].scatter(sites_info[m][s]['longitude'],sites_info[m][s]['latitude'],facecolor='none',
                                 edgecolor='black',marker='o',s=30,zorder=2)
         
-    flux_diff = (np.mean(ds_all[all_keys[1]]['flux_total_posterior'].values[:,:,:],axis=0)-
-                 np.mean(ds_all[all_keys[0]]['flux_total_posterior'].values[:,:,:],axis=0))
+    if plot_inversion_grid_flux == True:
+        plot_original = False
+        try:
+            flux_diff = (np.mean(ds_all[all_keys[1]]['flux_total_posterior_inversion_grid'].values[:,:,:],axis=0)-
+                        np.mean(ds_all[all_keys[0]]['flux_total_posterior_inversion_grid'].values[:,:,:],axis=0))
+        except:
+            plot_original = True
+    else:
+        plot_original = True
+        
+    if plot_original == True:
+        flux_diff = (np.mean(ds_all[all_keys[1]]['flux_total_posterior'].values[:,:,:],axis=0)-
+                        np.mean(ds_all[all_keys[0]]['flux_total_posterior'].values[:,:,:],axis=0))
+        
     flux_diff[np.where(flux_diff) == np.nan] = 0.
     
     ax[2].pcolormesh(lon,lat,
@@ -2951,7 +3086,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                                     cmap='viridis',c_border='floralwhite',
                                     var='flux_total_posterior', plot_combined=False, annex_mode=False,
                                     chop_by='year',dt=1,period_override=None,
-                                    plot_site_locations=False,plot_point_markers=False,set_fluxlim='default'):
+                                    plot_site_locations=False,plot_point_markers=False,set_fluxlim='default',
+                                    plot_inversion_grid_flux=False):
     """
     Plots posterior fluxes, prior fluxes or difference between these
     for all models and specific time intervals.
@@ -3001,11 +3137,14 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             List of names of points to plot over larger point sources or lat/lon locations.
             See point_markers_dict for a list of options.
             e.g. ['paris','nw_england',[50.,5.]]
+        plot_inversion_grid_flux (bool, default False):
+            If True, plots fluxes at the spatial resolution of the inversion (using the 
+            inversion_grid variable). If False, plots fluxes at the spatial resolution
+            of the prior.
         set_fluxlim (str or list/tuple, optional): 
             If provided, set the colorbar limits based on the selected options.
             Options are 'default', 'auto', a list or tuple with two elements (min, max).
             The default option is 'default', which is based on species_info values.
-            
     Returns:
         fig (figure):
             A plot of spatial flux of the variable specified in var
@@ -3040,16 +3179,16 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                       'flux_total_posterior':'Posterior mean',
                       'posterior_prior_diff':'Posterior-prior',
                       'posterior_mean_diff':'Posterior-mean'}
-
+        
     region_limits = {'UK':[-12,4,49,62],   #min_lon, max_lon, min_lat, max_lat
                     'FRANCE':[-6,9,42,52],
                     'GERMANY':[2,18,45,60],
                     'ITALY':[6,19,36,48],
                     'SWITZERLAND':[5.5,11,45,49],
-                    'NETHERLANDS':[3,8,50,54],
+                    'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
                     'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[3,32,55,72],
+                    'NORWAY':[1,32,55,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -3212,6 +3351,11 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                 ax_var.coastlines(resolution='50m',color=c_border,linewidth=1.)
                 ax_var.set_extent(region_limits[plot_area])
 
+    if plot_inversion_grid_flux:
+        var_append = '_inversion_grid'
+    else:
+        var_append = ''
+
     # Plot fields
     for i in range(n_cols):
         for j,m in enumerate(ds_all.keys()):
@@ -3223,15 +3367,28 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
 
             # Compute averaged quantities
             if chop_by == 'season':
+                
                 if var == 'posterior_prior_diff':
-                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_prior'][indexes[m][i],:,:],axis=0)
+                    try:
+                        var_plot = np.mean(ds_all[m][f'flux_total_posterior{var_append}'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_prior'][indexes[m][i],:,:],axis=0)
+                    except:
+                        print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                        var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_prior'][indexes[m][i],:,:],axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 elif var == 'posterior_mean_diff':
-                    var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    try:
+                        var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    except:
+                        print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                        var_plot = np.mean(ds_all[m][f'flux_total_posterior{var_append}'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m][f'flux_total_posterior{var_append}'],axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
-                    var_plot = np.mean(ds_all[m][var][indexes[m][i],:,:],axis=0)
-
+                    try:
+                        var_plot = np.mean(ds_all[m][f'{var}{var_append}'][indexes[m][i],:,:],axis=0)
+                    except:
+                        print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                        var_plot = np.mean(ds_all[m][var][indexes[m][i],:,:],axis=0)
+                        
                 # Define string for caption
                 if len(dt[i]) == 1:
                     time_out = (f'{start_print[m][i]}')
@@ -3240,17 +3397,31 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
 
             else:
                 if var == 'posterior_prior_diff':
-                    slice_apost   = ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
-                    slice_apriori = ds_all[m]['flux_total_prior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
+                    try:
+                        slice_apost   = ds_all[m][f'flux_total_posterior{var_append}'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
+                        slice_apriori = ds_all[m][flux_total_prior].sel(time=slice(t0_date[m][i],t1_date[m][i]))
+                    except:
+                        print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                        slice_apost   = ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
+                        slice_apriori = ds_all[m]['flux_total_prior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
                     var_plot      = np.mean(slice_apost,axis=0) - np.mean(slice_apriori,axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 elif var == 'posterior_mean_diff':
-                    mean_slice_apost = np.mean(ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
-                    mean_apost       = np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    try:
+                        mean_slice_apost = np.mean(ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                        mean_apost       = np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                    except:
+                        print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                        mean_slice_apost = np.mean(ds_all[m][f'flux_total_posterior{var_append}'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                        mean_apost       = np.mean(ds_all[m][f'flux_total_posterior{var_append}'],axis=0)
                     var_plot         = mean_slice_apost - mean_apost
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
-                    var_plot = np.mean(ds_all[m][var].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                    try:
+                        var_plot = np.mean(ds_all[m][f'{var}{var_append}'].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
+                    except:
+                        print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
+                        var_plot = np.mean(ds_all[m][var].sel(time=slice(t0_date[m][i],t1_date[m][i])),axis=0)
 
                 # Define string for caption
                 if dt == 1:
