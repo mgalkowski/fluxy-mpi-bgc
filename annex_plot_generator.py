@@ -8,14 +8,14 @@ import PARIS_inversion_results as func
 ### GENERAL SETTINGS
 ###########################################
 # Species to plot
-monthly_species = []#['ch4']#,'n2o']
+monthly_species = ['ch4']#,'n2o']
 
-annual_species = ['hfc227ea'] #['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
+annual_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
                   #'hfc227ea','hfc245fa','hfc32','hfc365mfc','hfc4310mee',
                   #'cf4','pfc116','pfc218','pfc318','sf6'
                   #  ]
 
-combined_species = []#['all_hfc','all_pfc']
+combined_species = ['all_hfc','all_pfc']
 
 # Cities to plot
 point_markers = {'UK': ['london','edinburgh','cardiff','belfast'],
@@ -102,6 +102,7 @@ def produce_plots(regions, output_path, inventory_years):
 
         # Annual averages
         resample = 'year'
+        resample_uncert_correlation = False #recalculates uncertainties assuming no correlation
 
         # 1.1) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
         fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
@@ -109,7 +110,7 @@ def produce_plots(regions, output_path, inventory_years):
                                      plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                      add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                      plot_separate=plot_separate,plot_combined=plot_combined,
-                                     resample=resample,
+                                     resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                      plot_resample_and_original=plot_resample_and_original,
                                      period_override=period_override)
 
@@ -135,7 +136,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                               add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                               plot_separate=plot_separate,plot_combined=plot_combined,
-                                              resample=resample,
+                                              resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                               plot_resample_and_original=plot_resample_and_original,
                                               period_override=period_override,
                                               return_res=True)
@@ -168,14 +169,15 @@ def produce_plots(regions, output_path, inventory_years):
 
         # Monthly country fluxes
         resample = None
-
+        resample_uncert_correlation = False
+                  
         # 2) Plot monthly country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
         fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
                                      s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
                                      plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                      add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                      plot_separate=plot_separate,plot_combined=plot_combined,
-                                     resample=resample,
+                                     resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                      plot_resample_and_original=plot_resample_and_original,
                                      period_override=period_override)
 
@@ -190,7 +192,7 @@ def produce_plots(regions, output_path, inventory_years):
     ### F-gases
     end_date   = '2024-01-01'
     resample   = None
-                  
+    resample_uncert_correlation = False
 
     print('\n--- PLOTTING COUNTRY FLUXES FOR ALL F-GASES ---')
     for species in annual_species:
@@ -237,7 +239,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                               add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                               plot_separate=plot_separate,plot_combined=plot_combined,
-                                              resample=resample,
+                                              resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                               plot_resample_and_original=plot_resample_and_original,
                                               period_override=period_override,
                                               return_res=True)
@@ -270,6 +272,7 @@ def produce_plots(regions, output_path, inventory_years):
 
     ### Total HFCs/PFCs (w/o HFC-4310mee)
     resample = None
+    resample_uncert_correlation = False         
     period_override = None
     start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
     end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
@@ -293,7 +296,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                               add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                               plot_separate=plot_separate,plot_combined=plot_combined,
-                                              resample=resample,
+                                              resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                               plot_resample_and_original=plot_resample_and_original,
                                               period_override=period_override,
                                               return_res=True)
