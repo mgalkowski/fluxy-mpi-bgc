@@ -54,12 +54,13 @@ def produce_plots(regions, output_path, inventory_years):
     plot_resample_and_original = False
 
     ### Settings for spatial maps
-    models_spatial_maps = ['intem', 'elris', 'rhime']
+    models_spatial_maps = ['intem', 'elris']
     plot_area = regions[0]
     plot_site_locations = True
     plot_point_markers = point_markers[regions[0]]
     convert_flux_units = True
     set_fluxlim = 'auto'
+    plot_inversion_grid_flux = True
 
     ### Initialization
     s_data,m_data,m_colors,annotate_coords = func.initialize_settings(ppt_mode)
@@ -101,6 +102,7 @@ def produce_plots(regions, output_path, inventory_years):
 
         # Annual averages
         resample = 'year'
+        resample_uncert_correlation = False #recalculates uncertainties assuming no correlation
 
         # 1.1) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
         fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
@@ -108,7 +110,7 @@ def produce_plots(regions, output_path, inventory_years):
                                      plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                      add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                      plot_separate=plot_separate,plot_combined=plot_combined,
-                                     resample=resample,
+                                     resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                      plot_resample_and_original=plot_resample_and_original,
                                      period_override=period_override)
 
@@ -134,7 +136,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                               add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                               plot_separate=plot_separate,plot_combined=plot_combined,
-                                              resample=resample,
+                                              resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                               plot_resample_and_original=plot_resample_and_original,
                                               period_override=period_override,
                                               return_res=True)
@@ -167,14 +169,15 @@ def produce_plots(regions, output_path, inventory_years):
 
         # Monthly country fluxes
         resample = None
-
+        resample_uncert_correlation = False
+                  
         # 2) Plot monthly country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
         fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
                                      s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
                                      plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                      add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                      plot_separate=plot_separate,plot_combined=plot_combined,
-                                     resample=resample,
+                                     resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                      plot_resample_and_original=plot_resample_and_original,
                                      period_override=period_override)
 
@@ -189,7 +192,7 @@ def produce_plots(regions, output_path, inventory_years):
     ### F-gases
     end_date   = '2024-01-01'
     resample   = None
-                  
+    resample_uncert_correlation = False
 
     print('\n--- PLOTTING COUNTRY FLUXES FOR ALL F-GASES ---')
     for species in annual_species:
@@ -203,12 +206,14 @@ def produce_plots(regions, output_path, inventory_years):
         else:
             start_date = '2008-01-01'
 
-        if species == 'sf6':
-            period_override = ['monthly','yearly','yearly','yearly']
-        else:
-            period_override = None
-            model_period = None
-
+        #if species == 'sf6':
+            #period_override = ['monthly','yearly','yearly','yearly']
+        #    period_override = ['yearly','yearly','yearly','yearly']
+        #else:
+        #    period_override = None
+        #    model_period = None
+        period_override = None
+        model_period = None
         ### Read and scale fluxes
         for m,model in enumerate(models):
 
@@ -234,7 +239,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                               add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                               plot_separate=plot_separate,plot_combined=plot_combined,
-                                              resample=resample,
+                                              resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                               plot_resample_and_original=plot_resample_and_original,
                                               period_override=period_override,
                                               return_res=True)
@@ -267,6 +272,7 @@ def produce_plots(regions, output_path, inventory_years):
 
     ### Total HFCs/PFCs (w/o HFC-4310mee)
     resample = None
+    resample_uncert_correlation = False         
     period_override = None
     start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
     end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
@@ -290,7 +296,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
                                               add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
                                               plot_separate=plot_separate,plot_combined=plot_combined,
-                                              resample=resample,
+                                              resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                               plot_resample_and_original=plot_resample_and_original,
                                               period_override=period_override,
                                               return_res=True)
@@ -374,7 +380,8 @@ def produce_plots(regions, output_path, inventory_years):
                                                     chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
-                                                    set_fluxlim=set_fluxlim)
+                                                    set_fluxlim=set_fluxlim,
+                                                    plot_inversion_grid_flux=plot_inversion_grid_flux)
 
         start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
@@ -422,7 +429,8 @@ def produce_plots(regions, output_path, inventory_years):
                                                     chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
-                                                    set_fluxlim = set_fluxlim)
+                                                    set_fluxlim = set_fluxlim,
+                                                    plot_inversion_grid_flux=plot_inversion_grid_flux)
 
         start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
