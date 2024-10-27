@@ -319,11 +319,17 @@ def produce_plots(regions, output_path, inventory_years):
                    'value':np.array([np.NaN,]*len(comb['time']))}
             
         tmp = {'species':[species,]*2,'source':['NIR '+inventory_years[0],'PARIS mean']}
+
+        if species == 'sf6':
+            n_digits = 1
+        else:
+            n_digits = 2
+
         for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
-            paris_val = f"{comb['mean'][it]:.1f} \\pm {(comb['max'][it]-comb['min'][it])/2:.1f}"
+            paris_val = f"{comb['mean'][it]:.{n_digits}f} \\pm {(comb['max'][it]-comb['min'][it])/2:.{n_digits}f}"
             inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
             if len(inv_val)==1:
-                tmp[str(time)] = [f'{inv_val[0]:.1f}',paris_val]                            
+                tmp[str(time)] = [f'{inv_val[0]:.{n_digits}f}',paris_val]                            
             else:
                  tmp[str(time)] = [None,paris_val]      
         annual_res_list.append(pd.DataFrame(tmp))
@@ -484,19 +490,16 @@ def make_table(df,output_path,
               ):
     if 'hfc' in output_path:
         species = 'HFCs'
-        units = 'Gg'
     elif 'pfc' in output_path:
         species = 'PFCs'
-        units = 'Gg'
     if 'main_gases' in output_path:
         species = 'the main greenhouse gases of focus'
-        units = 'Tg'
     # Set latex Table env and number of cols
     tmp = output_path.split('/')[-1].split('.')[0]
     label = '\n \\label{'+tmp+'}'
-    tmp = "Emissions estimation for "+species+" in $\\rm{"+units+"CO}_{2}\\rm{-eq} \\cdot \\rm{yr}^{-1}$ according to the National Inventory Report (NIR) 2024 and the inversions done in the PARIS project. For the PARIS estimation, the mean of the 3 inversion models is displayed, along with a range of uncertainty estimated via the half distance between the maximum and minimum uncertainties of the different models."  
+    tmp = "Emissions estimation for "+species+" in $\\rm{TgCO}_{2}\\rm{-eq} \\cdot \\rm{yr}^{-1}$ according to the National Inventory Report (NIR) 2024 and the inversions done in the PARIS project. For the PARIS estimation, the mean of the 3 inversion models is displayed, along with a range of uncertainty estimated via the half distance between the maximum and minimum uncertainties of the different models."  
     caption = '\n \\caption{'+tmp+'}'
-    begin = '\\begin{table}[H]'+label+caption+'\n \\begin{center}\n  \\begin{tabular}{ '+len(descriptive_cols)*'l '+(len(df.columns)-len(descriptive_cols))*'r '+'}'
+    begin = '\\begin{table}[H]\n \\small'+label+caption+'\n \\begin{center}\n  \\begin{tabular}{ '+len(descriptive_cols)*'l '+(len(df.columns)-len(descriptive_cols))*'l '+'}'
     
     # Set first line with columns title
     header = '     '+len(descriptive_cols)*' & '
