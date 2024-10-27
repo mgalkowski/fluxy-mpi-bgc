@@ -64,6 +64,11 @@
         "label":"InTEM NAME 26 sites (e)"
         },
 
+    "intem_name_edgar_26sites_longrun":{
+        "filename":"InTEM_NAME_EUROPE_EDGAR_longrun_26sites_intem_obs_intem_baseline_optimized",
+        "label":"InTEM NAME 26 sites (e)"
+        }, 
+
     "intem_13sites":{
         "filename":"InTEM_NAME_EUROPE_EDGAR_13sites_intem_obs_intem_baseline_optimized",
         "label":"InTEM 13 sites"
