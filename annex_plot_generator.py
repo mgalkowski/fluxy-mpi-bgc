@@ -196,16 +196,70 @@ def produce_plots(regions, output_path, inventory_years):
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
         
-
-    ### F-gases
-    end_date   = '2024-01-01'
-    resample   = None
-    resample_uncert_correlation = False
+    ### Total HFCs/PFCs (w/o HFC-4310mee)
+    resample = None
+    resample_uncert_correlation = False         
+    start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
+    end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
 
     # NOTE: easy fix while there are no Rhime results for N2O
     models = models_country_fluxes
     plot_separate = [True,False,False,False]
     plot_combined = [False,True,True,True]
+
+    print('\n--- PLOTTING COUNTRY FLUXES FOR TOTAL HFC/PFC ---')
+    for species in combined_species:
+
+        ds_all_flux_scaled = {}
+
+        ### Read and scale fluxes
+        ds_all_flux_scaled = func.read_flux_total_fgases(data_dir,species,models,s_data,m_data,
+                                                        regions,start_date,end_date,
+                                                        period_override=period_override)
+
+        ### Define plotting colors
+        model_colors = func.set_model_colors_2(models,m_colors)
+
+        # 3) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
+        fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
+                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
+                                              plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
+                                              add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
+                                              plot_separate=plot_separate,plot_combined=plot_combined,
+                                              resample=resample,resample_uncert_correlation=resample_uncert_correlation,
+                                              plot_resample_and_original=plot_resample_and_original,
+                                              period_override=period_override,
+                                              return_res=True)
+        start_year = start_date[0].split('-')[0]
+        end_year = end_date[0].split('-')[0]
+        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+        full_path = os.path.join(output_path, plot_name)
+        fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
+        plt.close()
+                              
+        # Store results for .csv and table
+        comb = res_dict[regions[0]]['combined']
+        try:
+            inv = res_dict[regions[0]]['inventory']
+        except:
+            print('NO INVENTORY FOUND')
+            inv = {'time':comb['time'],
+                   'value':np.array([np.NaN,]*len(comb['time']))}
+            
+        tmp = {'species':[species,]*2,'source':['NIR '+inventory_years[0],'PARIS mean']}
+        for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
+            paris_val = f"{comb['mean'][it]:.1f} \\pm {(comb['max'][it]-comb['min'][it])/2:.1f}"
+            inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
+            if len(inv_val)==1:
+                tmp[str(time)] = [f'{inv_val[0]:.1f}',paris_val]                            
+            else:
+                 tmp[str(time)] = [None,paris_val]      
+        annual_res_list.append(pd.DataFrame(tmp))
+
+    ### F-gases
+    end_date   = '2024-01-01'
+    resample   = None
+    resample_uncert_correlation = False
 
     print('\n--- PLOTTING COUNTRY FLUXES FOR ALL F-GASES ---')
     for species in annual_species:
@@ -236,7 +290,7 @@ def produce_plots(regions, output_path, inventory_years):
         ### Define plotting colors
         model_colors = func.set_model_colors_2(models_std,m_colors)
 
-        # 3) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
+        # 4) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
         fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
                                               s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
                                               plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
@@ -254,61 +308,6 @@ def produce_plots(regions, output_path, inventory_years):
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
         
-        # Store results for .csv and table
-        comb = res_dict[regions[0]]['combined']
-        try:
-            inv = res_dict[regions[0]]['inventory']
-        except:
-            print('NO INVENTORY FOUND')
-            inv = {'time':comb['time'],
-                   'value':np.array([np.NaN,]*len(comb['time']))}
-            
-        tmp = {'species':[species,]*2,'source':['NIR '+inventory_years[0],'PARIS mean']}
-        for it,time in enumerate(comb['time'].astype('datetime64[Y]')):
-            paris_val = f"{comb['mean'][it]:.1f} \\pm {(comb['max'][it]-comb['min'][it])/2:.1f}"
-            inv_val = inv['value'][inv['time'].astype('datetime64[Y]')==time]
-            if len(inv_val)==1:
-                tmp[str(time)] = [f'{inv_val[0]:.1f}',paris_val]                            
-            else:
-                 tmp[str(time)] = [None,paris_val]      
-        annual_res_list.append(pd.DataFrame(tmp))
-
-    ### Total HFCs/PFCs (w/o HFC-4310mee)
-    resample = None
-    resample_uncert_correlation = False         
-    start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
-    end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
-
-    print('\n--- PLOTTING COUNTRY FLUXES FOR TOTAL HFC/PFC ---')
-    for species in combined_species:
-
-        ds_all_flux_scaled = {}
-
-        ### Read and scale fluxes
-        ds_all_flux_scaled = func.read_flux_total_fgases(data_dir,species,models,s_data,m_data,
-                                                        regions,start_date,end_date,
-                                                        period_override=period_override)
-
-        ### Define plotting colors
-        model_colors = func.set_model_colors_2(models,m_colors)
-
-        # 4) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
-        fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
-                                              s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
-                                              plot_inventory,inventory_years,data_dir,fix_y_axes,add_prior,
-                                              add_prior_unc,set_global_leg,country_codes_as_titles=country_codes_as_titles,
-                                              plot_separate=plot_separate,plot_combined=plot_combined,
-                                              resample=resample,resample_uncert_correlation=resample_uncert_correlation,
-                                              plot_resample_and_original=plot_resample_and_original,
-                                              period_override=period_override,
-                                              return_res=True)
-        start_year = start_date[0].split('-')[0]
-        end_year = end_date[0].split('-')[0]
-        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
-        full_path = os.path.join(output_path, plot_name)
-        fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
-        plt.close()
-                              
         # Store results for .csv and table
         comb = res_dict[regions[0]]['combined']
         try:
@@ -450,6 +449,7 @@ def produce_plots(regions, output_path, inventory_years):
     print('\n\nTABLE PFC\n\n')
     pfc_res = annual_res[annual_res.species.apply(lambda x : x[:3].lower()=='pfc' or x.lower()=='cf4')].copy()
     pfc_res['species'] = pfc_res.species.apply(lambda x : x.replace('pfc','PFC-'))
+    pfc_res['species'] = pfc_res.species.apply(lambda x : x.replace('cf4','PFC-14'))
     make_table(pfc_res,f'{output_path}/pfc_res_{regions[0]}.tex')
     pfc_res.to_csv(f'{output_path}/pfc_res_{regions[0]}.csv',index=False)
     
@@ -471,16 +471,19 @@ def make_table(df,output_path,
               ):
     if 'hfc' in output_path:
         species = 'HFCs'
+        units = 'Gg'
     elif 'pfc' in output_path:
         species = 'PFCs'
+        units = 'Gg'
     if 'main_gases' in output_path:
         species = 'the main greenhouse gases of focus'
+        units = 'Tg'
     # Set latex Table env and number of cols
     tmp = output_path.split('/')[-1].split('.')[0]
     label = '\n \\label{'+tmp+'}'
-    tmp = "Emissions estimation for "+species+" in $\\rm{TgCO}_{2}\\rm{-eq} \\cdot \\rm{yr}^{-1}$ according to the National Inventory Report (NIR) 2024 and the inversions done in the PARIS project. For the PARIS estimation, the mean of the 3 inversion models is displayed, along with a range of uncertainty estimated via the half distance between the maximum and minimum uncertainties of the different models."  
+    tmp = "Emissions estimation for "+species+" in $\\rm{"+units+"CO}_{2}\\rm{-eq} \\cdot \\rm{yr}^{-1}$ according to the National Inventory Report (NIR) 2024 and the inversions done in the PARIS project. For the PARIS estimation, the mean of the 3 inversion models is displayed, along with a range of uncertainty estimated via the half distance between the maximum and minimum uncertainties of the different models."  
     caption = '\n \\caption{'+tmp+'}'
-    begin = '\\begin{table}'+label+caption+'\n \\begin{center}\n  \\begin{tabular}{ '+len(descriptive_cols)*'l '+(len(df.columns)-len(descriptive_cols))*'r '+'}'
+    begin = '\\begin{table}[H]'+label+caption+'\n \\begin{center}\n  \\begin{tabular}{ '+len(descriptive_cols)*'l '+(len(df.columns)-len(descriptive_cols))*'r '+'}'
     
     # Set first line with columns title
     header = '     '+len(descriptive_cols)*' & '
