@@ -178,7 +178,7 @@ def produce_plots(regions, output_path, inventory_years):
         # Monthly country fluxes
         resample = None
         resample_uncert_correlation = False
-                  
+
         # 2) Plot monthly country fluxes from 2018 to 2023 from intem_longrun and combined from 3 std_run
         fig = func.plot_country_flux(ds_all_flux_scaled,species,regions,
                                      s_data,m_data,model_colors,start_date,end_date,ppt_mode,annex_mode,scale_co2eq,
@@ -230,6 +230,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               plot_resample_and_original=plot_resample_and_original,
                                               period_override=period_override,
                                               return_res=True)
+
         start_year = start_date[0].split('-')[0]
         end_year = end_date[0].split('-')[0]
         plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
@@ -349,11 +350,17 @@ def produce_plots(regions, output_path, inventory_years):
         models_std = []
 
         if species == "hfc4310mee":
-            end_date = '2023-01-01'
+            end_date = '2023-01-01' # NOTE: no 2023 results for HFC-4310mee
             dt = 5
         else:
             end_date = '2024-01-01'
             dt = 6
+
+        # NOTE: easy fix while there are no Rhime results for N2O
+        if species == 'n2o':
+            models = ['intem', 'elris']
+        else:
+            models = models_spatial_maps
 
         ### Read and scale fluxes
         for m,model in enumerate(models):
@@ -403,6 +410,12 @@ def produce_plots(regions, output_path, inventory_years):
         ds_all_flux = {}
         ds_all_flux_scaled = {}
         models_std = []
+
+        # NOTE: easy fix while there are no Rhime results for N2O
+        if species == 'n2o':
+            models = ['intem', 'elris']
+        else:
+            models = models_spatial_maps
 
         ### Read and scale fluxes
         for m,model in enumerate(models):
