@@ -3337,8 +3337,14 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     break
     
     # Create figure
-    fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3), #3.25
-                   subplot_kw={'projection':cartopy.crs.PlateCarree()})
+    if (n_lines==1 and n_cols==4) or (n_lines==4 and n_cols==1):
+        # Re-organize the data for a nicer display
+        fig,ax_tmp = plt.subplots(2,2,figsize=(2*4,2*3), #3.25
+                                  subplot_kw={'projection':cartopy.crs.PlateCarree()})
+        ax = ax_tmp.flatten()
+    else:
+        fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3), #3.25
+                       subplot_kw={'projection':cartopy.crs.PlateCarree()})
 
     # Add map
     for i in range(n_lines):
