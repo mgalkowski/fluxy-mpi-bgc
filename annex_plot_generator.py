@@ -35,6 +35,42 @@ ppt_mode = False
 # Set annex_mode to True for shorter labels
 annex_mode = True
 
+# Specify the percentile to use for the color scales in the flux spatial map
+fluxlim_percentiles = {
+    'UK': {
+        'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.99, 'hfc125': 0.99, 'hfc134a': 0.99, 'hfc143a': 0.99,
+        'cf4': 0.99, 'pfc116': 0.95, 'pfc218': 0.99, 'pfc318': 0.95, 'sf6': 0.99
+    },
+    'SWITZERLAND': {
+        'ch4': None, 'n2o': None, 'hfc32': None, 'hfc125': None, 'hfc134a': None, 'hfc143a': None,
+        'cf4': None, 'pfc116': None, 'pfc218': None, 'pfc318': None, 'sf6': None
+    },
+    'GERMANY': {
+        'ch4': None, 'n2o': None, 'hfc32': None, 'hfc125': None, 'hfc134a': None, 'hfc143a': None,
+        'cf4': None, 'pfc116': None, 'pfc218': None, 'pfc318': None, 'sf6': None
+    },
+    'ITALY': {
+        'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.99, 'hfc125': 0.99, 'hfc134a': 0.99, 'hfc143a': 0.99,
+        'cf4': 0.99, 'pfc116': 0.99, 'pfc218': 0.95, 'pfc318': 0.99, 'sf6': 0.95
+    },
+    'NETHERLANDS': {
+        'ch4': None, 'n2o': None, 'hfc32': None, 'hfc125': None, 'hfc134a': None, 'hfc143a': None,
+        'cf4': None, 'pfc116': None, 'pfc218': None, 'pfc318': None, 'sf6': None
+    },
+    'IRELAND': {
+        'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.95, 'hfc125': 0.95, 'hfc134a': 0.95, 'hfc143a': 0.95,
+        'cf4': 0.99, 'pfc116': 0.99, 'pfc218': 0.95, 'pfc318': 0.95, 'sf6': 0.95
+    },
+    'HUNGARY': {
+        'ch4': None, 'n2o': None, 'hfc32': None, 'hfc125': None, 'hfc134a': None, 'hfc143a': None,
+        'cf4': None, 'pfc116': None, 'pfc218': None, 'pfc318': None, 'sf6': None
+    },
+    'NORWAY': {
+        'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.95, 'hfc125': 0.95, 'hfc134a': 0.95, 'hfc143a': 0.95,
+        'cf4': 0.95, 'pfc116': 0.95, 'pfc218': 0.95, 'pfc318': 0.95, 'sf6': 0.95
+    }
+}
+
 ###########################################
 
 def produce_plots(regions, output_path, inventory_years):
@@ -358,6 +394,8 @@ def produce_plots(regions, output_path, inventory_years):
         ds_all_flux = {}
         ds_all_flux_scaled = {}
         models_std = []
+        
+        set_fluxlim_percentile = fluxlim_percentiles[plot_area][species]
 
         if species == "hfc4310mee":
             end_date = '2023-01-01' # NOTE: no 2023 results for HFC-4310mee
@@ -392,7 +430,7 @@ def produce_plots(regions, output_path, inventory_years):
                                                     chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
-                                                    set_fluxlim=set_fluxlim,
+                                                    set_fluxlim=set_fluxlim, set_fluxlim_percentile=set_fluxlim_percentile,
                                                     plot_inversion_grid_flux=plot_inversion_grid_flux)
 
         start_year = start_date.split('-')[0]
@@ -421,6 +459,8 @@ def produce_plots(regions, output_path, inventory_years):
         ds_all_flux_scaled = {}
         models_std = []
 
+        set_fluxlim_percentile = fluxlim_percentiles[plot_area][species]
+        
         # NOTE: easy fix while there are no Rhime results for N2O
         if species == 'n2o':
             models = ['intem', 'elris']
@@ -447,7 +487,7 @@ def produce_plots(regions, output_path, inventory_years):
                                                     chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
-                                                    set_fluxlim = set_fluxlim,
+                                                    set_fluxlim = set_fluxlim, set_fluxlim_percentile=set_fluxlim_percentile,
                                                     plot_inversion_grid_flux=plot_inversion_grid_flux)
 
         start_year = start_date.split('-')[0]
