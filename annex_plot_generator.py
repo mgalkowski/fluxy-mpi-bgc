@@ -44,7 +44,7 @@ def produce_plots(regions, output_path, inventory_years):
     scale_co2eq = True
     plot_inventory = True
     fix_y_axes = False
-    add_prior = False
+    add_prior = True
     add_prior_unc = False
     set_global_leg = False
     country_codes_as_titles = None
