@@ -198,7 +198,8 @@ def produce_plots(regions, output_path, inventory_years):
         
     ### Total HFCs/PFCs (w/o HFC-4310mee)
     resample = None
-    resample_uncert_correlation = False         
+    resample_uncert_correlation = False   
+    rolling_mean = 2      
     start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
     end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
 
@@ -229,7 +230,8 @@ def produce_plots(regions, output_path, inventory_years):
                                               resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                               plot_resample_and_original=plot_resample_and_original,
                                               period_override=period_override,
-                                              return_res=True)
+                                              return_res=True,
+                                              rolling_mean=rolling_mean)
 
         start_year = start_date[0].split('-')[0]
         end_year = end_date[0].split('-')[0]
@@ -261,6 +263,7 @@ def produce_plots(regions, output_path, inventory_years):
     end_date   = '2024-01-01'
     resample   = None
     resample_uncert_correlation = False
+    rolling_mean = 2
 
     print('\n--- PLOTTING COUNTRY FLUXES FOR ALL F-GASES ---')
     for species in annual_species:
@@ -300,7 +303,8 @@ def produce_plots(regions, output_path, inventory_years):
                                               resample=resample,resample_uncert_correlation=resample_uncert_correlation,
                                               plot_resample_and_original=plot_resample_and_original,
                                               period_override=period_override,
-                                              return_res=True)
+                                              return_res=True,
+                                              rolling_mean=rolling_mean)
 
         start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
