@@ -1988,7 +1988,9 @@ def plot_country_flux(ds_all,species,plot_regions,
                       resample_uncert_correlation=False,
                       plot_resample_and_original=False,
                       period_override=None,
-                      return_res=False):
+                      return_res=False,
+                      rolling_mean=None
+                     ):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
     areas in plot_regions.
@@ -2058,6 +2060,9 @@ def plot_country_flux(ds_all,species,plot_regions,
             Must be the same length as models, e.g. ['monthly',None,'yearly']
         return_res (bool, optional):
             Wheter or not including a dictionnary with the results as output
+        rolling_mean (int, optional):
+            If not None, calculate a rolling mean of the combined data using the input integer 
+            to define the period.
     Returns:
         fig (figure): 
             A plot per country/region.
@@ -2354,19 +2359,24 @@ def plot_country_flux(ds_all,species,plot_regions,
                 
                 pdf_mean = np.mean(pdf_all,axis=1)
                 pdf_std = np.std(pdf_all,axis=1)
-                '''                          
-                ax.plot(region_time.astype('datetime64[ns]'),
-                                mean_country_flux_total_posterior,
-                                label=labels_combined['posterior'],color='black',linewidth=3.5)
+                '''     
+                data_to_plot = calc_rolling_mean([region_time.astype('datetime64[ns]'),
+                                                  mean_country_flux_total_posterior],
+                                                rolling_mean)
+                ax.plot(data_to_plot[0],data_to_plot[1],
+                        label=labels_combined['posterior'],color='black',linewidth=3.5)
+                
                 if add_prior:
                     ax.plot(region_time.astype('datetime64[ns]'),
                                         mean_country_flux_total_prior,
                                         label=labels_combined['prior'],color='black',linestyle='dashed')
                 
-                ax.fill_between(region_time.astype('datetime64[ns]'),
-                                                min_country_flux_total_lower,
-                                                max_country_flux_total_upper,
-                                                alpha=0.3,color='grey',label=labels_combined['unc'])
+                data_to_plot = calc_rolling_mean([region_time.astype('datetime64[ns]'),
+                                                  min_country_flux_total_lower,
+                                                  max_country_flux_total_upper],
+                                                rolling_mean)
+                ax.fill_between(data_to_plot[0],data_to_plot[1],data_to_plot[2],
+                                alpha=0.3,color='grey',label=labels_combined['unc'])
                 '''
                 ax.plot(region_time.astype('datetime64[ns]'),
                                     pdf_mean,
@@ -3729,3 +3739,33 @@ def set_flux_limits(ds_all, var, region_plot, species_info, option='default'):
         raise ValueError(f"The lower flux limit {fluxlim[0]} must be less than the upper flux limit {fluxlim[1]}.") 
         
     return fluxlim
+
+def calc_rolling_mean(list_data,rolling_mean):
+    """
+    Calculate rolling mean of a list of numpy array using numpy.convolv
+    (see https://stackoverflow.com/questions/14313510/how-to-calculate-rolling-moving-average-using-python-numpy-scipy).
+    
+    Args:
+        list_data : list of numpy array of dtype float or numpy.datetime64
+        rolling_mean : rolling_mean period
+        
+    Return
+        averaged_data : list of numpy array containing the averaged data.
+    """
+    if rolling_mean is None :
+        return list_data
+    
+    elif rolling_mean>=list_data[0].size:
+        raise ValueError(f'rolling_mean value ({rolling_mean}) should be inferior to the size of the data ({list_data[0].size}).')
+        
+    else :
+        averaged_data = list()
+        for data in list_data:
+            if np.issubdtype(data.dtype, np.datetime64):
+                averaged_data.append((np.convolve(data.astype(int), np.ones(rolling_mean), 'valid') / rolling_mean
+                                     ).astype(data.dtype))
+            else : 
+                averaged_data.append(np.convolve(data, np.ones(rolling_mean), 'valid') / rolling_mean)
+                
+        return averaged_data
+        
