@@ -35,6 +35,18 @@ ppt_mode = False
 # Set annex_mode to True for shorter labels
 annex_mode = True
 
+# Start date of F-gases country fluxes
+start_date_fgases = {
+    'UK': '2008-01-01',
+    'SWITZERLAND': '2008-01-01',
+    'GERMANY': '2013-01-01',
+    'ITALY': '2008-01-01',
+    'NETHERLANDS': '2013-01-01',
+    'IRELAND': '2008-01-01',
+    'HUNGARY': '2018-01-01',
+    'NORWAY': '2018-01-01'
+}
+
 # Specify the percentile to use for the color scales in the flux spatial map
 fluxlim_percentiles = {
     'UK': {
@@ -236,7 +248,7 @@ def produce_plots(regions, output_path, inventory_years):
     resample = None
     resample_uncert_correlation = False   
     rolling_mean = 2      
-    start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
+    start_date = [start_date_fgases[plot_area],'2018-01-01','2018-01-01','2018-01-01']
     end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
 
     # NOTE: easy fix while there are no Rhime results for N2O
@@ -308,10 +320,11 @@ def produce_plots(regions, output_path, inventory_years):
         ds_all_flux_scaled = {}
         models_std = []
 
-        if species == 'hfc4310mee':
+        start_date = start_date_fgases[plot_area]
+        start_year = start_date.split('-')[0]
+        if species == 'hfc4310mee' and int(start_year) < 2011:
             start_date = '2011-01-01' # Fix for InTEM longrun which is zero in 2010
-        else:
-            start_date = '2008-01-01'
+            start_year = start_date.split('-')[0]
 
         ### Read and scale fluxes
         for m,model in enumerate(models):
@@ -342,7 +355,6 @@ def produce_plots(regions, output_path, inventory_years):
                                               return_res=True,
                                               rolling_mean=rolling_mean)
 
-        start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
         plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
         full_path = os.path.join(output_path, plot_name)
@@ -504,8 +516,8 @@ def produce_plots(regions, output_path, inventory_years):
         plt.close()
 
     print('\n--- ALL PLOTS GENERATED SUCCESSFULLY! ---')
-                              
-                              
+
+
     print('\n\n\n--- GENERATING TABLES ---')
     annual_res = pd.concat(annual_res_list).reset_index(drop=True).fillna(value=' ')
     
