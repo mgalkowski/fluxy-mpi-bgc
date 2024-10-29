@@ -199,7 +199,7 @@ def produce_plots(regions, output_path, inventory_years):
     ### Total HFCs/PFCs (w/o HFC-4310mee)
     resample = None
     resample_uncert_correlation = False   
-    rolling_mean = 2      
+    rolling_mean = True   
     start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
     end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
 
@@ -263,7 +263,7 @@ def produce_plots(regions, output_path, inventory_years):
     end_date   = '2024-01-01'
     resample   = None
     resample_uncert_correlation = False
-    rolling_mean = 2
+    rolling_mean = True
 
     print('\n--- PLOTTING COUNTRY FLUXES FOR ALL F-GASES ---')
     for species in annual_species:
