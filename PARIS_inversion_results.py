@@ -2336,12 +2336,20 @@ def plot_country_flux(ds_all,species,plot_regions,
                                       'posterior':'Mean posterior',
                                       'unc':'Min/max of post uncertainty'}
                 
-                mean_country_flux_total_posterior = np.mean(all_region_flux_total_posterior,axis=0)
-                mean_country_flux_total_prior = np.mean(all_region_flux_total_prior,axis=0)
-                mean_country_flux_total_lower = np.mean(all_region_flux_total_lower,axis=0)
-                mean_country_flux_total_upper = np.mean(all_region_flux_total_upper,axis=0)
-                min_country_flux_total_lower = np.min(all_region_flux_total_lower,axis=0)
-                max_country_flux_total_upper = np.max(all_region_flux_total_upper,axis=0)
+                if rolling_mean:
+                    mean_country_flux_total_posterior = np.mean(calc_rolling_mean(all_region_flux_total_posterior),axis=0)
+                    mean_country_flux_total_prior = np.mean(calc_rolling_mean(all_region_flux_total_prior),axis=0)
+                    mean_country_flux_total_lower = np.mean(calc_rolling_mean(all_region_flux_total_lower),axis=0)
+                    mean_country_flux_total_upper = np.mean(calc_rolling_mean(all_region_flux_total_upper),axis=0)
+                    min_country_flux_total_lower = np.min(calc_rolling_mean(all_region_flux_total_lower),axis=0)
+                    max_country_flux_total_upper = np.max(calc_rolling_mean(all_region_flux_total_upper),axis=0)
+                else:
+                    mean_country_flux_total_posterior = np.mean(all_region_flux_total_posterior,axis=0)
+                    mean_country_flux_total_prior = np.mean(all_region_flux_total_prior,axis=0)
+                    mean_country_flux_total_lower = np.mean(all_region_flux_total_lower,axis=0)
+                    mean_country_flux_total_upper = np.mean(all_region_flux_total_upper,axis=0)
+                    min_country_flux_total_lower = np.min(all_region_flux_total_lower,axis=0)
+                    max_country_flux_total_upper = np.max(all_region_flux_total_upper,axis=0)
                 
                 #print(return_res,region_time.astype('datetime64[Y]'))
                 if return_res :#and ((region_time.astype('datetime64[Y]')[1:]-region_time.astype('datetime64[Y]')[:-1]).astype(int)>=1).all():
@@ -2364,22 +2372,19 @@ def plot_country_flux(ds_all,species,plot_regions,
                 pdf_mean = np.mean(pdf_all,axis=1)
                 pdf_std = np.std(pdf_all,axis=1)
                 '''     
-                data_to_plot = calc_rolling_mean([region_time.astype('datetime64[ns]'),
-                                                  mean_country_flux_total_posterior],
-                                                rolling_mean)
-                ax.plot(data_to_plot[0],data_to_plot[1],
+                
+                ax.plot(region_time.astype('datetime64[ns]'),
+                        mean_country_flux_total_posterior,
                         label=labels_combined['posterior'],color='black',linewidth=3.5)
                 
                 if add_prior:
                     ax.plot(region_time.astype('datetime64[ns]'),
-                                        mean_country_flux_total_prior,
-                                        label=labels_combined['prior'],color='black',linestyle='dashed',linewidth=lw,alpha=alpha)
+                            mean_country_flux_total_prior,
+                            label=labels_combined['prior'],color='black',linestyle='dashed',linewidth=lw,alpha=alpha)
                 
-                data_to_plot = calc_rolling_mean([region_time.astype('datetime64[ns]'),
-                                                  min_country_flux_total_lower,
-                                                  max_country_flux_total_upper],
-                                                rolling_mean)
-                ax.fill_between(data_to_plot[0],data_to_plot[1],data_to_plot[2],
+                ax.fill_between(region_time.astype('datetime64[ns]'),
+                                min_country_flux_total_lower,
+                                max_country_flux_total_upper,
                                 alpha=0.3,color='grey',label=labels_combined['unc'])
                 '''
                 ax.plot(region_time.astype('datetime64[ns]'),
@@ -3349,9 +3354,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     break
     
     # Create figure
-    if (n_lines==1 and n_cols==4) or (n_lines==4 and n_cols==1):
+    if n_lines*n_cols== 4:
         # Re-organize the data for a nicer display
-        fig,ax_tmp = plt.subplots(2,2,figsize=(2*4,2*3), #3.25
+        fig,ax_tmp = plt.subplots(2,2,figsize=(2*4.2,2*3), #3.25
                                   subplot_kw={'projection':cartopy.crs.PlateCarree()})
         ax = ax_tmp.flatten()
     else:
@@ -3564,6 +3569,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
     if n_cols == 1 and n_lines == 1:
         cbar_ax = fig.add_axes([1, f_bottom, f_width, f_height])
         color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
+    elif n_cols*n_lines == 4:
+        cbar_ax = fig.add_axes([f_left, f_bottom, 0.02, f_height])
+        color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)       
     elif n_lines == 1:
         cbar_ax = fig.add_axes([f_left, f_bottom, f_width, f_height])
         color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
@@ -3762,7 +3770,7 @@ def set_flux_limits(ds_all, var, region_plot, species_info, option='default', cu
         
     return fluxlim
 
-def calc_rolling_mean(list_data,rolling_mean):
+def calc_rolling_mean_v0(list_data,rolling_mean=2):
     """
     Calculate rolling mean of a list of numpy array using numpy.convolv
     (see https://stackoverflow.com/questions/14313510/how-to-calculate-rolling-moving-average-using-python-numpy-scipy).
@@ -3790,4 +3798,71 @@ def calc_rolling_mean(list_data,rolling_mean):
                 averaged_data.append(np.convolve(data, np.ones(rolling_mean), 'valid') / rolling_mean)
                 
         return averaged_data
+ 
+def calc_3yr_rolling_mean_v1(list_data):
+    """
+    Calculate rolling mean of a list of numpy array using numpy.convolv
+    (see https://stackoverflow.com/questions/14313510/how-to-calculate-rolling-moving-average-using-python-numpy-scipy).
+    
+    Args:
+        list_data : list of numpy array of dtype float or numpy.datetime64
         
+    Return
+        averaged_data : list of numpy array containing the averaged data.
+    """
+    rolling_mean = 3
+    averaged_data = list()
+    for data in list_data:
+        if np.issubdtype(data.dtype, np.datetime64):
+            tmp = (np.convolve(data.astype(int), np.ones(rolling_mean), 'valid') / rolling_mean
+                  ).astype(data.dtype)
+            tmp = np.concatenate([[data[0],],tmp,[data[-1],]])
+        else : 
+            tmp = np.convolve(data, np.ones(rolling_mean), 'valid') / rolling_mean
+            tmp = np.concatenate([[np.mean(data[:2]),],tmp,[np.mean(data[-2:]),]])
+        averaged_data.append(tmp)
+    return averaged_data
+ 
+def calc_3yr_rolling_mean_v2(list_data):
+    """
+    Calculate rolling mean of a list of numpy array using numpy.convolv
+    (see https://stackoverflow.com/questions/14313510/how-to-calculate-rolling-moving-average-using-python-numpy-scipy).
+    
+    Args:
+        list_data : list of numpy array of dtype float or numpy.datetime64
+        
+    Return
+        averaged_data : list of numpy array containing the averaged data.
+    """
+    rolling_mean = 3
+    averaged_data = list()
+    for data in list_data:
+        print(data,type(data))
+        if np.issubdtype(data.dtype, np.datetime64):
+            tmp = (np.convolve(data.astype(int), np.ones(rolling_mean), 'valid') / rolling_mean
+                  ).astype(data.dtype)
+            tmp = np.concatenate([[data[0],],tmp,[data[-1],]])
+        else : 
+            tmp = np.convolve(data, np.ones(rolling_mean), 'valid') / rolling_mean
+            tmp = np.concatenate([[data[0],],tmp,[data[-1],]])
+        averaged_data.append(tmp)
+    return averaged_data
+
+
+def plt_diff(mean, unc,title):
+    plt.plot(mean[0],mean[1],ls='-',c='black')
+    plt.fill_between(unc[0],unc[1],unc[2],color='gray',alpha=0.5)
+    
+    for i,f in enumerate([calc_rolling_mean,
+                          calc_3yr_rolling_mean_v1,
+                          # calc_3yr_rolling_mean_v2
+                         ]):
+        mean1 = f(mean)
+        unc1 = f(unc)
+        plt.plot(mean1[0],mean1[1],ls='-',c=f'C0{i}')
+        plt.fill_between(unc1[0],unc1[1],unc1[2],color=f'C0{i}',alpha=0.05)
+    plt.grid(True)
+    plt.title(title)
+    plt.show()
+
+calc_rolling_mean = calc_3yr_rolling_mean_v1
