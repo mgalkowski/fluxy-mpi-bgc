@@ -150,7 +150,7 @@ def initialize_settings(ppt_mode=False):
 
     ### define colors
 
-    model_colors = {'intem':[['navy','dodgerblue'],
+    model_colors = {'intem':[['blue','dodgerblue'],
                              ['dodgerblue','skyblue']],
                     'elris':[['purple','mediumpurple'],
                              ['deeppink','pink'],
@@ -2272,9 +2272,13 @@ def plot_country_flux(ds_all,species,plot_regions,
                             if annex_mode:
                                 include_label = m_data[m]["label"].split()[0]
                                 include_label_prior = f'{include_label} prior'
+                                lw = 1
+                                alpha = 0.7
                             else:
                                 include_label = m_data[m]["label"]
                                 include_label_prior = f'{m_data[m]["label"]} prior'
+                                lw = 1.5
+                                alpha = 1
                         else:
                             include_label = None
                             include_label_prior = None
@@ -2292,7 +2296,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                             if add_prior:
                                 ax.plot(region_time,
                                             region_flux_total_prior,
-                                            label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
+                                            label=include_label_prior,color=model_colors[m][0],linestyle='dashed',linewidth=lw,alpha=alpha)
                                 max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
 
                                 if add_prior_unc:
@@ -2376,7 +2380,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                 if add_prior:
                     ax.plot(region_time.astype('datetime64[ns]'),
                             mean_country_flux_total_prior,
-                            label=labels_combined['prior'],color='black',linestyle='dashed')
+                            label=labels_combined['prior'],color='black',linestyle='dashed',linewidth=lw,alpha=alpha)
                 
                 ax.fill_between(region_time.astype('datetime64[ns]'),
                                 min_country_flux_total_lower,
@@ -2420,6 +2424,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                             np.max(max_x)+np.timedelta64(7,'M')])        
         
         ncol = 2
+        if annex_mode: ncol = 3
         if set_global_leg == False:
             leg = ax.legend(ncol=ncol,borderpad=.4,columnspacing=1.0)
             if plot_inventory == True:
@@ -2513,7 +2518,8 @@ def plot_country_flux(ds_all,species,plot_regions,
 def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                       cmap_diff=None,c_border=None,period_override=None,
                       plot_site_locations=False,plot_point_markers=None,
-                      season=None,set_fluxlim='default',plot_inversion_grid_flux=False):
+                      season=None,set_fluxlim='default',set_fluxlim_percentile=None,
+                      plot_inversion_grid_flux=False):
     """
     Plots posterior and prior fluxes and the difference between these
     for all models.
@@ -2557,6 +2563,8 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
             If provided, set the colorbar limits based on the selected options.
             Options are 'default', 'auto', a list or tuple with two elements (min, max).
             The default option is 'default', which is based on species_info values.
+        set_fluxlim_percentile (float, optional):
+            If provided, set the percentile to use when setting the colorbar limits with 'auto' option.
         plot_inversion_grid_flux (bool, default False):
             If True, plots fluxes at the spatial resolution of the inversion (using the 
             inversion_grid variable). If False, plots fluxes at the spatial resolution
@@ -2596,8 +2604,8 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                     'SWITZERLAND':[5.5,11,45,49],
                     'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
-                    'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[1,32,55,76],
+                    'HUNGARY':[15.5,23.5,44.5,50],
+                    'NORWAY':[1,32,52,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -2623,7 +2631,7 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                     break
                     
     # Determine flux limits based on 'flux_total_posterior'
-    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim)
+    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim, custom_percentile=set_fluxlim_percentile)
     difflim = tuple([-fluxlim[1],fluxlim[1]])
         
     # Find units info in netcdf attrs
@@ -2822,7 +2830,7 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
 def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode=False,
                                  cmap=None,cmap_diff=None,c_border=None,period_override=None,
                                  plot_site_locations=False,plot_point_markers=None,set_fluxlim='default',
-                                 plot_inversion_grid_flux=False):
+                                 set_fluxlim_percentile=None,plot_inversion_grid_flux=False):
     """
     Plots posterior fluxes and the difference between these
     for two models.
@@ -2868,6 +2876,8 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
             If provided, set the colorbar limits based on the selected options.
             Options are 'default', 'auto', a list or tuple with two elements (min, max).
             The default option is 'default', which is based on species_info values.
+        set_fluxlim_percentile (float, optional):
+            If provided, set the percentile to use when setting the colorbar limits with 'auto' option.
     Returns:
         fig (figure): 
             A plot of spatial flux posterior from two models a plot 
@@ -2904,8 +2914,8 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                     'SWITZERLAND':[5.5,11,45,49],
                     'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
-                    'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[1,32,55,76],
+                    'HUNGARY':[15.5,23.5,44.5,50],
+                    'NORWAY':[1,32,52,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -2929,7 +2939,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                     break
                     
     # Determine flux limits based on 'flux_total_posterior'
-    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim)
+    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim, custom_percentile=set_fluxlim_percentile)
     difflim = tuple([-fluxlim[1],fluxlim[1]])
         
     # Find units info in netcdf attrs
@@ -3102,7 +3112,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                                     var='flux_total_posterior', plot_combined=False, annex_mode=False,
                                     chop_by='year',dt=1,period_override=None,
                                     plot_site_locations=False,plot_point_markers=False,set_fluxlim='default',
-                                    plot_inversion_grid_flux=False):
+                                    set_fluxlim_percentile=None,plot_inversion_grid_flux=False):
     """
     Plots posterior fluxes, prior fluxes or difference between these
     for all models and specific time intervals.
@@ -3160,6 +3170,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
             If provided, set the colorbar limits based on the selected options.
             Options are 'default', 'auto', a list or tuple with two elements (min, max).
             The default option is 'default', which is based on species_info values.
+        set_fluxlim_percentile (float, optional):
+            If provided, set the percentile to use when setting the colorbar limits with 'auto' option.
     Returns:
         fig (figure):
             A plot of spatial flux of the variable specified in var
@@ -3202,8 +3214,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     'SWITZERLAND':[5.5,11,45,49],
                     'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
-                    'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[1,32,55,76],
+                    'HUNGARY':[15.5,23.5,44.5,50],
+                    'NORWAY':[1,32,52,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -3212,7 +3224,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
     month_names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
     
     # Determine flux limits and define variable extend setting
-    lim = set_flux_limits(ds_all, var, region_limits[plot_area], s_data[species], option=set_fluxlim)
+    lim = set_flux_limits(ds_all, var, region_limits[plot_area], s_data[species], option=set_fluxlim, custom_percentile=set_fluxlim_percentile)
     if var in ['posterior_prior_diff','posterior_mean_diff']:
         extend ='both'
     else:
@@ -3677,7 +3689,7 @@ def convert_molar_to_mass_flux(ds, M):
 
 #####################################################################
 
-def set_flux_limits(ds_all, var, region_plot, species_info, option='default'):
+def set_flux_limits(ds_all, var, region_plot, species_info, option='default', custom_percentile=None):
     """
     Set flux limits based on the option provided:
     
@@ -3693,7 +3705,8 @@ def set_flux_limits(ds_all, var, region_plot, species_info, option='default'):
         option (None, str or list/tuple): The option for setting limits.
             - `default` for default values.
             - A list or tuple with two elements (min, max) for specified limits.
-            - 'auto' for auto-calculated values.
+            - 'auto' for auto-calculated values using the 99th percentile (if custom_percentile is None).
+        custom_percentile (float, optional): The percentile to use as the upper limit if option is 'auto'.
     
     Returns:
         tuple: A tuple containing the flux limits (min, max).
@@ -3737,7 +3750,10 @@ def set_flux_limits(ds_all, var, region_plot, species_info, option='default'):
             
         all_var = np.concatenate(all_var, axis=0)  # Concatenate along the time axis (axis=0)
         
-        upper_lim = np.quantile(all_var, 0.99)  # Calculate the 99th percentile
+        if custom_percentile is None:
+            upper_lim = np.quantile(all_var, .99) # Calculate the 99th percentile
+        else:
+            upper_lim = np.quantile(all_var, custom_percentile)
         
         if var in ['posterior_prior_diff', 'posterior_mean_diff']:
             fluxlim = (-upper_lim, upper_lim)
