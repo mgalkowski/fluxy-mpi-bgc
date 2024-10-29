@@ -2934,7 +2934,7 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                     break
                     
     # Determine flux limits based on 'flux_total_posterior'
-    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim, custom_percentil=set_fluxlim_percentile)
+    fluxlim = set_flux_limits(ds_all, 'flux_total_posterior', region_limits[plot_area], s_data[species], option=set_fluxlim, custom_percentile=set_fluxlim_percentile)
     difflim = tuple([-fluxlim[1],fluxlim[1]])
         
     # Find units info in netcdf attrs
