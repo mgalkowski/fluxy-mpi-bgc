@@ -42,28 +42,28 @@ fluxlim_percentiles = {
         'cf4': 0.99, 'pfc116': 0.95, 'pfc218': 0.99, 'pfc318': 0.95, 'sf6': 0.99
     },
     'SWITZERLAND': {
-        'ch4': None, 'n2o': None, 'hfc32': None, 'hfc125': None, 'hfc134a': None, 'hfc143a': None,
-        'cf4': None, 'pfc116': None, 'pfc218': None, 'pfc318': None, 'sf6': None
+        'ch4': 0.96, 'n2o': 0.96, 'hfc32': 0.98, 'hfc125': 0.98, 'hfc134a': 0.97, 'hfc143a': 0.97,
+        'cf4': 0.98, 'pfc116': 0.98, 'pfc218': 0.975, 'pfc318': 0.96, 'sf6': 0.99
     },
     'GERMANY': {
-        'ch4': None, 'n2o': None, 'hfc32': None, 'hfc125': None, 'hfc134a': None, 'hfc143a': None,
-        'cf4': None, 'pfc116': None, 'pfc218': None, 'pfc318': None, 'sf6': None
+        'ch4': 0.98, 'n2o': 0.98, 'hfc32': 0.99, 'hfc125': 0.99, 'hfc134a': 0.99, 'hfc143a': 0.99,
+        'cf4': 0.995, 'pfc116': 0.995, 'pfc218': 0.98, 'pfc318': 0.99, 'sf6': 0.99
     },
     'ITALY': {
         'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.99, 'hfc125': 0.99, 'hfc134a': 0.99, 'hfc143a': 0.99,
         'cf4': 0.99, 'pfc116': 0.99, 'pfc218': 0.95, 'pfc318': 0.99, 'sf6': 0.95
     },
     'NETHERLANDS': {
-        'ch4': None, 'n2o': None, 'hfc32': None, 'hfc125': None, 'hfc134a': None, 'hfc143a': None,
-        'cf4': None, 'pfc116': None, 'pfc218': None, 'pfc318': None, 'sf6': None
+        'ch4': 0.96, 'n2o': 0.97, 'hfc32': 0.97, 'hfc125': 0.97, 'hfc134a': 0.97, 'hfc143a': 0.96,
+        'cf4': 0.99, 'pfc116': 0.99, 'pfc218': 0.97, 'pfc318': 0.99, 'sf6': 0.99
     },
     'IRELAND': {
         'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.95, 'hfc125': 0.95, 'hfc134a': 0.95, 'hfc143a': 0.95,
         'cf4': 0.99, 'pfc116': 0.99, 'pfc218': 0.95, 'pfc318': 0.95, 'sf6': 0.95
     },
     'HUNGARY': {
-        'ch4': None, 'n2o': None, 'hfc32': None, 'hfc125': None, 'hfc134a': None, 'hfc143a': None,
-        'cf4': None, 'pfc116': None, 'pfc218': None, 'pfc318': None, 'sf6': None
+        'ch4': 0.99, 'n2o': 0.99, 'hfc32': 0.97, 'hfc125': 0.95, 'hfc134a': 0.95, 'hfc143a': 0.95,
+        'cf4': 0.99, 'pfc116': 0.995, 'pfc218': 0.96, 'pfc318': 0.965, 'sf6': 0.98
     },
     'NORWAY': {
         'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.95, 'hfc125': 0.95, 'hfc134a': 0.95, 'hfc143a': 0.95,
@@ -90,7 +90,7 @@ def produce_plots(regions, output_path, inventory_years):
     period_override = None
 
     ### Settings for spatial maps
-    models_spatial_maps = ['intem', 'elris'] # NOTE: add rhime once variable flux_total_posterior_inversion_grid becomes available
+    models_spatial_maps = ['intem','elris','rhime']
     plot_area = regions[0]
     plot_site_locations = True
     plot_point_markers = point_markers[regions[0]]
@@ -395,7 +395,10 @@ def produce_plots(regions, output_path, inventory_years):
         ds_all_flux_scaled = {}
         models_std = []
         
-        set_fluxlim_percentile = fluxlim_percentiles[plot_area][species]
+        if species in fluxlim_percentiles[plot_area].keys():
+            set_fluxlim_percentile = fluxlim_percentiles[plot_area][species]
+        else:
+            set_fluxlim_percentile = None
 
         if species == "hfc4310mee":
             end_date = '2023-01-01' # NOTE: no 2023 results for HFC-4310mee
@@ -459,7 +462,10 @@ def produce_plots(regions, output_path, inventory_years):
         ds_all_flux_scaled = {}
         models_std = []
 
-        set_fluxlim_percentile = fluxlim_percentiles[plot_area][species]
+        if species in fluxlim_percentiles[plot_area].keys():
+            set_fluxlim_percentile = fluxlim_percentiles[plot_area][species]
+        else:
+            set_fluxlim_percentile = None
         
         # NOTE: easy fix while there are no Rhime results for N2O
         if species == 'n2o':
