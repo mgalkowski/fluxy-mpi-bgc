@@ -150,7 +150,7 @@ def initialize_settings(ppt_mode=False):
 
     ### define colors
 
-    model_colors = {'intem':[['navy','dodgerblue'],
+    model_colors = {'intem':[['blue','dodgerblue'],
                              ['dodgerblue','skyblue']],
                     'elris':[['purple','mediumpurple'],
                              ['deeppink','pink'],
@@ -2272,9 +2272,13 @@ def plot_country_flux(ds_all,species,plot_regions,
                             if annex_mode:
                                 include_label = m_data[m]["label"].split()[0]
                                 include_label_prior = f'{include_label} prior'
+                                lw = 1
+                                alpha = 0.7
                             else:
                                 include_label = m_data[m]["label"]
                                 include_label_prior = f'{m_data[m]["label"]} prior'
+                                lw = 1.5
+                                alpha = 1
                         else:
                             include_label = None
                             include_label_prior = None
@@ -2292,7 +2296,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                             if add_prior:
                                 ax.plot(region_time,
                                             region_flux_total_prior,
-                                            label=include_label_prior,color=model_colors[m][0],linestyle='dashed')
+                                            label=include_label_prior,color=model_colors[m][0],linestyle='dashed',linewidth=lw,alpha=alpha)
                                 max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
 
                                 if add_prior_unc:
@@ -2369,7 +2373,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                 if add_prior:
                     ax.plot(region_time.astype('datetime64[ns]'),
                                         mean_country_flux_total_prior,
-                                        label=labels_combined['prior'],color='black',linestyle='dashed')
+                                        label=labels_combined['prior'],color='black',linestyle='dashed',linewidth=lw,alpha=alpha)
                 
                 data_to_plot = calc_rolling_mean([region_time.astype('datetime64[ns]'),
                                                   min_country_flux_total_lower,
@@ -2415,6 +2419,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                             np.max(max_x)+np.timedelta64(7,'M')])        
         
         ncol = 2
+        if annex_mode: ncol = 3
         if set_global_leg == False:
             leg = ax.legend(ncol=ncol,borderpad=.4,columnspacing=1.0)
             if plot_inventory == True:
@@ -2594,8 +2599,8 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
                     'SWITZERLAND':[5.5,11,45,49],
                     'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
-                    'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[1,32,55,76],
+                    'HUNGARY':[15.5,23.5,44.5,50],
+                    'NORWAY':[1,32,52,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -2904,8 +2909,8 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
                     'SWITZERLAND':[5.5,11,45,49],
                     'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
-                    'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[1,32,55,76],
+                    'HUNGARY':[15.5,23.5,44.5,50],
+                    'NORWAY':[1,32,52,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
@@ -3204,8 +3209,8 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     'SWITZERLAND':[5.5,11,45,49],
                     'NETHERLANDS':[2.5,8,50,55],
                     'IRELAND':[-12,-4,51,56],
-                    'HUNGARY':[15,24,44.5,50],
-                    'NORWAY':[1,32,55,76],
+                    'HUNGARY':[15.5,23.5,44.5,50],
+                    'NORWAY':[1,32,52,76],
                     'BENELUX':[1,9,48,55],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
