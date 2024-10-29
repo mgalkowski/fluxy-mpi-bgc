@@ -3337,9 +3337,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     break
     
     # Create figure
-    if (n_lines==1 and n_cols==4) or (n_lines==4 and n_cols==1):
+    if n_lines*n_cols== 4:
         # Re-organize the data for a nicer display
-        fig,ax_tmp = plt.subplots(2,2,figsize=(2*4,2*3), #3.25
+        fig,ax_tmp = plt.subplots(2,2,figsize=(2*4.2,2*3), #3.25
                                   subplot_kw={'projection':cartopy.crs.PlateCarree()})
         ax = ax_tmp.flatten()
     else:
@@ -3552,6 +3552,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
     if n_cols == 1 and n_lines == 1:
         cbar_ax = fig.add_axes([1, f_bottom, f_width, f_height])
         color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
+    elif n_cols*n_lines == 4:
+        cbar_ax = fig.add_axes([f_left, f_bottom, 0.02, f_height])
+        color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)       
     elif n_lines == 1:
         cbar_ax = fig.add_axes([f_left, f_bottom, f_width, f_height])
         color_bar = fig.colorbar(cbar,cax=cbar_ax,orientation='vertical',cmap=cmap,extend=extend)
