@@ -35,6 +35,54 @@ ppt_mode = False
 # Set annex_mode to True for shorter labels
 annex_mode = True
 
+# Start date of F-gases country fluxes
+start_date_fgases = {
+    'UK': '2008-01-01',
+    'SWITZERLAND': '2008-01-01',
+    'GERMANY': '2013-01-01',
+    'ITALY': '2008-01-01',
+    'NETHERLANDS': '2013-01-01',
+    'IRELAND': '2008-01-01',
+    'HUNGARY': '2018-01-01',
+    'NORWAY': '2018-01-01'
+}
+
+# Specify the percentile to use for the color scales in the flux spatial map
+fluxlim_percentiles = {
+    'UK': {
+        'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.99, 'hfc125': 0.99, 'hfc134a': 0.99, 'hfc143a': 0.99,
+        'cf4': 0.99, 'pfc116': 0.95, 'pfc218': 0.99, 'pfc318': 0.95, 'sf6': 0.99
+    },
+    'SWITZERLAND': {
+        'ch4': 0.96, 'n2o': 0.96, 'hfc32': 0.98, 'hfc125': 0.98, 'hfc134a': 0.97, 'hfc143a': 0.97,
+        'cf4': 0.98, 'pfc116': 0.98, 'pfc218': 0.975, 'pfc318': 0.96, 'sf6': 0.99
+    },
+    'GERMANY': {
+        'ch4': 0.98, 'n2o': 0.98, 'hfc32': 0.99, 'hfc125': 0.99, 'hfc134a': 0.99, 'hfc143a': 0.99,
+        'cf4': 0.995, 'pfc116': 0.995, 'pfc218': 0.98, 'pfc318': 0.99, 'sf6': 0.99
+    },
+    'ITALY': {
+        'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.99, 'hfc125': 0.99, 'hfc134a': 0.99, 'hfc143a': 0.99,
+        'cf4': 0.99, 'pfc116': 0.99, 'pfc218': 0.95, 'pfc318': 0.99, 'sf6': 0.95
+    },
+    'NETHERLANDS': {
+        'ch4': 0.96, 'n2o': 0.97, 'hfc32': 0.97, 'hfc125': 0.97, 'hfc134a': 0.97, 'hfc143a': 0.96,
+        'cf4': 0.99, 'pfc116': 0.99, 'pfc218': 0.97, 'pfc318': 0.99, 'sf6': 0.99
+    },
+    'IRELAND': {
+        'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.95, 'hfc125': 0.95, 'hfc134a': 0.95, 'hfc143a': 0.95,
+        'cf4': 0.99, 'pfc116': 0.99, 'pfc218': 0.95, 'pfc318': 0.95, 'sf6': 0.95
+    },
+    'HUNGARY': {
+        'ch4': 0.99, 'n2o': 0.99, 'hfc32': 0.97, 'hfc125': 0.95, 'hfc134a': 0.95, 'hfc143a': 0.95,
+        'cf4': 0.99, 'pfc116': 0.995, 'pfc218': 0.96, 'pfc318': 0.965, 'sf6': 0.98
+    },
+    'NORWAY': {
+        'ch4': 0.95, 'n2o': 0.95, 'hfc32': 0.95, 'hfc125': 0.95, 'hfc134a': 0.95, 'hfc143a': 0.95,
+        'cf4': 0.95, 'pfc116': 0.95, 'pfc218': 0.95, 'pfc318': 0.95, 'sf6': 0.95
+    }
+}
+
 ###########################################
 
 def produce_plots(regions, output_path, inventory_years):
@@ -54,7 +102,7 @@ def produce_plots(regions, output_path, inventory_years):
     period_override = None
 
     ### Settings for spatial maps
-    models_spatial_maps = ['intem', 'elris'] # NOTE: add rhime once variable flux_total_posterior_inversion_grid becomes available
+    models_spatial_maps = ['intem','elris','rhime']
     plot_area = regions[0]
     plot_site_locations = True
     plot_point_markers = point_markers[regions[0]]
@@ -199,8 +247,8 @@ def produce_plots(regions, output_path, inventory_years):
     ### Total HFCs/PFCs (w/o HFC-4310mee)
     resample = None
     resample_uncert_correlation = False   
-    rolling_mean = True   
-    start_date = ['2008-01-01','2018-01-01','2018-01-01','2018-01-01']
+    rolling_mean = True      
+    start_date = [start_date_fgases[plot_area],'2018-01-01','2018-01-01','2018-01-01']
     end_date   = ['2024-01-01','2024-01-01','2024-01-01','2024-01-01']
 
     # NOTE: easy fix while there are no Rhime results for N2O
@@ -272,10 +320,11 @@ def produce_plots(regions, output_path, inventory_years):
         ds_all_flux_scaled = {}
         models_std = []
 
-        if species == 'hfc4310mee':
+        start_date = start_date_fgases[plot_area]
+        start_year = start_date.split('-')[0]
+        if species == 'hfc4310mee' and int(start_year) < 2011:
             start_date = '2011-01-01' # Fix for InTEM longrun which is zero in 2010
-        else:
-            start_date = '2008-01-01'
+            start_year = start_date.split('-')[0]
 
         ### Read and scale fluxes
         for m,model in enumerate(models):
@@ -306,7 +355,6 @@ def produce_plots(regions, output_path, inventory_years):
                                               return_res=True,
                                               rolling_mean=rolling_mean)
 
-        start_year = start_date.split('-')[0]
         end_year = end_date.split('-')[0]
         plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
         full_path = os.path.join(output_path, plot_name)
@@ -358,6 +406,11 @@ def produce_plots(regions, output_path, inventory_years):
         ds_all_flux = {}
         ds_all_flux_scaled = {}
         models_std = []
+        
+        if species in fluxlim_percentiles[plot_area].keys():
+            set_fluxlim_percentile = fluxlim_percentiles[plot_area][species]
+        else:
+            set_fluxlim_percentile = None
 
         if species == "hfc4310mee":
             end_date = '2023-01-01' # NOTE: no 2023 results for HFC-4310mee
@@ -392,7 +445,7 @@ def produce_plots(regions, output_path, inventory_years):
                                                     chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
-                                                    set_fluxlim=set_fluxlim,
+                                                    set_fluxlim=set_fluxlim, set_fluxlim_percentile=set_fluxlim_percentile,
                                                     plot_inversion_grid_flux=plot_inversion_grid_flux)
 
         start_year = start_date.split('-')[0]
@@ -421,6 +474,11 @@ def produce_plots(regions, output_path, inventory_years):
         ds_all_flux_scaled = {}
         models_std = []
 
+        if species in fluxlim_percentiles[plot_area].keys():
+            set_fluxlim_percentile = fluxlim_percentiles[plot_area][species]
+        else:
+            set_fluxlim_percentile = None
+        
         # NOTE: easy fix while there are no Rhime results for N2O
         if species == 'n2o':
             models = ['intem', 'elris']
@@ -447,7 +505,7 @@ def produce_plots(regions, output_path, inventory_years):
                                                     chop_by=chop_by,dt=dt,period_override=period_override,
                                                     plot_site_locations=plot_site_locations,
                                                     plot_point_markers=plot_point_markers,
-                                                    set_fluxlim = set_fluxlim,
+                                                    set_fluxlim = set_fluxlim, set_fluxlim_percentile=set_fluxlim_percentile,
                                                     plot_inversion_grid_flux=plot_inversion_grid_flux)
 
         start_year = start_date.split('-')[0]
@@ -458,8 +516,8 @@ def produce_plots(regions, output_path, inventory_years):
         plt.close()
 
     print('\n--- ALL PLOTS GENERATED SUCCESSFULLY! ---')
-                              
-                              
+
+
     print('\n\n\n--- GENERATING TABLES ---')
     annual_res = pd.concat(annual_res_list).reset_index(drop=True).fillna(value=' ')
     
