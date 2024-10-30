@@ -1280,10 +1280,21 @@ def extract_region_flux(ds_all,m,m0,country):
         region_time = ds_all[m].time.values
         region_flux_total_posterior = ds_all[m]['country_flux_total_posterior'].values[:,country_index]*r
         region_flux_total_prior = ds_all[m]['country_flux_total_prior'].values[:,country_index]*r
-        region_flux_total_posterior_lower = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index]*r
-        region_flux_total_posterior_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
-        region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r,
-        region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r,
+        
+        if m0 == 'flexinvert':
+            region_flux_total_posterior_lower = (ds_all[m]['country_flux_total_posterior'].values[:,country_index]
+                                                 - ds_all[m]['country_flux_error_posterior'].values[:,country_index])*r
+            region_flux_total_posterior_upper = (ds_all[m]['country_flux_total_posterior'].values[:,country_index]
+                                                 + ds_all[m]['country_flux_error_posterior'].values[:,country_index])*r
+            region_flux_total_prior_lower = (ds_all[m]['country_flux_total_prior'].values[:,country_index]
+                                                 - ds_all[m]['country_flux_error_prior'].values[:,country_index])*r
+            region_flux_total_prior_upper = (ds_all[m]['country_flux_total_prior'].values[:,country_index]
+                                                 + ds_all[m]['country_flux_error_prior'].values[:,country_index])*r
+        else:
+            region_flux_total_posterior_lower = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index]*r
+            region_flux_total_posterior_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
+            region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r
+            region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r
            
     #calculate values for region names that don't exist in the file
     except:
