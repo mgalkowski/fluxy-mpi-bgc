@@ -58,7 +58,7 @@ fluxlim_percentiles = {
         'cf4': 0.98, 'pfc116': 0.98, 'pfc218': 0.975, 'pfc318': 0.96, 'sf6': 0.99
     },
     'GERMANY': {
-        'ch4': 0.98, 'n2o': 0.98, 'hfc32': 0.99, 'hfc125': 0.99, 'hfc134a': 0.99, 'hfc143a': 0.99,
+        'ch4': 0.97, 'n2o': 0.97, 'hfc32': 0.99, 'hfc125': 0.99, 'hfc134a': 0.99, 'hfc143a': 0.99,
         'cf4': 0.995, 'pfc116': 0.995, 'pfc218': 0.98, 'pfc318': 0.99, 'sf6': 0.99
     },
     'ITALY': {
@@ -170,9 +170,7 @@ def produce_plots(regions, output_path, inventory_years):
                                      plot_resample_and_original=plot_resample_and_original,
                                      period_override=period_override)
 
-        start_year = start_date.split('-')[0]
-        end_year = end_date.split('-')[0]
-        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+        plot_name = f'{species}_country_flux_annual_longrun_{regions[0]}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
@@ -197,9 +195,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               period_override=period_override,
                                               return_res=True)
 
-        start_year = start_date.split('-')[0]
-        end_year = end_date.split('-')[0]
-        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+        plot_name = f'{species}_country_flux_annual_parisonly_{regions[0]}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
@@ -237,9 +233,7 @@ def produce_plots(regions, output_path, inventory_years):
                                      plot_resample_and_original=plot_resample_and_original,
                                      period_override=period_override)
 
-        start_year = start_date.split('-')[0]
-        end_year = end_date.split('-')[0]
-        plot_name = f'{species}_country_flux_monthly_{regions[0]}_{start_year}_{end_year}.png'
+        plot_name = f'{species}_country_flux_monthly_parisonly_{regions[0]}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
@@ -281,9 +275,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               return_res=True,
                                               rolling_mean=rolling_mean)
 
-        start_year = start_date[0].split('-')[0]
-        end_year = end_date[0].split('-')[0]
-        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+        plot_name = f'{species}_country_flux_annual_longrun_{regions[0]}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
@@ -324,7 +316,6 @@ def produce_plots(regions, output_path, inventory_years):
         start_year = start_date.split('-')[0]
         if species == 'hfc4310mee' and int(start_year) < 2011:
             start_date = '2011-01-01' # Fix for InTEM longrun which is zero in 2010
-            start_year = start_date.split('-')[0]
 
         ### Read and scale fluxes
         for m,model in enumerate(models):
@@ -355,8 +346,7 @@ def produce_plots(regions, output_path, inventory_years):
                                               return_res=True,
                                               rolling_mean=rolling_mean)
 
-        end_year = end_date.split('-')[0]
-        plot_name = f'{species}_country_flux_annual_{regions[0]}_{start_year}_{end_year}.png'
+        plot_name = f'{species}_country_flux_annual_longrun_{regions[0]}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
@@ -448,9 +438,7 @@ def produce_plots(regions, output_path, inventory_years):
                                                     set_fluxlim=set_fluxlim, set_fluxlim_percentile=set_fluxlim_percentile,
                                                     plot_inversion_grid_flux=plot_inversion_grid_flux)
 
-        start_year = start_date.split('-')[0]
-        end_year = end_date.split('-')[0]
-        plot_name = f'{species}_posterior_map_{regions[0]}_{start_year}_{end_year}.png'
+        plot_name = f'{species}_posterior_map_{regions[0]}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
@@ -508,9 +496,7 @@ def produce_plots(regions, output_path, inventory_years):
                                                     set_fluxlim = set_fluxlim, set_fluxlim_percentile=set_fluxlim_percentile,
                                                     plot_inversion_grid_flux=plot_inversion_grid_flux)
 
-        start_year = start_date.split('-')[0]
-        end_year = end_date.split('-')[0]
-        plot_name = f'{species}_seasonal_map_{regions[0]}_{start_year}_{end_year}.png'
+        plot_name = f'{species}_seasonal_map_{regions[0]}.png'
         full_path = os.path.join(output_path, plot_name)
         fig.savefig(full_path,bbox_inches='tight',pad_inches=0.2,dpi=300)
         plt.close()
@@ -544,7 +530,7 @@ def produce_plots(regions, output_path, inventory_years):
                               
     print('\n--- TABLES GENERATED SUCCESSFULLY! ---')
     return annual_res
-    
+
 
 def make_table(df,output_path,
                descriptive_cols=['species','source'],
