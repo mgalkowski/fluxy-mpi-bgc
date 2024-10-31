@@ -60,9 +60,14 @@
         },
 
     "intem_name_edgar_26sites":{
-        "filename":"InTEM_NAME_EUROPE_EDGAR_26sites_intem_obs_intem_baseline",
+        "filename":"InTEM_NAME_EUROPE_EDGAR_26sites_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME 26 sites (e)"
         },
+
+    "intem_name_edgar_26sites_longrun":{
+        "filename":"InTEM_NAME_EUROPE_EDGAR_longrun_26sites_intem_obs_intem_baseline_optimized",
+        "label":"InTEM NAME 26 sites (e)"
+        }, 
 
     "intem_13sites":{
         "filename":"InTEM_NAME_EUROPE_EDGAR_13sites_intem_obs_intem_baseline_optimized",
@@ -75,8 +80,13 @@
         },
 
     "intem_name_wetcharts_31sites":{
-        "filename":"InTEM_NAME_EUROPE_EDGARWETCHART_31sites_intem_obs_intem_baseline",
+        "filename":"InTEM_NAME_EUROPE_EDGARWETCHART_31sites_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME 31 sites (e+w)"
+        },
+
+    "intem_name_wetcharts_31sites_longrun":{
+        "filename":"InTEM_NAME_EUROPE_EDGARWETCHART_longrun_33sites_intem_obs_intem_baseline",
+        "label":"InTEM NAME 33 sites (e+w)"
         },
 
 
@@ -130,9 +140,9 @@
         "label":"ELRIS InTEM obs-background-unc"
         },
 
-    "elris_name_edgar_26sites":{
-        "filename":"ELRIS_NAME_EUROPE_EDGAR_26sites",
-        "label":"ELRIS NAME 26 sites (e)"
+    "elris_name_edgar_28sites":{
+        "filename":"ELRIS_NAME_EUROPE_EDGAR_28sites",
+        "label":"ELRIS NAME 28 sites (e)"
         },
 
     "elris_name_edgar_31sites":{
@@ -145,9 +155,9 @@
         "label":"ELRIS NAME 31 sites (e+w)"
         },
 
-    "elris_flex_edgar_26sites":{
-        "filename":"ELRIS_FLEXPART_EUROPE_EDGAR_26sites",
-        "label":"ELRIS FLEXPART 26 sites (e)"
+    "elris_flex_edgar_28sites":{
+        "filename":"ELRIS_FLEXPART_EUROPE_EDGAR_28sites",
+        "label":"ELRIS FLEXPART 28 sites (e)"
         },
 
     "elris_flex_edgar_31sites":{
@@ -222,7 +232,7 @@
         },
 
     "rhime_name_wetcharts_31sites":{
-        "filename":"RHIME_NAME_EUROPE_EDGAR-WetCHARTs_rhime_obs_rhime_baseline_optimized_31sites",
+        "filename":"RHIME_NAME_EUROPE_EDGAR-WetCHARTs_std_31sites",
         "label":"RHIME NAME 31 sites (e+w)"
         }, 
 
@@ -249,7 +259,12 @@
     "rhime":{
             "filename":"None",
             "label":"RHIME"
-            }
+            },
+
+    "intem_longrun":{
+        "filename":"None",
+        "label":"InTEM"
+        }
  }
     
 
