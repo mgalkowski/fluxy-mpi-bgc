@@ -191,22 +191,6 @@ def initialize_settings(ppt_mode=False):
 #####################################################################
 
 def set_model_colors(models,model_colors):
-    cList = [['darkslateblue','dodgerblue'],
-             ['red','lightsalmon'],
-             ['green','lightgreen'],
-             ['purple','mediumpurple'],
-             ['black','grey']]
-    mc = dict()
-    if np.unique([m.split('_')[0] for m in models]).size==len(models):
-        mc = {m:model_colors[m.split('_')[0]][0] for m in models}
-    else:
-        for i,m in enumerate(models):
-            mc[m] = cList[i]
-    return mc
-
-#####################################################################
-
-def set_model_colors_2(models,model_colors):
     """
     Sets plotting colors for each model (updates model_colors).
 
