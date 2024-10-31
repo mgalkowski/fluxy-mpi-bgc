@@ -3410,10 +3410,10 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 elif var == 'posterior_mean_diff':
                     try:
-                        var_plot = np.mean(ds_all[m]['flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m]['flux_total_posterior'],axis=0)
+                        var_plot = np.mean(ds_all[m][f'flux_total_posterior{var_append}'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m][f'flux_total_posterior{var_append}'],axis=0)
                     except:
                         print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
-                        var_plot = np.mean(ds_all[m][f'flux_total_posterior{var_append}'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m][f'flux_total_posterior{var_append}'],axis=0)
+                        var_plot = np.mean(ds_all[m][f'flux_total_posterior'][indexes[m][i],:,:],axis=0) - np.mean(ds_all[m][f'flux_total_posterior'],axis=0)
                     var_plot[np.where(var_plot) == np.nan] = 0.
                 else:
                     try:
