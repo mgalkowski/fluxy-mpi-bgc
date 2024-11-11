@@ -154,7 +154,7 @@ def produce_plots(regions, output_path, inventory_years):
                                                              scale_co2eq=scale_co2eq,species=species)[model_read]
 
         ### Define plotting colors
-        model_colors = func.set_model_colors_2(models_std,m_colors)
+        model_colors = func.set_model_colors(models_std,m_colors)
 
         # Annual averages
         resample = 'year'
@@ -261,7 +261,7 @@ def produce_plots(regions, output_path, inventory_years):
                                                         period_override=period_override)
 
         ### Define plotting colors
-        model_colors = func.set_model_colors_2(models,m_colors)
+        model_colors = func.set_model_colors(models,m_colors)
 
         # 3) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
         fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
@@ -332,7 +332,7 @@ def produce_plots(regions, output_path, inventory_years):
                                                              scale_co2eq=scale_co2eq,species=species)[model_read]
 
         ### Define plotting colors
-        model_colors = func.set_model_colors_2(models_std,m_colors)
+        model_colors = func.set_model_colors(models_std,m_colors)
 
         # 4) Plot annual country fluxes from 2008 to 2023 from intem_longrun and combined from 3 std_run
         fig,res_dict = func.plot_country_flux(ds_all_flux_scaled,species,regions,
