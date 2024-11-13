@@ -111,6 +111,7 @@
         "molar_mass": 114.04
     },
     "hfo1234zee": {
+        "species_print":"HFO-1234ze(E)",
         "period": "yearly",
         "units_scaling": {
             "intem": 1000000.0,
@@ -147,7 +148,7 @@
         "molar_mass": 114.04
     },
     "hcfo1233zde": {
-        "species_print":"HCFO-1233zde",
+        "species_print":"HCFO-1233zd(E)",
                 "period": "yearly",
         "units_scaling": {
             "intem": 1000000.0,
