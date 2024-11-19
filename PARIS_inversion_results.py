@@ -16,7 +16,8 @@ import sys
 
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
-                   'elris':[0,1]}
+                   'elris':[0,1],
+                   'flexinvert':[0,1]}
 
 point_source_dict = {
                     'paris':[2.3404,48.8600],
@@ -813,11 +814,14 @@ def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
                 print(f'No {m} obs found between {start_date} and {end_date}')
                 
         if scale_units == True:
-            print(f'Scaling {m} units by {s_data[species]["mf_units_scaling"]}')
-            if ds_all[m] is not None:
-                var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav','median_poll_uncert_flag']]
-                for v in var_names:
-                    ds_all[m][v] = ds_all[m][v]/s_data[species]["mf_units_scaling"]
+            if 'flexinvert' in m:
+                print('No scaling for flexinvert')
+            else:
+                print(f'Scaling {m} units by {s_data[species]["mf_units_scaling"]}')
+                if ds_all[m] is not None:
+                    var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav','median_poll_uncert_flag']]
+                    for v in var_names:
+                        ds_all[m][v] = ds_all[m][v]/s_data[species]["mf_units_scaling"]
       
         if baseline_site is not None:
             print('Masking timeseries to only include baseline times')
@@ -1763,6 +1767,8 @@ def extract_region_flux(ds_all,m,m0,country,verbose=True):
         c_key = 'country'
     elif m0 == 'elris':
         c_key = 'country'
+    elif m0 == 'flexinvert':
+        c_key = 'country'
         
     #search for existing region names
     try:
@@ -1794,10 +1800,21 @@ def extract_region_flux(ds_all,m,m0,country,verbose=True):
         region_time = ds_all[m].time.values
         region_flux_total_posterior = ds_all[m]['country_flux_total_posterior'].values[:,country_index]*r
         region_flux_total_prior = ds_all[m]['country_flux_total_prior'].values[:,country_index]*r
-        region_flux_total_posterior_lower = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index]*r
-        region_flux_total_posterior_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
-        region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r
-        region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r
+        
+        if m0 == 'flexinvert':
+            region_flux_total_posterior_lower = (ds_all[m]['country_flux_total_posterior'].values[:,country_index]
+                                                 - ds_all[m]['country_flux_error_posterior'].values[:,country_index])*r
+            region_flux_total_posterior_upper = (ds_all[m]['country_flux_total_posterior'].values[:,country_index]
+                                                 + ds_all[m]['country_flux_error_posterior'].values[:,country_index])*r
+            region_flux_total_prior_lower = (ds_all[m]['country_flux_total_prior'].values[:,country_index]
+                                                 - ds_all[m]['country_flux_error_prior'].values[:,country_index])*r
+            region_flux_total_prior_upper = (ds_all[m]['country_flux_total_prior'].values[:,country_index]
+                                                 + ds_all[m]['country_flux_error_prior'].values[:,country_index])*r
+        else:
+            region_flux_total_posterior_lower = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][0],country_index]*r
+            region_flux_total_posterior_upper = ds_all[m]['percentile_country_flux_total_posterior'].values[:,model_q_indices[m0][1],country_index]*r
+            region_flux_total_prior_lower = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][0],country_index]*r
+            region_flux_total_prior_upper = ds_all[m]['percentile_country_flux_total_prior'].values[:,model_q_indices[m0][1],country_index]*r
         #print(region_time)
         #print(region_flux_total_posterior)
         
@@ -1818,6 +1835,8 @@ def extract_region_flux(ds_all,m,m0,country,verbose=True):
             elif m0 == 'rhime':
                 c_key = 'country'
             elif m0 == 'elris':
+                c_key = 'country'
+            elif m0 == 'flexinvert':
                 c_key = 'country'
 
             country_index_vec = np.zeros(len(ds_all[m][c_key]))
