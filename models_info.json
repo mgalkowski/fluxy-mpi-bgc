@@ -23,7 +23,21 @@
         "filename":"InTEM_NAME_EUROPE_FLAT_longrun_intem_obs_intem_baseline_optimized",
         "label":"InTEM NAME Flat"
         },
+    
+    "intem_name_flat_inert":{
+        "filename":"InTEM_NAME_EUROPE_FLAT_inert_intem_obs_intem_baseline_optimized",
+        "label":"InTEM NAME Flat Inert"
+        },
 
+    "intem_name_pop":{
+        "filename":"InTEM_NAME_EUROPE_POPULATION_intem_obs_intem_baseline_optimized",
+        "label":"InTEM NAME Population"
+        },
+
+    "intem_name_pop_inert":{
+        "filename":"InTEM_NAME_EUROPE_POPULATION_inert_intem_obs_intem_baseline_optimized",
+        "label":"InTEM NAME Population Inert"
+        },
     "intem_name_edgarminval":{
             "filename":"InTEM_NAME_EUROPE_EDGARMINVAL_intem_obs_intem_baseline_optimized",
             "label":"InTEM NAME EDGAR with min value"
@@ -129,7 +143,21 @@
         "filename":"ELRIS_FLEXPART_EUROPE_FLAT_all_obs_elris_baseline_optimized",
         "label":"ELRIS FLEXPART Flat all obs"
         },
+    
+    "elris_name_flat_inert":{
+        "filename":"ELRIS_NAME_EUROPE_FLAT_inert_elris_obs_elris_baseline_optimized",
+        "label":"ELRIS NAME Flat Inert"
+        },
 
+    "elris_name_pop":{
+        "filename":"ELRIS_NAME_EUROPE_POPULATION_elris_obs_elris_baseline_optimized",
+        "label":"ELRIS NAME Population"
+        },
+
+    "elris_name_pop_inert":{
+        "filename":"ELRIS_NAME_EUROPE_POPULATION_inert_elris_obs_elris_baseline_optimized",
+        "label":"ELRIS NAME Population Inert"
+        },
     "elris_ibaseline":{
         "filename":"ELRIS_NAME_EUROPE_*_elris_obs_intem_baseline_fixed",
         "label":"ELRIS InTEM background"
@@ -194,6 +222,21 @@
     "rhime_name_flat_allobs":{
         "filename":"RHIME_NAME_EUROPE_FLAT_all_obs_rhime_baseline_optimized",
         "label":"RHIME NAME Flat all obs"
+        },
+    
+    "rhime_name_flat_inert":{
+        "filename":"RHIME_NAME_EUROPE_FLAT_inert_rhime_obs_rhime_baseline_optimized",
+        "label":"RHIME NAME Flat Inert"
+        },
+
+    "rhime_name_pop":{
+        "filename":"RHIME_NAME_EUROPE_POPULATION_rhime_obs_rhime_baseline_optimized",
+        "label":"RHIME NAME Population"
+        },
+
+    "rhime_name_pop_inert":{
+        "filename":"RHIME_NAME_EUROPE_POPULATION_inert_rhime_obs_rhime_baseline_optimized",
+        "label":"RHIME NAME Population Inert"
         },
 
     "rhime_flex_edgar":{
