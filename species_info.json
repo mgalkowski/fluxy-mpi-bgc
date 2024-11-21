@@ -149,7 +149,7 @@
     },
     "hcfo1233zde": {
         "species_print":"HCFO-1233zd(E)",
-                "period": "yearly",
+        "period": "yearly",
         "units_scaling": {
             "intem": 1000000.0,
             "rhime": 1000000.0,
@@ -779,132 +779,6 @@
             "elris": "name_edgar_28sites"
         },
         "molar_mass": 44.01
-    },
-    "hfc1234yf": {
-        "species_print": "HFO-1234yf",
-        "period": "yearly",
-        "units_scaling": {
-            "intem": 1000000.0,
-            "rhime": 1000000.0,
-            "elris": 1000000.0
-        },
-        "model_species": {
-            "intem": "hfc1234yf",
-            "rhime": "hfc1234yf",
-            "elris": "hfc1234yf"
-        },
-        "units_print": "G",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
-        "mf_units_scaling": 1e-12,
-        "mf_units_print": "ppt",
-        "fluxlim": [
-            0,
-            1e-12
-        ],
-        "difflim": [
-            -1e-12,
-            1e-12
-        ],
-        "gwp": 1,
-        "molar_mass": 114.04
-    },
-    "hfc1234zee": {
-        "species_print": "HFO-1234zee",
-        "period": "yearly",
-        "units_scaling": {
-            "intem": 1000000.0,
-            "rhime": 1000000.0,
-            "elris": 1000000.0
-        },
-        "model_species": {
-            "intem": "hfc1234zee",
-            "rhime": "hfc1234zee",
-            "elris": "hfc1234zee"
-        },
-        "units_print": "G",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
-        "mf_units_scaling": 1e-12,
-        "mf_units_print": "ppt",
-        "fluxlim": [
-            0,
-            1e-12
-        ],
-        "difflim": [
-            -1e-12,
-            1e-12
-        ],
-        "gwp": 1,
-        "molar_mass": 114.04
-    },
-    "hcfo1233zde": {
-        "species_print": "HCFO-1233zde",
-        "period": "yearly",
-        "units_scaling": {
-            "intem": 1000000.0,
-            "rhime": 1000000.0,
-            "elris": 1000000.0
-        },
-        "model_species": {
-            "intem": "hcfo1233zde",
-            "rhime": "hcfo1233zde",
-            "elris": "hcfo1233zde"
-        },
-        "units_print": "G",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
-        "mf_units_scaling": 1e-12,
-        "mf_units_print": "ppt",
-        "fluxlim": [
-            0,
-            1e-12
-        ],
-        "difflim": [
-            -1e-12,
-            1e-12
-        ],
-        "molar_mass": 130.49
-    },
-    "clch2ch2cl": {
-        "species_print": "DCA",
-        "period": "yearly",
-        "units_scaling": {
-            "intem": 1000000.0,
-            "rhime": 1000000.0,
-            "elris": 1000000.0
-        },
-        "model_species": {
-            "intem": "clch2ch2cl",
-            "rhime": "clch2ch2cl",
-            "elris": "ClCH2CH2Cl"
-        },
-        "units_print": "G",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
-        "mf_units_scaling": 1e-12,
-        "mf_units_print": "ppt",
-        "fluxlim": [
-            0,
-            2e-12
-        ],
-        "difflim": [
-            -2e-12,
-            2e-12
-        ],
-        "molar_mass": 98.96
     },
     "ch3br": {
         "species_print": "CH$_3$Br",
