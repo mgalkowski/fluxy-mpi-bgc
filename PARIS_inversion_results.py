@@ -874,6 +874,8 @@ def stats_mf(ds_all):
             Pearson correlation coeffiecient, for each site and for each model.
         nrmse (dictionary of dictionaries):
             Normalised root mean square error, for each site and for each model.
+        rmse (dictionary of dictionaries):
+            Root mean square error, for each site and for each model (not normalized).
     """
     
     sites_all = np.array([])
@@ -886,11 +888,13 @@ def stats_mf(ds_all):
     
     pearson = {}
     nrmse = {}
+    rmse = {}
     #std = {}
 
     for site in sites_all:
         pearson[site] = {}
         nrmse[site] = {}
+        rmse[site] = {}
         #std[site] = {}
         for i,m in enumerate(ds_all.keys()):
             if site in ds_all[m]['sitenames'].values.astype('str'):
@@ -898,6 +902,8 @@ def stats_mf(ds_all):
                 if ds_all[m]['Yobs'].values[:,s][~np.isnan(ds_all[m]['Yobs'].values[:,s])].shape[0] != 0:
                     pearson[site][m] = np.round(np.corrcoef(ds_all[m]['Yobs'].values[:,s][~np.isnan(ds_all[m]['Yobs'].values[:,s])],
                                                             ds_all[m]['Yapost'].values[:,s][~np.isnan(ds_all[m]['Yobs'].values[:,s])])[0,1],3)
+                    rmse[site][m] = np.round(np.sqrt(np.mean((ds_all[m]['Yapost'].values[:,s][~np.isnan(ds_all[m]['Yobs'].values[:,s])]-
+                                                    ds_all[m]['Yobs'].values[:,s][~np.isnan(ds_all[m]['Yobs'].values[:,s])])**2)),3)
                     nrmse[site][m] = np.round(np.sqrt(np.mean((ds_all[m]['Yapost'].values[:,s][~np.isnan(ds_all[m]['Yobs'].values[:,s])]-
                                                     ds_all[m]['Yobs'].values[:,s][~np.isnan(ds_all[m]['Yobs'].values[:,s])])**2))/np.mean(ds_all[m]['Yobs'].values[:,s][~np.isnan(ds_all[m]['Yobs'].values[:,s])]),3)
                     #std[site][m] = np.std(ds_all[m]['Yapost'].values[:,s][~np.isnan(ds_all[m]['Yobs'].values[:,s])]-
@@ -906,16 +912,19 @@ def stats_mf(ds_all):
                 else:
                     pearson[site][m] = np.nan
                     nrmse[site][m] = np.nan
+                    rmse[site][m] = np.nan
                     #std[site][m] = np.nan
             else:
                 pearson[site][m] = np.nan
                 nrmse[site][m] = np.nan
+                rmse[site][m] = np.nan
                 #std[site][m] = np.nan
                 
     for site in sites_all:
         if all([np.isnan(v) for v in pearson[site].values()]) == True:
             del pearson[site]
             del nrmse[site]
+            del rmse[site]
             #del std[site]
             
     print('\nPearson correlation coefficient:')
@@ -923,8 +932,11 @@ def stats_mf(ds_all):
     
     print('\nNormalised RMSE')
     pprint.pprint(nrmse,sort_dicts=False)
+
+    print('\nRMSE')
+    pprint.pprint(rmse,sort_dicts=False)
     
-    return pearson,nrmse
+    return pearson,nrmse,rmse
 
 #####################################################################
 
@@ -1674,7 +1686,7 @@ def plot_obs_diff(ds_all,species,site,
 
 #####################################################################
 
-def plot_stats_mf(pearson,nrmse,species,
+def plot_stats_mf(pearson,nrmse,rmse,species,
                   model_colors,s_data,m_data,
                   start_date=None,end_date=None):
     """
@@ -1685,6 +1697,8 @@ def plot_stats_mf(pearson,nrmse,species,
             Pearson correlation coeffiecient, for each site and for each model.
         nrmse (dictionary of dictionaries):
             Normalised root mean square error, for each site and for each model.
+        rmse (dictionary of dictionaries):
+            Root mean square error, for each site and for each model (not normalized).
         species (str): 
             Gas species, e.g. 'ch4'.
         model_colors (dict of str):
@@ -1697,7 +1711,7 @@ def plot_stats_mf(pearson,nrmse,species,
             Dates used to title the plot. 
     Returns:
         fig (figure): 
-            Two plots showing each model's fit statistics, for each site.
+            Three plots showing each model's fit statistics, for each site.
     """
     
     x_val = []
@@ -1706,7 +1720,7 @@ def plot_stats_mf(pearson,nrmse,species,
     model_colors_stats = {'intem':'dodgerblue',
                         'elris_name':'purple'}
 
-    fig,ax = plt.subplots(2,1,figsize=(10,6),tight_layout=True)
+    fig,ax = plt.subplots(3,1,figsize=(10,9),tight_layout=True)
     
     for i,site in enumerate(pearson.keys()):
         for m,model in enumerate(pearson[site]):
@@ -1714,11 +1728,13 @@ def plot_stats_mf(pearson,nrmse,species,
             if i == 0:
                 ax[0].scatter(i+m*0.2,pearson[site][model],color=model_colors[model][0],marker='x',s=150,label=m_data[model]["label"])
                 ax[1].scatter(i+m*0.2,nrmse[site][model],color=model_colors[model][0],marker='x',s=150,label=m_data[model]["label"])
+                ax[2].scatter(i+m*0.2,rmse[site][model],color=model_colors[model][0],marker='x',s=150,label=m_data[model]["label"])
                 #ax[2].scatter(i+m*0.2,std[site][model],color=model_colors_stats[model],marker='x',s=150,label=m_data[model]["label"])
                 
             else:
                 ax[0].scatter(i+m*0.2,pearson[site][model],color=model_colors[model][0],marker='x',s=150)
                 ax[1].scatter(i+m*0.2,nrmse[site][model],color=model_colors[model][0],marker='x',s=150)
+                ax[2].scatter(i+m*0.2,rmse[site][model],color=model_colors[model][0],marker='x',s=150)
                 #ax[2].scatter(i+m*0.2,std[site][model],color=model_colors_stats[model],marker='x',s=150)
                 
         x_val.append(i)
@@ -1727,7 +1743,7 @@ def plot_stats_mf(pearson,nrmse,species,
     #y_lim0 = [ax[0].get_ylim()[0],ax[0].get_ylim()[1]]
     #y_lim1 = [ax[0].get_ylim()[0],ax[0].get_ylim()[1]]
     
-    for i in range(2):
+    for i in range(3):
         ax[i].set_xticks(x_val);
         ax[i].set_xticklabels(x_label,rotation=45);
         ax[i].set_xlim(x_val[0]-0.2,x_val[-1]+0.4)
@@ -1737,9 +1753,11 @@ def plot_stats_mf(pearson,nrmse,species,
     ax[0].invert_yaxis()
     ax[0].hlines(1,x_val[0]-0.2,x_val[-1]+0.4,linestyle='dotted',color='grey')        
     ax[1].hlines(0,x_val[0]-0.2,x_val[-1]+0.4,linestyle='dotted',color='grey')        
+    ax[2].hlines(0,x_val[0]-0.2,x_val[-1]+0.4,linestyle='dotted',color='grey')
     
     ax[0].set_ylabel('Pearson\n correlation coefficient')
     ax[1].set_ylabel('Normalised RMSE')
+    ax[2].set_ylabel('RMSE')
     #ax[2].set_ylabel('Standard\ndeviation')
 
     leg = ax[0].legend(ncol=2,borderpad=.2,columnspacing=1.0)
