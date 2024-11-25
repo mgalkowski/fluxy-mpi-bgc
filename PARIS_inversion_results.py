@@ -62,6 +62,12 @@ point_source_dict = {
                     'sandnes': [58.8514, 58.8500],
                     'stavanger': [5.7382, 58.9690],
                     'drammen': [10.2045, 59.7438],
+                    'brussels':[4.3525, 50.8466],
+                    'antwerp':[4.4002, 51.2177],
+                    'ghent':[3.7252, 51.0536],
+                    'charleroi':[4.4444, 50.4113],
+                    'liege':[5.5674, 50.6337],
+                    'luxembourg':[6.1319, 49.6116]
                     }
 
 countrycodes_dict = {'IRELAND':'IRL',
@@ -403,7 +409,7 @@ def slice_flux(ds_all,start_date,end_date,s_data,
 #####################################################################
 
 def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
-                           start_date,end_date,period_override=None):
+                           start_date,end_date,period_override=None,apply_pop_scale=True):
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
     to produce one dataset which can be used with plotting functions in the rest 
@@ -494,7 +500,7 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
                 try:
                     region_time,region_flux_total_posterior,region_flux_total_prior,\
                     region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
-                    region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region,verbose=False)
+                    region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region,apply_pop_scale,verbose=False)
                     
                     #for percentiles, first convert to upper and lower standard deviations (difference from mean)
                     region_flux_total_posterior_lower = (region_flux_total_posterior-region_flux_total_posterior_lower) * 1e3 * s_data[species]['gwp'] * 1e-12
@@ -1752,7 +1758,7 @@ def plot_stats_mf(pearson,nrmse,species,
 
 #####################################################################
 
-def extract_region_flux(ds_all,m,m0,country,verbose=True):
+def extract_region_flux(ds_all,m,m0,country,apply_pop_scale,verbose=True):
     """
     Finds the index of a chosen region name and extracts the country flux
     variables for this region.
@@ -1774,7 +1780,7 @@ def extract_region_flux(ds_all,m,m0,country,verbose=True):
     try:
         try:
             try:
-                if m0 == 'intem' and country == 'BELGIUM':
+                if m0 == 'intem' and country == 'BELGIUM' and apply_pop_scale:
                     country_search = 'BEL-LUX'
                     if verbose: print(f'\nNOTE: InTEM does not estimate separate BELGIUM emissions.')
                     if verbose: print(f'So a population ratio of {bel_pop_r} is being used to scale InTEM\'s total BELGIUM+LUXEMBOURG estimate.\n')
@@ -1992,7 +1998,8 @@ def plot_country_flux(ds_all,species,plot_regions,
                       plot_resample_and_original=False,
                       period_override=None,
                       return_res=False,
-                      rolling_mean=None
+                      rolling_mean=None,
+                      apply_pop_scale=True
                      ):
     """
     Timeseries plot of prior and posterior country fluxes, from list of 
@@ -2166,6 +2173,15 @@ def plot_country_flux(ds_all,species,plot_regions,
     max_x = []
     period_all = {}
     
+    if annex_mode:
+        lw = 1
+        alpha = 0.7
+    else:
+        lw = 1.5
+        alpha = 1
+
+    if 'all' in species: apply_pop_scale = False
+
     # Create figure
     if len(plot_regions) == 4:
         n_cols = 2
@@ -2241,7 +2257,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                     
                 region_time,region_flux_total_posterior,region_flux_total_prior,\
                 region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
-                region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds,m,m0,country)
+                region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds,m,m0,country,apply_pop_scale)
                 
                 if region_time is not None:
             
@@ -2275,13 +2291,9 @@ def plot_country_flux(ds_all,species,plot_regions,
                             if annex_mode:
                                 include_label = m_data[m]["label"].split()[0]
                                 include_label_prior = f'{include_label} prior'
-                                lw = 1
-                                alpha = 0.7
                             else:
                                 include_label = m_data[m]["label"]
                                 include_label_prior = f'{m_data[m]["label"]} prior'
-                                lw = 1.5
-                                alpha = 1
                         else:
                             include_label = None
                             include_label_prior = None
@@ -3220,6 +3232,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                     'HUNGARY':[15.5,23.5,44.5,50],
                     'NORWAY':[1,32,52,76],
                     'BENELUX':[1,9,48,55],
+                    'BELGIUM':[2,7,49,52.5],
                     'NWEU':[-11,11,45,62],
                     'CWEU':[-12,27,37,66],
                     'EUROPE':[-98,40,10,80]}
@@ -3435,7 +3448,7 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                 if var == 'posterior_prior_diff':
                     try:
                         slice_apost   = ds_all[m][f'flux_total_posterior{var_append}'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
-                        slice_apriori = ds_all[m][flux_total_prior].sel(time=slice(t0_date[m][i],t1_date[m][i]))
+                        slice_apriori = ds_all[m]['flux_total_prior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
                     except:
                         print(f'Cannot find inversion_grid variables for {m} so using standard flux output.')
                         slice_apost   = ds_all[m]['flux_total_posterior'].sel(time=slice(t0_date[m][i],t1_date[m][i]))
