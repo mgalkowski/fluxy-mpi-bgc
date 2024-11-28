@@ -158,6 +158,17 @@
         "filename":"ELRIS_NAME_EUROPE_POPULATION_inert_elris_obs_elris_baseline_optimized",
         "label":"ELRIS NAME Population Inert"
         },
+
+    "elris_flex_pop":{
+        "filename":"ELRIS_FLEXPART_EUROPE_POPULATION_elris_obs_elris_baseline_optimized",
+        "label":"ELRIS FLEXPART Population"
+        },
+
+    "elris_flex_pop_inert":{
+        "filename":"ELRIS_FLEXPART_EUROPE_POPULATION_inert_elris_obs_elris_baseline_optimized",
+        "label":"ELRIS FLEXPART Population Inert"
+        },
+
     "elris_ibaseline":{
         "filename":"ELRIS_NAME_EUROPE_*_elris_obs_intem_baseline_fixed",
         "label":"ELRIS InTEM background"
