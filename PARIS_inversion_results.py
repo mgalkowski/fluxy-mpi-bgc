@@ -2016,7 +2016,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                       plot_resample_and_original=False,
                       period_override=None,
                       return_res=False,
-                      rolling_mean=None,
+                      rolling_mean=False,
                       apply_pop_scale=True
                      ):
     """
@@ -2088,9 +2088,10 @@ def plot_country_flux(ds_all,species,plot_regions,
             Must be the same length as models, e.g. ['monthly',None,'yearly']
         return_res (bool, optional):
             Wheter or not including a dictionnary with the results as output
-        rolling_mean (int, optional):
-            If not None, calculate a rolling mean of the combined data using the input integer 
-            to define the period.
+        rolling_mean (list of bool or bool, optional):
+            If True, calculates a rolling mean of the data.
+            List must be of same size as models, e.g. [False, True, True].
+            If a single boolean is provided, the same flag is assumed for all models.
     Returns:
         fig (figure): 
             A plot per country/region.
@@ -2113,6 +2114,13 @@ def plot_country_flux(ds_all,species,plot_regions,
             return None
     else:
         plot_combined = [plot_combined]*len(ds_all.keys())
+
+    if type(rolling_mean) == list:
+        if len(rolling_mean) != len(ds_all.keys()):
+            print('ERROR: rolling_mean must be a boolean or a list of booleans of the same length as models.')
+            return None
+    else:
+        rolling_mean = [rolling_mean]*len(ds_all.keys())
 
     # Create annual mean xarrays if needed
     if resample is not None:
@@ -2316,33 +2324,51 @@ def plot_country_flux(ds_all,species,plot_regions,
                             include_label = None
                             include_label_prior = None
                             
+                        # Average variable to plot
+                        if rolling_mean[j]:
+                            var_flux_total_posterior = calc_rolling_mean([region_flux_total_posterior])[0]
+                            var_flux_total_posterior_lower = calc_rolling_mean([region_flux_total_posterior_lower])[0]
+                            var_flux_total_posterior_upper = calc_rolling_mean([region_flux_total_posterior_upper])[0]
+
+                            var_flux_total_prior = calc_rolling_mean([region_flux_total_prior])[0]
+                            var_flux_total_prior_lower = calc_rolling_mean([region_flux_total_prior_lower])[0]
+                            var_flux_total_prior_upper = calc_rolling_mean([region_flux_total_prior_upper])[0]
+                        else:
+                            var_flux_total_posterior = region_flux_total_posterior
+                            var_flux_total_posterior_lower = region_flux_total_posterior_lower
+                            var_flux_total_posterior_upper = region_flux_total_posterior_upper
+
+                            var_flux_total_prior = region_flux_total_prior
+                            var_flux_total_prior_lower = region_flux_total_prior_lower
+                            var_flux_total_prior_upper = region_flux_total_prior_upper
+
                         ax.plot(region_time,
-                                    region_flux_total_posterior,
+                                    var_flux_total_posterior,
                                     label=include_label,color=model_colors[m][0])
                         
                         if not(plot_combined[j]):
                             ax.fill_between(region_time,
-                                                region_flux_total_posterior_lower,
-                                                region_flux_total_posterior_upper,
+                                                var_flux_total_posterior_lower,
+                                                var_flux_total_posterior_upper,
                                                 alpha=0.3,color=model_colors[m][0])
 
                             if add_prior:
                                 ax.plot(region_time,
-                                            region_flux_total_prior,
+                                            var_flux_total_prior,
                                             label=include_label_prior,color=model_colors[m][0],linestyle='dashed',linewidth=lw,alpha=alpha)
-                                max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior)))
+                                max_cf[i] = np.max((max_cf[i],np.nanmax(var_flux_total_prior)))
 
                                 if add_prior_unc:
                                     ax.fill_between(region_time,
-                                                        region_flux_total_prior_lower,
-                                                        region_flux_total_prior_upper,
+                                                        var_flux_total_prior_lower,
+                                                        var_flux_total_prior_upper,
                                                         alpha=0.1,color=model_colors[m][0])
-                                    max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_prior_upper)))
+                                    max_cf[i] = np.max((max_cf[i],np.nanmax(var_flux_total_prior_upper)))
 
                     
                     min_x.append(np.min(region_time).astype('datetime64[M]'))
                     max_x.append(np.max(region_time).astype('datetime64[M]'))
-                    max_cf[i] = np.max((max_cf[i],np.nanmax(region_flux_total_posterior_upper)))
+                    max_cf[i] = np.max((max_cf[i],np.nanmax(var_flux_total_posterior_upper)))
 
                     if plot_inventory == True:
                         if inventory_flux is not None:
@@ -2369,7 +2395,7 @@ def plot_country_flux(ds_all,species,plot_regions,
                                       'posterior':'Mean posterior',
                                       'unc':'Min/max of post uncertainty'}
                 
-                if rolling_mean:
+                if sum(rolling_mean) != 0:
                     mean_country_flux_total_posterior = np.mean(calc_rolling_mean(all_region_flux_total_posterior),axis=0)
                     mean_country_flux_total_prior = np.mean(calc_rolling_mean(all_region_flux_total_prior),axis=0)
                     mean_country_flux_total_lower = np.mean(calc_rolling_mean(all_region_flux_total_lower),axis=0)
