@@ -2527,31 +2527,36 @@ def plot_country_flux(ds_all,species,plot_regions,
         
         count += 1
         
-        if set_global_leg:
-            if n_rows > 1:
-                if (ppt_mode):
-                    legend_loc = (0.5, 1.1)
-                else:
-                    legend_loc = (0.5, 1.07)
+        handles, labels = ax.get_legend_handles_labels()
+        if any('Inventory' in l for l in labels) == True:
+            handles_all = handles.copy()
+            labels_all = labels.copy()
+        
+    if set_global_leg:
+        if n_rows > 1:
+            if (ppt_mode):
+                legend_loc = (0.5, 1.1)
             else:
-                legend_loc = (0.5, 1.15)
-            handles, labels = ax.get_legend_handles_labels()
-            ncol=0   
-            if (plot_separate or resample):
-                ncol=len(ds_all.keys())
-            if (plot_combined and plot_separate):
-                ncol=math.floor(len(ds_all.keys())/2)+2
-            elif plot_combined:
-                ncol=3
-            if plot_inventory:
-                ncol=ncol+1
-            leg = fig.legend(handles, labels, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,bbox_to_anchor=legend_loc)
-            if plot_inventory == True:
-                for l in leg.legendHandles:
-                    l.set_linewidth(3.0)
-            else:
-                for l in leg.legendHandles:
-                    l.set_linewidth(3.0)
+                legend_loc = (0.5, 1.07)
+        else:
+            legend_loc = (0.5, 1.15)
+        handles, labels = ax.get_legend_handles_labels()
+        ncol=0   
+        if (plot_separate or resample):
+            ncol=len(ds_all.keys())
+        if (plot_combined and plot_separate):
+            ncol=math.floor(len(ds_all.keys())/2)+2
+        elif plot_combined:
+            ncol=3
+        if plot_inventory:
+            ncol=ncol+1
+        leg = fig.legend(handles_all, labels_all, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,bbox_to_anchor=legend_loc)
+        if plot_inventory == True:
+            for l in leg.legendHandles:
+                l.set_linewidth(3.0)
+        else:
+            for l in leg.legendHandles:
+                l.set_linewidth(3.0)
 
     # loop through plots again to fix min/max axis values
     
