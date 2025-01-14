@@ -4,9 +4,16 @@ import xarray as xr
 import numpy as np
 import json 
 
+from pathlib import Path
+
 from fluxy import config
 from fluxy.operators.regions import extract_region_flux
 from fluxy.operators.select import slice_flux
+
+
+# Get the location of this file 
+this_file = Path(__file__).parent.parent
+configs_dir = this_file / 'configs'
 
 
 
@@ -398,7 +405,7 @@ def extract_site_info(sites):
     of sites with latitude and longitudes.
     """
     
-    site_info_filename = os.path.join(os.getcwd(),'site_info.json')
+    site_info_filename = configs_dir / 'site_info.json'
 
     with open(site_info_filename, "r") as f:
         site_data = json.load(f)

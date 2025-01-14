@@ -1,8 +1,10 @@
-from fluxy.io import read_json
+from fluxy.io import read_json, configs_dir
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from json import load
+from pathlib import Path
+
 
 # config = read_json(...)
 
@@ -127,22 +129,22 @@ def initialize_settings(ppt_mode=False):
 
     ### read in species info file
 
-    filename = os.path.join(os.getcwd(),'species_info.json')
+    filepath = configs_dir / 'species_info.json'
 
-    if os.path.exists(filename) == False:
-        print('ERROR: Cannot find species_info.json file. Check that this exists in the same directory as your notebook.')
+    if not filepath.is_file():
+        print(f'ERROR: Cannot find {filepath} file. Check that this exists in the same directory as your notebook.')
 
-    with open(filename, "r") as f:
+    with open(filepath, "r") as f:
         s_data = load(f)
 
     ### read in models info file
 
-    filename = os.path.join(os.getcwd(),'models_info.json')
+    filepath =  configs_dir / 'models_info.json'
 
-    if os.path.exists(filename) == False:
+    if os.path.exists(filepath) == False:
         print('ERROR: Cannot find models_info.json file. Check that this exists in the same directory as your notebook.')
 
-    with open(filename, "r") as f:
+    with open(filepath, "r") as f:
         m_data = load(f)
 
     print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')

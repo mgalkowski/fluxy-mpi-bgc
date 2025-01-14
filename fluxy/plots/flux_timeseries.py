@@ -3,7 +3,8 @@ import os
 import glob
 import math
 import numpy as np
-from matplotlib.ticker import NullFormatter, YearLocator, MonthLocator
+from matplotlib.ticker import NullFormatter
+from matplotlib.dates import YearLocator, MonthLocator
 import collections
 import matplotlib.pyplot as plt
 
@@ -560,13 +561,13 @@ def plot_country_flux(ds_all,species,plot_regions,
             ncol=3
         if plot_inventory:
             ncol=ncol+1
-        leg = fig.legend(handles_all, labels_all, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,bbox_to_anchor=legend_loc)
-        if plot_inventory == True:
-            for l in leg.legendHandles:
-                l.set_linewidth(3.0)
-        else:
-            for l in leg.legendHandles:
-                l.set_linewidth(3.0)
+        # leg = fig.legend(handles_all, labels_all, loc='upper center',ncol=ncol,borderpad=.4,columnspacing=1.0,bbox_to_anchor=legend_loc)
+        #if plot_inventory == True:
+        #    for l in leg.legendHandles:
+        #        l.set_linewidth(3.0)
+        #else:
+        #    for l in leg.legendHandles:
+        #        l.set_linewidth(3.0)
 
     # loop through plots again to fix min/max axis values
     

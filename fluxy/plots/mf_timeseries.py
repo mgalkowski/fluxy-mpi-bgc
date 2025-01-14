@@ -1,5 +1,6 @@
 import numpy as np
-from matplotlib.dates import MonthLocator, YearLocator, NullFormatter
+from matplotlib.dates import MonthLocator, YearLocator
+from matplotlib.ticker import NullFormatter
 
 import matplotlib.pyplot as plt
 from fluxy import config

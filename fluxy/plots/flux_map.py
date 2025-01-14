@@ -4,8 +4,8 @@ import numpy as np
 from pandas import to_datetime
 from fluxy.plots.utils import set_flux_limits
 import matplotlib.pyplot as plt
-import cartopy.crs
-import cartopy.feature
+#import cartopy.crs
+#import cartopy.feature
 from fluxy import config
 
 def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
@@ -133,7 +133,8 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
     flux_units = flux_units.replace("-2", "$^{-2}$").replace("-1", "$^{-1}$")    
 
     fig,ax = plt.subplots(3,n_cols,constrained_layout=True,figsize=(n_cols*5,9),
-                   subplot_kw={'projection':cartopy.crs.PlateCarree()})
+                   #subplot_kw={'projection':cartopy.crs.PlateCarree()}
+                )
     
     for i in range(3):
         for j in range(n_cols):
@@ -147,12 +148,12 @@ def plot_spatial_flux(ds_all,species,plot_area,s_data,m_data,cmap=None,
             else:
                 ax_var = ax[i,j]
 
-            ax_var.add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
-            ax_var.coastlines(resolution='50m',color=border_color,linewidth=1.)
-            if type(plot_area) == str:
-                ax_var.set_extent(region_limits[plot_area])
-            elif type(plot_area) == list:    
-                ax_var.set_extent(plot_area)
+            #ax_var.add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
+            #ax_var.coastlines(resolution='50m',color=border_color,linewidth=1.)
+            # if type(plot_area) == str:
+            #     ax_var.set_extent(region_limits[plot_area])
+            # elif type(plot_area) == list:    
+            #     ax_var.set_extent(plot_area)
 
     for i,m in enumerate(ds_all.keys()):
         
@@ -440,16 +441,17 @@ def plot_spatial_flux_comparison(ds_all,species,plot_area,s_data,m_data,ppt_mode
     flux_units = flux_units.replace("-2", "$^{-2}$").replace("-1", "$^{-1}$")
 
     fig,ax = plt.subplots(1,3,constrained_layout=True,figsize=(n_cols*5,9),
-                   subplot_kw={'projection':cartopy.crs.PlateCarree()})
+                   #subplot_kw={'projection':cartopy.crs.PlateCarree()}
+                   )
 
     for i in range(3):
         if i == 2:
             border_color = 'dimgrey'
         else:
             border_color = c_border
-        ax[i].add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
-        ax[i].coastlines(resolution='50m',color=border_color,linewidth=1.)
-        ax[i].set_extent(region_limits[plot_area])
+        #ax[i].add_feature(cartopy.feature.BORDERS,edgecolor=border_color,linewidth=1.)
+        # ax[i].coastlines(resolution='50m',color=border_color,linewidth=1.)
+        # ax[i].set_extent(region_limits[plot_area])
 
     all_keys = []
 
@@ -848,21 +850,23 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
     if n_lines*n_cols== 4:
         # Re-organize the data for a nicer display
         fig,ax_tmp = plt.subplots(2,2,figsize=(2*4.2,2*3), #3.25
-                                  subplot_kw={'projection':cartopy.crs.PlateCarree()})
+                                  #subplot_kw={'projection':cartopy.crs.PlateCarree()}
+                                  )
         ax = ax_tmp.flatten()
     else:
         fig,ax = plt.subplots(n_lines,n_cols,figsize=(n_cols*4,n_lines*3), #3.25
-                       subplot_kw={'projection':cartopy.crs.PlateCarree()})
+                       #subplot_kw={'projection':cartopy.crs.PlateCarree()}
+                       )
 
     # Add map
     for i in range(n_lines):
         for j in range(n_cols):
 
             if n_cols == 1 and n_lines == 1:
-                ax.add_feature(cartopy.feature.BORDERS,edgecolor=c_border,linewidth=1.)
-                ax.coastlines(resolution='50m',color=c_border,linewidth=1.)
-                ax.set_extent(region_limits[plot_area])
-
+                #ax.add_feature(cartopy.feature.BORDERS,edgecolor=c_border,linewidth=1.)
+                # ax.coastlines(resolution='50m',color=c_border,linewidth=1.)
+                # ax.set_extent(region_limits[plot_area])
+                pass
             else:
                 if n_cols == 1:
                     ax_var = ax[i]
@@ -871,9 +875,9 @@ def plot_spatial_flux_per_timestamp(ds_all,species,plot_area,end_date,s_data,m_d
                 else:
                     ax_var = ax[i,j]
 
-                ax_var.add_feature(cartopy.feature.BORDERS,edgecolor=c_border,linewidth=1.)
-                ax_var.coastlines(resolution='50m',color=c_border,linewidth=1.)
-                ax_var.set_extent(region_limits[plot_area])
+                #ax_var.add_feature(cartopy.feature.BORDERS,edgecolor=c_border,linewidth=1.)
+                # ax_var.coastlines(resolution='50m',color=c_border,linewidth=1.)
+                # ax_var.set_extent(region_limits[plot_area])
 
     if plot_inversion_grid_flux:
         var_append = '_inversion_grid'
