@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import PARIS_inversion_results as func
+import fluxy.PARIS_inversion_results as func
 
 ###########################################
 ### GENERAL SETTINGS
