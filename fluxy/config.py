@@ -1,10 +1,10 @@
-from fluxy.io import read_json, configs_dir
+from fluxy.io import read_config_files
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 from json import load
 from pathlib import Path
-
+import logging
 
 # config = read_json(...)
 
@@ -106,6 +106,8 @@ bel_pop = np.array([11.399,11.455,11.522,11.555,11.618,11.723])
 lux_pop = np.array([0.602,0.614,0.626,0.635,0.645,0.661])
 bel_pop_r = np.round(np.mean(bel_pop/(bel_pop+lux_pop)),3)
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(filename='myapp.log',level=logging.INFO)
 
 def initialize_settings(ppt_mode=False):
     """
@@ -127,27 +129,8 @@ def initialize_settings(ppt_mode=False):
             Coordinates to annotate histogram.
     """
 
-    ### read in species info file
-
-    filepath = configs_dir / 'species_info.json'
-
-    if not filepath.is_file():
-        print(f'ERROR: Cannot find {filepath} file. Check that this exists in the same directory as your notebook.')
-
-    with open(filepath, "r") as f:
-        s_data = load(f)
-
-    ### read in models info file
-
-    filepath =  configs_dir / 'models_info.json'
-
-    if os.path.exists(filepath) == False:
-        print('ERROR: Cannot find models_info.json file. Check that this exists in the same directory as your notebook.')
-
-    with open(filepath, "r") as f:
-        m_data = load(f)
-
-    print('NOTE: If plotting units or scales look odd, edit species_info.json to fix this.')
+    # Read configuration files
+    s_data, m_data, sites_info = read_config_files()
 
     ### define colors
 

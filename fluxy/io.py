@@ -5,22 +5,42 @@ import numpy as np
 import json 
 
 from pathlib import Path
+from typing import Literal
 
 from fluxy import config
 from fluxy.operators.regions import extract_region_flux
 from fluxy.operators.select import slice_flux
 
 
-# Get the location of this file 
-this_file = Path(__file__).parent.parent
-configs_dir = this_file / 'configs'
+def read_json(filepath: str) -> dict:
 
+    filepath = Path(filepath)
 
+    if not filepath.is_file():
+        raise FileNotFoundError(f'Cannot find {filepath}.')
 
-def read_json(
-    
-):
-    ...
+    with open(filepath, "r") as f:
+        json_data = json.load(f)
+
+    return json_data
+
+def read_config_files() -> tuple:
+
+    # Get location of json files
+    parent_dir = Path(__file__).parent.parent
+    configs_dir = parent_dir / 'configs'
+
+    # List of json files to be read
+    json_files = ['species_info.json', 'models_info.json', 'site_info.json']
+
+    # Read json files
+    data_dict = []
+    for file in json_files:
+        file_path = configs_dir / file
+        data =  read_json(file_path)
+        data_dict.append(data)
+
+    return tuple(data_dict)
 
 
 def read_flux(data_dir,species,models,s_data,m_data,period_override=None,verbose=True):
@@ -329,11 +349,25 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
 
     return ds_all
 
-
-
-def read_mf(data_dir,species,models,s_data,m_data,period_override=None):
+def read_dataset(filepath: str) -> xr.Dataset:
     """
-    Extracts mole fraction timeseries data from each model.
+    Reads netCDF files.
+    Will be used to read flux, concentration, baseline and inventory files.
+    """
+
+    filepath = Path(filepath)
+
+    if not filepath.is_file():
+        config.logger.warning(f'Cannot find {filepath}.')
+    else:        
+        config.logger.info(f'Reading data from: {filepath}')
+        data = xr.open_dataset(filepath)
+
+    return data
+
+def read_model_output(data_dir: str, file_type: Literal["concentration","flux"], species: str, models: list, s_data: dict, m_data: dict, period_override: str | list = None):
+    """
+    Extracts mole fraction or flux timeseries data from each model.
     Args:
         data_dir (str): 
             Path to top data directory.
@@ -353,11 +387,11 @@ def read_mf(data_dir,species,models,s_data,m_data,period_override=None):
             xarray dataset read directly from each model's mole fraction netCDF.
     """
 
+    # Set inversion period to default or user defined value
     period_all = {}
     
     if period_override != None and len(period_override) != len(models):
-        print('ERROR: if using period_override, this list must be the same length as models.')
-        return None
+        raise ValueError(f'If using period_override, this list must be of the same length as models.')
     
     for i,m in enumerate(models):
         if period_override is not None:
@@ -368,47 +402,37 @@ def read_mf(data_dir,species,models,s_data,m_data,period_override=None):
         else:
             period_all[m] = s_data[species]["period"]
 
+    # Define file pattern
+    if file_type == 'flux':
+        file_pattern = '.nc'
+    elif file_type == 'concentration':
+        file_pattern = '_concentrations.nc'
+    else:
+        raise ValueError(f'file_pattern must be equal to "concentration" or "flux".')
+
     ds_all = {}
 
     for m in models:
         
+        # Get model tag and name
         m0 = m.split('_')[0]
         model_dir = m_data[m]["filename"].split('_')[0]
-        
-        print(f'\nAttempting to read data from {m}')
-        try:
-            filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{m_data[m]["filename"]}_{s_data[species]["model_species"][m0]}_{period_all[m]}_concentrations.nc'))
-            print(f'Reading data from: {filepath[0]}')
-            with xr.open_dataset(filepath[0]) as in_ds:
-                ds_all[m] = in_ds
-            print('Done!')
-        except:
-            try:
-                if (m_data[m]["filename"].split('_')[-1] == 'std*'):
-                    alternative_filename = f'{m_data[m]["filename"][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
-                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{s_data[species]["model_species"][m0]}_{period_all[m]}_concentrations.nc'))
-                    print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
-                    with xr.open_dataset(filepath[0]) as in_ds:
-                        ds_all[m] = in_ds
-                    print('Done!')
-                else:
-                    print(f'Cannot find {m} file for {species}.')
-            except:
-                print(f'Cannot find {m} file for {species}.')
-            
+               
+        # Define filepath
+        data_dir = Path(data_dir) 
+        filepath = data_dir / model_dir / species / f'{m_data[m]["filename"]}_{s_data[species]["model_species"][m0]}_{period_all[m]}{file_pattern}'
+
+        # Read file
+        ds_all[m] = read_dataset(filepath)
+
     return ds_all
 
 
-def extract_site_info(sites):
+def extract_site_info(sites, site_data):
     """
     Uses info from site_info.json to create a dictionary
     of sites with latitude and longitudes.
     """
-    
-    site_info_filename = configs_dir / 'site_info.json'
-
-    with open(site_info_filename, "r") as f:
-        site_data = json.load(f)
         
     site_info = {}
     
