@@ -5,7 +5,7 @@ import numpy as np
 import json 
 import logging
 
-from pathlib import Path, PurePath
+from pathlib import Path
 from typing import Literal
 
 from fluxy.operators.regions import extract_region_flux
@@ -13,7 +13,7 @@ from fluxy.operators.select import slice_flux
 
 logger = logging.getLogger(__name__)
 
-def read_json(filepath: str) -> dict:
+def read_json(filepath: os.PathLike) -> dict:
 
     filepath = Path(filepath)
 
@@ -38,7 +38,7 @@ def read_config_files() -> dict:
     data_dict = {}
     for file in json_files:
         data =  read_json(file)
-        filename = PurePath(file).name
+        filename = file.stem
         data_dict[filename] = data
 
     return data_dict
@@ -350,13 +350,20 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
 
     return ds_all
 
-def read_model_output(data_dir: str, file_type: Literal["concentration","flux"], species: str, models: list, config_data: dict, period_override: str | list = None) -> dict[str, xr.Dataset]:
+def read_model_output(
+    data_dir: os.PathLike,
+    file_type: Literal["concentration","flux"],
+    specie: str,
+    models: list[str],
+    config_data: dict[str, dict],
+    period_override: str | list[str] = None
+) -> dict[str, xr.Dataset]:
     """
     Extracts mole fraction or flux timeseries data from each model.
     Args:
         data_dir (str): 
             Path to top data directory.
-        species (str): 
+        specie (str): 
             Gas species, e.g. 'ch4'.
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
@@ -371,7 +378,7 @@ def read_model_output(data_dir: str, file_type: Literal["concentration","flux"],
             xarray dataset read directly from each model's mole fraction netCDF.
     """
 
-    species_info = config_data['species_info.json'][species]
+    specie_info = config_data['species_info'][specie]
 
     # Set inversion period to default or user defined value
     period_all = {}
@@ -384,9 +391,9 @@ def read_model_output(data_dir: str, file_type: Literal["concentration","flux"],
             if period_override[i] is not None:
                 period_all[m] = period_override[i]
             else:
-                period_all[m] = species_info["period"]
+                period_all[m] = specie_info["period"]
         else:
-            period_all[m] = species_info["period"]
+            period_all[m] = specie_info["period"]
 
     # Define file pattern
     if file_type == 'flux':
@@ -402,30 +409,33 @@ def read_model_output(data_dir: str, file_type: Literal["concentration","flux"],
         
         # Get model tag and name
         m0 = m.split('_')[0]
-        model_filename = config_data["models_info.json"][m]["filename"]
+        model_filename = config_data["models_info"][m]["filename"]
         model_dir = model_filename.split('_')[0]
                
         # Define filepath
         data_dir = Path(data_dir) 
-        filepath = data_dir / model_dir / species / f'{model_filename}_{species_info["model_species"][m0]}_{period_all[m]}{file_pattern}'
+        filepath = data_dir / model_dir / specie / f'{model_filename}_{specie_info["model_species"][m0]}_{period_all[m]}{file_pattern}'
 
-        # Read file
+        # Check if files exists
         if not filepath.is_file():
             logger.warning(f'Cannot find {file_type} file: {filepath}.')
-        else:        
-            logger.info(f'Reading {file_type} file: {filepath}')
-            ds_all[m] = xr.open_dataset(filepath)
+            continue
+ 
+        # Read file
+        logger.info(f'Reading {file_type} file: {filepath}')
+        ds_all[m] = xr.open_dataset(filepath)
 
     return ds_all
 
 
-def extract_site_info(sites, site_data):
+def extract_site_info(sites: list[str], config_data: dict[str, dict]):
     """
     Uses info from site_info.json to create a dictionary
     of sites with latitude and longitudes.
     """
         
     site_info = {}
+    site_data = config_data['site_info']
     
     for s in sites:
         site_info[s] = {'latitude':site_data[s][list(site_data[s].keys())[0]]['latitude'],
