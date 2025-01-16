@@ -33,8 +33,8 @@ def convert_molar_to_mass_flux(ds, M):
     return ds
 
 
-def slice_flux(ds_all,start_date,end_date,s_data,
-               scale_units=True,scale_co2eq=False,convert_flux_units=False,species=None):
+def slice_flux(ds_all,start_date,end_date,config_data,
+               scale_units=True,scale_co2eq=False,convert_flux_units=False,specie=None):
     """
     Slices the flux datasets to within given time limits and 
     scales fluxes into Tg/Gg based on the species.
@@ -47,22 +47,24 @@ def slice_flux(ds_all,start_date,end_date,s_data,
         end_date (str): 
             Date to slice data to, e.g. '2022-01-01' would include all
             data up to 2021-12-31.
-        s_data (dict of dict):
-            Dictionary of species with information for plotting (read from json file).
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filename as keys.
         scale_units (bool): 
             If True, scales country fluxes to Tg or Gy per year.
         scale_co2eq (bool):
             If True, converts country fluxes to CO2-eq in Tg per year.
         convert_flux_units (bool): 
             If True, performs the conversion of molar flux to mass flux (default is False).
-        species (str):
+        specie (str):
             Gas species, used to choose scaling units, e.g. 'ch4'.
     Returns:
         ds_all (dictionary of datasets):
             xarray datasets, scaled, converted, and sliced between chosen dates.
     
     """
-    
+    specie_info = config_data['species_info'][specie] 
+
     #variables that aren't scaled by units
     skip_var = ['flux_total_prior','flux_total_posterior','percentile_flux_total_prior',
                 'percentile_flux_total_posterior','countryname','country',
@@ -83,12 +85,12 @@ def slice_flux(ds_all,start_date,end_date,s_data,
             
         if scale_units == True:
             gwp = 1
-            scale_factor = s_data[species]["units_scaling"][m0]
+            scale_factor = specie_info["units_scaling"][m0]
 
             # Update scaling factors
             if (scale_co2eq):
-                gwp = s_data[species]["gwp"]
-                if (s_data[species]["units_print"] == "G"): #units_print is expected to be either G or T
+                gwp = specie_info["gwp"]
+                if (specie_info["units_print"] == "G"): #units_print is expected to be either G or T
                     scale_factor = scale_factor * 1e3 #Convert to Tg
                     # Note: units_print is not re-written because it would go back to
                     #       its original value if initialize_settings is re-run.
@@ -105,13 +107,13 @@ def slice_flux(ds_all,start_date,end_date,s_data,
                     print(f'Scaling covariance in {m} by {scale_factor**2 * gwp**2}')
                     
         if convert_flux_units:
-            M = s_data[species]["molar_mass"]
+            M = specie_info["molar_mass"]
             ds_all[m] = convert_molar_to_mass_flux(ds_all[m], M)
         
     return ds_all
 
 
-def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
+def slice_mf(ds_all,config_data,start_date=None,end_date=None,site=None,
              baseline_site=None,data_dir=None,
              scale_units=False,
              species=None):
@@ -146,6 +148,8 @@ def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
             chosen site.
     """
     
+    species_info = config_data['species_info'][species]
+
     if baseline_site is not None:
         with xr.open_dataset(os.path.join(data_dir,f'intem_baseline_timestamps/{baseline_site}_InTEM_baseline_timestamps.nc')) as f:
             baseline = f.sel(time=slice(start_date,end_date))
@@ -181,11 +185,11 @@ def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
             if 'flexinvert' in m:
                 print('No scaling for flexinvert')
             else:
-                print(f'Scaling {m} units by {s_data[species]["mf_units_scaling"]}')
+                print(f'Scaling {m} units by {species_info["mf_units_scaling"]}')
                 if ds_all[m] is not None:
                     var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav','median_poll_uncert_flag']]
                     for v in var_names:
-                        ds_all[m][v] = ds_all[m][v]/s_data[species]["mf_units_scaling"]
+                        ds_all[m][v] = ds_all[m][v]/species_info["mf_units_scaling"]
       
         if baseline_site is not None:
             print('Masking timeseries to only include baseline times')
