@@ -6,7 +6,6 @@ from json import load
 from pathlib import Path
 import logging
 
-# config = read_json(...)
 
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
@@ -106,10 +105,7 @@ bel_pop = np.array([11.399,11.455,11.522,11.555,11.618,11.723])
 lux_pop = np.array([0.602,0.614,0.626,0.635,0.645,0.661])
 bel_pop_r = np.round(np.mean(bel_pop/(bel_pop+lux_pop)),3)
 
-logger = logging.getLogger(__name__)
-logging.basicConfig(filename='myapp.log',level=logging.INFO)
-
-def initialize_settings(ppt_mode=False):
+def initialize_settings(ppt_mode: bool = False):
     """
     Extracts species and models info from json files.
     Defines standard colors for plotting.
@@ -130,7 +126,7 @@ def initialize_settings(ppt_mode=False):
     """
 
     # Read configuration files
-    s_data, m_data, sites_info = read_config_files()
+    config_data = read_config_files()
 
     ### define colors
 
@@ -170,7 +166,7 @@ def initialize_settings(ppt_mode=False):
                            1:[0.6,0.60],
                            2:[0.6,0.40]}
 
-    return s_data,m_data,model_colors,annotate_coords
+    return config_data,model_colors,annotate_coords
 
 
 
