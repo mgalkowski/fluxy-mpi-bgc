@@ -111,7 +111,7 @@ def slice_flux(ds_all,start_date,end_date,s_data,
     return ds_all
 
 
-def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
+def slice_mf(ds_all,config_data,start_date=None,end_date=None,site=None,
              baseline_site=None,data_dir=None,
              scale_units=False,
              species=None):
@@ -146,6 +146,8 @@ def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
             chosen site.
     """
     
+    species_info = config_data['species_info.json'][species]
+
     if baseline_site is not None:
         with xr.open_dataset(os.path.join(data_dir,f'intem_baseline_timestamps/{baseline_site}_InTEM_baseline_timestamps.nc')) as f:
             baseline = f.sel(time=slice(start_date,end_date))
@@ -181,11 +183,11 @@ def slice_mf(ds_all,s_data,start_date=None,end_date=None,site=None,
             if 'flexinvert' in m:
                 print('No scaling for flexinvert')
             else:
-                print(f'Scaling {m} units by {s_data[species]["mf_units_scaling"]}')
+                print(f'Scaling {m} units by {species_info["mf_units_scaling"]}')
                 if ds_all[m] is not None:
                     var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav','median_poll_uncert_flag']]
                     for v in var_names:
-                        ds_all[m][v] = ds_all[m][v]/s_data[species]["mf_units_scaling"]
+                        ds_all[m][v] = ds_all[m][v]/species_info["mf_units_scaling"]
       
         if baseline_site is not None:
             print('Masking timeseries to only include baseline times')

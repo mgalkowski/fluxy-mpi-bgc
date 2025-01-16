@@ -3,14 +3,15 @@ import glob
 import xarray as xr
 import numpy as np
 import json 
+import logging
 
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Literal
 
-from fluxy import config
 from fluxy.operators.regions import extract_region_flux
 from fluxy.operators.select import slice_flux
 
+logger = logging.getLogger(__name__)
 
 def read_json(filepath: str) -> dict:
 
@@ -24,23 +25,23 @@ def read_json(filepath: str) -> dict:
 
     return json_data
 
-def read_config_files() -> tuple:
+def read_config_files() -> dict:
 
     # Get location of json files
     parent_dir = Path(__file__).parent.parent
     configs_dir = parent_dir / 'configs'
 
     # List of json files to be read
-    json_files = ['species_info.json', 'models_info.json', 'site_info.json']
+    json_files = configs_dir.glob('*.json')
 
     # Read json files
-    data_dict = []
+    data_dict = {}
     for file in json_files:
-        file_path = configs_dir / file
-        data =  read_json(file_path)
-        data_dict.append(data)
+        data =  read_json(file)
+        filename = PurePath(file).name
+        data_dict[filename] = data
 
-    return tuple(data_dict)
+    return data_dict
 
 
 def read_flux(data_dir,species,models,s_data,m_data,period_override=None,verbose=True):
@@ -349,23 +350,7 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
 
     return ds_all
 
-def read_dataset(filepath: str) -> xr.Dataset:
-    """
-    Reads netCDF files.
-    Will be used to read flux, concentration, baseline and inventory files.
-    """
-
-    filepath = Path(filepath)
-
-    if not filepath.is_file():
-        config.logger.warning(f'Cannot find {filepath}.')
-    else:        
-        config.logger.info(f'Reading data from: {filepath}')
-        data = xr.open_dataset(filepath)
-
-    return data
-
-def read_model_output(data_dir: str, file_type: Literal["concentration","flux"], species: str, models: list, s_data: dict, m_data: dict, period_override: str | list = None):
+def read_model_output(data_dir: str, file_type: Literal["concentration","flux"], species: str, models: list, config_data: dict, period_override: str | list = None) -> dict[str, xr.Dataset]:
     """
     Extracts mole fraction or flux timeseries data from each model.
     Args:
@@ -375,10 +360,9 @@ def read_model_output(data_dir: str, file_type: Literal["concentration","flux"],
             Gas species, e.g. 'ch4'.
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
-        s_data (dict of dict):
-            Dictionary of species with information for plotting (read from json file).
-        m_data (dict of dict):
-            Dictionary of inversion runs with filename and plot label (read from json file).
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filenames as keys.
         period_override (list of str) (optional):
             Inversion periods to include, to override the standards in species_info.json.
             Must be the same length as models, e.g. ['monthly',None,'yearly']
@@ -386,6 +370,8 @@ def read_model_output(data_dir: str, file_type: Literal["concentration","flux"],
         ds_all (dictionary of datasets): 
             xarray dataset read directly from each model's mole fraction netCDF.
     """
+
+    species_info = config_data['species_info.json'][species]
 
     # Set inversion period to default or user defined value
     period_all = {}
@@ -398,9 +384,9 @@ def read_model_output(data_dir: str, file_type: Literal["concentration","flux"],
             if period_override[i] is not None:
                 period_all[m] = period_override[i]
             else:
-                period_all[m] = s_data[species]["period"]
+                period_all[m] = species_info["period"]
         else:
-            period_all[m] = s_data[species]["period"]
+            period_all[m] = species_info["period"]
 
     # Define file pattern
     if file_type == 'flux':
@@ -416,14 +402,19 @@ def read_model_output(data_dir: str, file_type: Literal["concentration","flux"],
         
         # Get model tag and name
         m0 = m.split('_')[0]
-        model_dir = m_data[m]["filename"].split('_')[0]
+        model_filename = config_data["models_info.json"][m]["filename"]
+        model_dir = model_filename.split('_')[0]
                
         # Define filepath
         data_dir = Path(data_dir) 
-        filepath = data_dir / model_dir / species / f'{m_data[m]["filename"]}_{s_data[species]["model_species"][m0]}_{period_all[m]}{file_pattern}'
+        filepath = data_dir / model_dir / species / f'{model_filename}_{species_info["model_species"][m0]}_{period_all[m]}{file_pattern}'
 
         # Read file
-        ds_all[m] = read_dataset(filepath)
+        if not filepath.is_file():
+            logger.warning(f'Cannot find {file_type} file: {filepath}.')
+        else:        
+            logger.info(f'Reading {file_type} file: {filepath}')
+            ds_all[m] = xr.open_dataset(filepath)
 
     return ds_all
 
