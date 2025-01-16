@@ -1,11 +1,8 @@
-from fluxy.io import read_config_files
-import os
 import numpy as np
 import matplotlib.pyplot as plt
-from json import load
-from pathlib import Path
 import logging
 
+logger = logging.getLogger(__name__)
 
 model_q_indices = {'intem':[0,1],
                    'rhime':[0,1],
@@ -97,7 +94,6 @@ regions_dict = {'BELUX':'BEL-LUX',
 
 regions_dict_old = {'CW_EU':'AUT-BEL-CHE-CZE-DEU-ESP-FRA-GBR-HRV-HUN-IRL-ITA-LUX-NLD-POL-PRT-SVK-SVK'}
 
-
 countrycodes_dict.update(regions_dict)
 
 # population from 2018 to 2023 (at Jan 1 each year)
@@ -107,29 +103,20 @@ bel_pop_r = np.round(np.mean(bel_pop/(bel_pop+lux_pop)),3)
 
 def initialize_settings(ppt_mode: bool = False):
     """
-    Extracts species and models info from json files.
-    Defines standard colors for plotting.
+    Defines plotting settings.
 
     Args:
         ppt_mode (logical) (optional):
             If True, use bigger fonts (ideal for presentation slides)
 
     Returns:
-        s_data (dict of dict):
-            Dictionary of species with information for plotting (read from json file).
-        m_data (dict of dict):
-            Dictionary of inversion runs with filename and plot label (read from json file).
         model_colors (dict of lists):
             Default lists of colors to be used by each model.
         annotate_coords (dict of lists):
             Coordinates to annotate histogram.
     """
 
-    # Read configuration files
-    config_data = read_config_files()
-
-    ### define colors
-
+    # Default model colors
     model_colors = {'intem':[['blue','dodgerblue'],
                              ['dodgerblue','skyblue']],
                     'elris':[['purple','mediumpurple'],
@@ -139,8 +126,7 @@ def initialize_settings(ppt_mode: bool = False):
                              ['limegreen','palegreen'],
                              ['olive','lightgreen']]}
 
-    ### font settings & annotate_coords
-
+    # font settings & annotate_coords
     if (ppt_mode):
         plt.rc('font', size=15)
         plt.rc('axes', titlesize=18)
@@ -153,7 +139,7 @@ def initialize_settings(ppt_mode: bool = False):
                            1:[0.58,0.40],
                            2:[0.58,0.15]}
 
-        print('WARNING: Using big fonts. You might need to shrink the labels.')
+        logger.warning('Using big fonts when plotting. You might need to shrink the labels.')
     else:
         plt.rc('font', size=11)
         plt.rc('axes', titlesize=11)
@@ -166,7 +152,7 @@ def initialize_settings(ppt_mode: bool = False):
                            1:[0.6,0.60],
                            2:[0.6,0.40]}
 
-    return config_data,model_colors,annotate_coords
+    return model_colors,annotate_coords
 
 
 
