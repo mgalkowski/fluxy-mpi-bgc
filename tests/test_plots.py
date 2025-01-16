@@ -2,7 +2,7 @@ from pathlib import Path
 import fluxy
 from fluxy.config import initialize_settings
 from fluxy.config import set_model_colors
-from fluxy.io import read_flux, read_flux_total_fgases, read_mf
+from fluxy.io import read_flux, read_flux_total_fgases, read_model_output
 from fluxy.operators.mf import stats_mf
 from fluxy.operators.select import slice_flux, slice_mf
 from fluxy.plots.flux_map import (
@@ -51,7 +51,7 @@ experiments = {
 }
 
 
-s_data, m_data, m_colors, annotate_coords = initialize_settings()
+config_data, m_colors, annotate_coords = initialize_settings()
 
 species = "hfc134a"  # options for individual species, or 'all_hfc' or 'all_pfc'
 models = experiments[
@@ -71,8 +71,8 @@ if "all" in species:
         data_dir,
         species,
         models,
-        s_data,
-        m_data,
+        config_data["species_info"],
+        config_data["models_info"],
         regions,
         start_date,
         end_date,
@@ -80,7 +80,12 @@ if "all" in species:
     )
 else:
     ds_all_flux = read_flux(
-        data_dir, species, models, s_data, m_data, period_override=period_override
+        data_dir,
+        species,
+        models,
+        config_data["species_info"],
+        config_data["models_info"],
+        period_override=period_override,
     )
 
     for m in models:
@@ -88,23 +93,28 @@ else:
             {m: ds_all_flux[m]},
             start_date,
             end_date,
-            s_data,
+            config_data,
             scale_units=True,
             scale_co2eq=scale_co2eq,
             convert_flux_units=False,
-            species=species,
+            specie=species,
         )[m]
 
 
 site = "MHD"
 baseline_site = None
-ds_all_mf = read_mf(
-    data_dir, species, models, s_data, m_data, period_override=period_override
+ds_all_mf = read_model_output(
+    data_dir,
+    file_type='concentration',
+    specie=species,
+    models=models,
+    config_data=config_data,
+    period_override=period_override,
 )
 
 ds_all_mf_sliced = slice_mf(
     ds_all_mf.copy(),
-    s_data,
+    config_data,
     start_date,
     end_date,
     site,
@@ -150,8 +160,8 @@ def test_flux_timeseries():
         ds_all_flux_scaled,
         species,
         regions,
-        s_data,
-        m_data,
+        config_data["species_info"],
+        config_data["models_info"],
         model_colors,
         start_date,
         end_date,
@@ -179,7 +189,12 @@ def test_flux_timeseries():
 def test_mf_timeseries():
 
     fig = plot_sites_timeseries(
-        ds_all_mf, "Yapost", start_date, end_date, model_colors, m_data
+        ds_all_mf,
+        "Yapost",
+        start_date,
+        end_date,
+        model_colors,
+        config_data["models_info"],
     )
 
 
@@ -189,8 +204,8 @@ def test_obs_modelled_separate():
         species,
         site,
         model_colors,
-        s_data,
-        m_data,
+        config_data["species_info"],
+        config_data["models_info"],
         annotate_coords,
         include=["Yobs", "Yapost"],
         diff_include=["Yapost"],
@@ -205,8 +220,8 @@ def test_obs_modelled_together():
         species,
         site,
         model_colors,
-        s_data,
-        m_data,
+        config_data["species_info"],
+        config_data["models_info"],
         annotate_coords,
         include=["Yapost"],
         diff_include=["Yapost"],
@@ -220,8 +235,8 @@ def test_obs_diff():
         species,
         site,
         model_colors,
-        s_data,
-        m_data,
+        config_data["species_info"],
+        config_data["models_info"],
         annotate_coords,
         include=["Yapost"],
         diff_include=["Yapost"],
@@ -232,7 +247,7 @@ def test_obs_diff():
 def plot_stats_mf():
     ds_all_allsites = slice_mf(
         ds_all_mf.copy(),
-        s_data,
+        config_data["species_info"],
         start_date,
         end_date,
         site=None,
@@ -250,8 +265,8 @@ def plot_stats_mf():
         rmse,
         species,
         model_colors,
-        s_data,
-        m_data,
+        config_data["species_info"],
+        config_data["models_info"],
         start_date=start_date,
         end_date=end_date,
     )
@@ -263,8 +278,8 @@ def test_spatial_flux():
         ds_all_flux_scaled,
         species,
         plot_area,
-        s_data,
-        m_data,
+        config_data["species_info"],
+        config_data["models_info"],
         cmap=cmap,
         cmap_diff=cmap_diff,
         c_border=c_border,
@@ -284,8 +299,8 @@ def test_spatial_flux_comparison():
         ds_all_flux_scaled,
         species,
         plot_area,
-        s_data,
-        m_data,
+        config_data["species_info"],
+        config_data["models_info"],
         cmap=cmap,
         cmap_diff=cmap_diff,
         c_border=c_border,
@@ -300,18 +315,18 @@ def test_spatial_flux_comparison():
 
 def test_spatial_flux_per_timestamp():
 
-    var = 'flux_total_posterior' 
+    var = "flux_total_posterior"
     plot_combined = False
     annex_mode = False
-    chop_by = 'year'
+    chop_by = "year"
     dt = 1
     fig = plot_spatial_flux_per_timestamp(
         ds_all_flux_scaled,
         species,
         plot_area,
         end_date,
-        s_data,
-        m_data,
+        config_data["species_info"],
+        config_data["models_info"],
         cmap=cmap,
         c_border=c_border,
         var=var,
