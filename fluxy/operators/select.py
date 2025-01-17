@@ -1,7 +1,10 @@
 import xarray as xr
 import numpy as np
 import os
+from pathlib import Path
+import logging
 
+logger = logging.getLogger(__name__)
 
 def convert_molar_to_mass_flux(ds, M):
     """
@@ -115,10 +118,17 @@ def slice_flux(ds_all,start_date,end_date,config_data,
     return ds_all
 
 
-def slice_mf(ds_all,config_data,start_date=None,end_date=None,site=None,
-             baseline_site=None,data_dir=None,
-             scale_units=False,
-             species=None):
+def slice_mf(
+        ds_all: dict[str, xr.Dataset],
+        config_data: dict[str, dict],
+        start_date: str = None,
+        end_date: str = None,
+        site: str = None,
+        baseline_site: str = None,
+        data_dir: os.PathLike = None,
+        scale_units: bool = False,
+        specie: str = None
+) -> dict[str, xr.Dataset]:
     """
     Slices down the mole fraction timeseries data, to within the
     given time limits, and/or for the chosen site.
@@ -126,8 +136,9 @@ def slice_mf(ds_all,config_data,start_date=None,end_date=None,site=None,
     Args:
         ds_all (dictionary of datasets): 
             xarray datasets read directly from each model's flux netCDF.
-        s_data (dict of dict):
-            Dictionary of species with information for plotting (read from json file).
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filenames as keys.
         start_date (str): 
             Date to slice data from, e.g. '2021-01-01'
         end_date (str): 
@@ -142,81 +153,101 @@ def slice_mf(ds_all,config_data,start_date=None,end_date=None,site=None,
             Path to top data directory, used to read baseline info files.
         scale_units (bool): 
             If True, scales country fluxes to Tg or Gy per year.
-        species (str):
-            Gas species, used to choose scaling units, e.g. 'ch4'.
+        specie (str):
+            Gas specie, used to choose scaling units, e.g. 'ch4'.
     Returns:
         ds_all (dictionary of datasets):
             xarray datasets, scaled and sliced between chosen dates and for 
             chosen site.
     """
-    
-    species_info = config_data['species_info'][species]
 
+    data_dir = Path(data_dir)
+    models = list(ds_all.keys())
+    specie_info = config_data['species_info'][specie]   
+
+    # Get logical array with baseline timestamps 
     if baseline_site is not None:
-        with xr.open_dataset(os.path.join(data_dir,f'intem_baseline_timestamps/{baseline_site}_InTEM_baseline_timestamps.nc')) as f:
+        baseline_file = data_dir / 'intem_baseline_timestamps' / f'{baseline_site}_InTEM_baseline_timestamps.nc'
+
+        # Check if files exists
+        if not baseline_file.is_file():
+            raise FileNotFoundError(f'Cannot find baseline file for masking: {baseline_file}.')
+
+        # Read baseline file
+        with xr.open_dataset(baseline_file) as f:
             baseline = f.sel(time=slice(start_date,end_date))
     
-    for m in ds_all.keys():
-        print(f'\nMasking data from {m}')
+    for m in models:
+        logger.info(f'Masking data from {m}')
         
+        # Compute offset
         if 'Yav' in ds_all[m].keys():
             offset = int(np.mean(ds_all[m]['Yav'].values))
         else:
             offset = (ds_all[m].time.values[1].astype('datetime64[h]') - ds_all[m].time.values[0].astype('datetime64[h]')).astype(int)
 
-        # round seconds to integer (correction for elris)
+        # Round seconds to integer (correction for elris)
         if 'elris' in m:
             ds_all[m]['time'] = ds_all[m]['time'].dt.round('s')
 
+        # Slice data according to site and time window
         if site is not None:
-            try:
-                site_index = np.where(ds_all[m]['sitenames'].astype(str) == site)[0][0]
+            site_index = get_site_index(ds_all[m], site)
+
+            if site_index is not None:
                 ds_all[m] = ds_all[m].sel(time=slice(start_date,end_date),
-                                        nsite=site_index)
-            except:
-                ds_all[m] = None
-                print(f'No {m} obs found for {site} between {start_date} and {end_date}')
-        else:
-            try:
-                ds_all[m] = ds_all[m].sel(time=slice(start_date,end_date))
-            except:
-                ds_all[m] = None
-                print(f'No {m} obs found between {start_date} and {end_date}')
-                
-        if scale_units == True:
-            if 'flexinvert' in m:
-                print('No scaling for flexinvert')
+                                          nsite=site_index)
+
+                if len(ds_all[m]['time']) == 0:
+                    logger.warning(f'No {m} obs found for {site} between {start_date} and {end_date}.')
+                    ds_all.pop(m)
+                    continue
+
             else:
-                print(f'Scaling {m} units by {species_info["mf_units_scaling"]}')
-                if ds_all[m] is not None:
-                    var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav','median_poll_uncert_flag']]
-                    for v in var_names:
-                        ds_all[m][v] = ds_all[m][v]/species_info["mf_units_scaling"]
-      
+                logger.warning(f'No {m} obs found for {site}.')
+                ds_all.pop(m)
+                continue
+        else:
+            ds_all[m] = ds_all[m].sel(time=slice(start_date,end_date))
+
+            if len(ds_all[m]['time']) == 0:
+                logger.warning(f'No {m} obs found between {start_date} and {end_date}.')
+                ds_all.pop(m)
+                continue
+
+        # Scale mole fractions
+        if scale_units == True and 'flexinvert' not in m:
+            logger.info(f'Scaling {m} units by {specie_info["mf_units_scaling"]}')
+            var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav','median_poll_uncert_flag']]
+            for v in var_names:
+                 ds_all[m][v] = ds_all[m][v]/specie_info["mf_units_scaling"]
+
+        # Mask mole fractions according to baseline timestamps
         if baseline_site is not None:
-            print('Masking timeseries to only include baseline times')
-            
-            try:
-                                        
-                #average baseline mask over obs averaging period
-                b = baseline.resample(time=f'{offset}H').mean()
-                #adjust baseline mask time back to centre of av period (resample removes this)
-                b['time'] = b['time'] + np.timedelta64(offset,'h')/2
-                                    
-                #mask baseline mask again, to only include timestamps where every period in the averaging period is classified as baseline
-                b_masked = b.sel(time=b['time'].values[np.where(b['baseline'] == 1.)])
+            logger.info('Masking timeseries to only include baseline times')
                                 
-                #mask dataset using only baseline times
-                both_times = np.isin(ds_all[m].time.values,b_masked.time.values)
+            #average baseline mask over obs averaging period
+            b = baseline.resample(time=f'{offset}h').mean()
+            #adjust baseline mask time back to centre of av period (resample removes this)
+            b['time'] = b['time'] + np.timedelta64(offset,'h')/2
                                 
-                ds_all[m] = ds_all[m].sel(time=both_times)
-                    
-            except:
-                print('Failed to mask {m} data by baseline times')
-    
-    check_keys = list(ds_all.keys())
-    for m in check_keys:
-        if ds_all[m] is None:
-            ds_all.pop(m)
-                
+            #mask baseline mask again, to only include timestamps where every period in the averaging period is classified as baseline
+            b_masked = b.sel(time=b['time'].values[np.where(b['baseline'] == 1.)])
+                            
+            #mask dataset using only baseline times
+            both_times = np.isin(ds_all[m].time.values,b_masked.time.values)          
+            ds_all[m] = ds_all[m].sel(time=both_times)
+                   
     return ds_all
+
+def get_site_index(ds: xr.Dataset, site: str) -> int | None:
+
+    # Get all sites
+    sites = ds['sitenames'].astype(str)
+
+    # Get site index
+    if site in sites:
+        index = np.where(ds['sitenames'].astype(str) == site)[0][0]
+        return index
+    
+    return None

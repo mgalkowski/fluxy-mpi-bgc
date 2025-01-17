@@ -115,7 +115,7 @@ ds_all_mf_sliced = slice_mf(
     baseline_site=baseline_site,
     data_dir=data_dir,
     scale_units=True,
-    species=specie,
+    specie=specie,
 )
 
 model_colors = set_model_colors(models, m_colors)
