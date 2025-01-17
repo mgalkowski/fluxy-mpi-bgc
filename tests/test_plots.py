@@ -2,7 +2,7 @@ from pathlib import Path
 import fluxy
 from fluxy.config import initialize_settings
 from fluxy.config import set_model_colors
-from fluxy.io import read_flux, read_flux_total_fgases, read_mf
+from fluxy.io import read_config_files, read_model_output, read_flux_total_fgases
 from fluxy.operators.mf import stats_mf
 from fluxy.operators.select import slice_flux, slice_mf
 from fluxy.plots.flux_map import (
@@ -50,10 +50,10 @@ experiments = {
     ],
 }
 
+config_data = read_config_files()
+m_colors, annotate_coords = initialize_settings()
 
-s_data, m_data, m_colors, annotate_coords = initialize_settings()
-
-species = "hfc134a"  # options for individual species, or 'all_hfc' or 'all_pfc'
+specie = "hfc134a"  # options for individual species, or 'all_hfc' or 'all_pfc'
 models = experiments[
     "std_run"
 ]  # if using 'all_hfc' or 'all_pfc' use basic model names (e.g. ['intem','elris','rhime']) and standard filenames will be used for each species
@@ -66,21 +66,20 @@ end_date = "2024-01-01"  # not inclusive. Option to set as list of dates, e.g. [
 
 ds_all_flux_scaled = {}
 
-if "all" in species:
+if "all" in specie:
     ds_all_flux_scaled = read_flux_total_fgases(
         data_dir,
-        species,
+        specie,
         models,
-        s_data,
-        m_data,
+        config_data,
         regions,
         start_date,
         end_date,
         period_override=period_override,
     )
 else:
-    ds_all_flux = read_flux(
-        data_dir, species, models, s_data, m_data, period_override=period_override
+    ds_all_flux = read_model_output(
+        data_dir, "flux", specie, models, config_data, period_override=period_override
     )
 
     for m in models:
@@ -88,30 +87,30 @@ else:
             {m: ds_all_flux[m]},
             start_date,
             end_date,
-            s_data,
+            config_data,
             scale_units=True,
             scale_co2eq=scale_co2eq,
             convert_flux_units=False,
-            species=species,
+            specie=specie,
         )[m]
 
 
 site = "MHD"
 baseline_site = None
-ds_all_mf = read_mf(
-    data_dir, species, models, s_data, m_data, period_override=period_override
+ds_all_mf = read_model_output(
+    data_dir, "concentration", specie, models, config_data, period_override=period_override
 )
 
 ds_all_mf_sliced = slice_mf(
     ds_all_mf.copy(),
-    s_data,
+    config_data,
     start_date,
     end_date,
     site,
     baseline_site=baseline_site,
     data_dir=data_dir,
     scale_units=True,
-    species=species,
+    species=specie,
 )
 
 model_colors = set_model_colors(models, m_colors)
@@ -148,7 +147,7 @@ def test_flux_timeseries():
 
     fig = plot_country_flux(
         ds_all_flux_scaled,
-        species,
+        specie,
         regions,
         s_data,
         m_data,
@@ -186,7 +185,7 @@ def test_mf_timeseries():
 def test_obs_modelled_separate():
     fig = plot_obs_modelled_separate(
         ds_all_mf_sliced,
-        species,
+        specie,
         site,
         model_colors,
         s_data,
@@ -202,7 +201,7 @@ def test_obs_modelled_together():
 
     fig = plot_obs_modelled_together(
         ds_all_mf_sliced,
-        species,
+        specie,
         site,
         model_colors,
         s_data,
@@ -217,7 +216,7 @@ def test_obs_modelled_together():
 def test_obs_diff():
     fig = plot_obs_diff(
         ds_all_mf_sliced,
-        species,
+        specie,
         site,
         model_colors,
         s_data,
@@ -239,7 +238,7 @@ def plot_stats_mf():
         baseline_site=baseline_site,
         data_dir=data_dir,
         scale_units=True,
-        species=species,
+        species=specie,
     )
 
     pearson, nrmse, rmse = stats_mf(ds_all_allsites)
@@ -248,7 +247,7 @@ def plot_stats_mf():
         pearson,
         nrmse,
         rmse,
-        species,
+        specie,
         model_colors,
         s_data,
         m_data,
@@ -261,7 +260,7 @@ def test_spatial_flux():
 
     fig = plot_spatial_flux(
         ds_all_flux_scaled,
-        species,
+        specie,
         plot_area,
         s_data,
         m_data,
@@ -282,7 +281,7 @@ def test_spatial_flux_comparison():
 
     fig = plot_spatial_flux_comparison(
         ds_all_flux_scaled,
-        species,
+        specie,
         plot_area,
         s_data,
         m_data,
@@ -307,7 +306,7 @@ def test_spatial_flux_per_timestamp():
     dt = 1
     fig = plot_spatial_flux_per_timestamp(
         ds_all_flux_scaled,
-        species,
+        specie,
         plot_area,
         end_date,
         s_data,
