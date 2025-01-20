@@ -200,7 +200,8 @@ def test_obs_modelled_separate():
         config_data,
         annotate_coords,
         plot_type='separate',
-        include=["Yobs", "Yapost"],
+        include={"Yobs": None,
+                 "Yapost": 'qYapost'},
         diff_include=["Yapost"],
         y_lim=None,
     )
@@ -216,7 +217,7 @@ def test_obs_modelled_together():
         config_data,
         annotate_coords,
         plot_type='together',
-        include=["Yapost"],
+        include={"Yapost": 'qYapost'},
         diff_include=["Yapost"],
         y_lim=None,
     )
