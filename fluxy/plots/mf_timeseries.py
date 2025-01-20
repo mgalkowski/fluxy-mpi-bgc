@@ -5,6 +5,10 @@ from matplotlib.ticker import NullFormatter
 import matplotlib.pyplot as plt
 from typing import Literal
 from fluxy import config
+from fluxy.plots.utils import set_min_decimal_points
+import logging
+
+logger = logging.getLogger(__name__)
 
 def plot_mf_timeseries(
         ds_all: dict[str, xr.Dataset],
@@ -142,40 +146,34 @@ def plot_mf_timeseries(
                                        alpha=0.4,
                                        fmt='none')                  
 
-        # Plot histogram
+        # Get histogram variables and legend
         if len(diff_include) == 0:
-            make_diff   = False
-            vars        = include
-            legend_hist = 'Modelled mean'
+            make_diff    = False
+            hist_to_plot = vars_to_plot
+            legend_hist  = 'Modelled mean'
 
         else:
-            make_diff   = True
-            vars        = diff_include
-            legend_hist = 'Obs - modelled mean'
+            make_diff    = True
+            hist_to_plot = diff_include
+            legend_hist  = 'Obs - modelled mean'
 
-        for v,var in enumerate(vars):
+        # Loop over all variables to plot in histogram
+        for v,var in enumerate(hist_to_plot):
+            
+            if var not in ds_all[m].keys():
+                raise KeyError(f'Variable {var} not found in {m}.')
             
             if make_diff:
-                var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
+                var_to_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
             else:
-                try:
-                    var_plot = ds_all[m][var].values
-                except:
-                    if var == 'uYmod':
-                        var_plot = uYmod
-                    elif var == 'uYobs_repeatability':
-                        var_plot = ds_all[m]['uYobs'].values
-                    else:
-                        continue
+                var_to_plot = ds_all[m][var].values
 
-            if np.nanmean(var_plot) <= 0.01:
-                var_mean = np.round(np.nanmean(var_plot),5)
-                var_sd = np.round(np.nanstd(var_plot),5)
-            else:
-                var_mean = np.round(np.nanmean(var_plot),2)
-                var_sd = np.round(np.nanstd(var_plot),2)
-
-            a,b,c = ax[iax,1].hist(var_plot,bins=30,color=model_colors[m][config.mf_color_index[var]],density=1)
+            # Plot histogram
+            a,b,c = ax[iax,1].hist(var_to_plot,
+                                   bins=30,
+                                   color=model_colors[m][config.mf_color_index[var]],
+                                   density=1
+                                   )
             if make_diff:
                 ax[iax,1].vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
             
@@ -184,10 +182,18 @@ def plot_mf_timeseries(
             elif plot_type == 'together':
                 index = i
             
-            with np.printoptions(precision=2, suppress=True):
+            # Compute and format mean and std of the histogram
+            var_mean = np.nanmean(var_to_plot)
+            var_std = np.nanstd(var_to_plot)
+            str_mean = set_min_decimal_points(var_mean)
+            str_std = set_min_decimal_points(var_std)
 
-                ax[iax,1].annotate('$\mu$: '+str(var_mean)+'\n$\sigma$: '+str(var_sd),xy=annotate_coords[index],
-                                xycoords='axes fraction',color=model_colors[m][config.mf_color_index[var]])
+            # Write mean/std to histogram
+            ax[iax,1].annotate(f'$\mu$: {str_mean}\n$\sigma$: {str_std}',
+                               xy=annotate_coords[index],
+                               xycoords='axes fraction',
+                               color=model_colors[m][config.mf_color_index[var]]
+                               )
 
         # Write number of obs
         if plot_type == 'separate':
@@ -196,21 +202,27 @@ def plot_mf_timeseries(
                 pos_xy = [0.57,1.05]
             else:
                 pos_xy = [0.65,1.05]
-            ax[iax,1].annotate('\n$N_{obs}$: '+str(n_obs),xy=pos_xy,xycoords='axes fraction',color='k')
+            ax[iax,1].annotate('$N_{obs}$: '+str(n_obs),
+                               xy=pos_xy,
+                               xycoords='axes fraction',
+                               color='k'
+                               )
 
+        # Set histogram x-axis label
         ax[iax,1].set_xlabel(legend_hist)
     
-        # Get y-axis minimum and maximum
+        # Get timeseries y-axis minimum and maximum
         min_mf = min(min_mf, ax[iax,0].get_ylim()[0])
         max_mf = max(max_mf, ax[iax,0].get_ylim()[1])
         
-        # Set plot title
+        # Set timeseries title
         if plot_type == 'separate':
             plot_title = model_info["label"]
         elif plot_type == 'together':
             plot_title = 'All models'
         ax[iax,0].set_title(plot_title)
 
+        # Set timeseries y-axis label and legend
         ax[iax,0].set_ylabel(f'{specie_info["species_print"]} {site} ({specie_info["mf_units_print"]})')
         leg = ax[iax,0].legend(ncol=2,borderpad=.2,columnspacing=1.0)
         try:
@@ -220,6 +232,7 @@ def plot_mf_timeseries(
             for l in leg.legendHandles:
                 l.set_linewidth(5.0)
         
+        # Set timeseries x-axis ticks
         if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
             ax[iax,0].xaxis.set_minor_locator(MonthLocator())
             ax[iax,0].xaxis.set_minor_formatter(NullFormatter())
@@ -228,7 +241,8 @@ def plot_mf_timeseries(
             ax[iax,0].xaxis.set_major_locator(MonthLocator())
             if (ppt_mode):
                 ax[iax,0].tick_params(axis='x', rotation=70)
-                    
+
+    # Set timeseries y-axis min/max                
     if y_lim == None:
         for ax0 in ax[:,0]:
             ax0.set_ylim([min_mf - 0.02*min_mf, max_mf + 0.05*max_mf])
@@ -236,8 +250,7 @@ def plot_mf_timeseries(
         for ax0 in ax[:,0]:
                 ax0.set_ylim(y_lim)
             
-    print('NOTE: If all the data is not within axis limits, adjust the set_ylim')
-    print('NOTE: If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
+    logger.info('If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
     
     return fig
 
