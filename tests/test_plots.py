@@ -13,10 +13,9 @@ from fluxy.plots.flux_map import (
 from fluxy.plots.flux_timeseries import plot_country_flux
 from fluxy.plots.mf_timeseries import (
     plot_obs_diff,
-    plot_obs_modelled_together,
+    plot_mf_timeseries,
     plot_sites_timeseries,
 )
-from fluxy.plots.mf_timeseries import plot_obs_modelled_separate
 
 
 data_dir = Path(fluxy.__path__[0]).parent / "data" / "tests"
@@ -193,14 +192,14 @@ def test_mf_timeseries():
 
 
 def test_obs_modelled_separate():
-    fig = plot_obs_modelled_separate(
+    fig = plot_mf_timeseries(
         ds_all_mf_sliced,
         specie,
         site,
         model_colors,
-        config_data["species_info"],
-        config_data["models_info"],
+        config_data,
         annotate_coords,
+        plot_type='separate',
         include=["Yobs", "Yapost"],
         diff_include=["Yapost"],
         y_lim=None,
@@ -209,14 +208,14 @@ def test_obs_modelled_separate():
 
 def test_obs_modelled_together():
 
-    fig = plot_obs_modelled_together(
+    fig = plot_mf_timeseries(
         ds_all_mf_sliced,
         specie,
         site,
         model_colors,
-        config_data["species_info"],
-        config_data["models_info"],
+        config_data,
         annotate_coords,
+        plot_type='together',
         include=["Yapost"],
         diff_include=["Yapost"],
         y_lim=None,

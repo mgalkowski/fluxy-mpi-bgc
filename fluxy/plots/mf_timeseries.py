@@ -1,16 +1,25 @@
 import numpy as np
+import xarray as xr
 from matplotlib.dates import MonthLocator, YearLocator
 from matplotlib.ticker import NullFormatter
-
 import matplotlib.pyplot as plt
+from typing import Literal
 from fluxy import config
 
-def plot_obs_modelled_separate(ds_all,species,site,
-                               model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
-                             include=['Yobs','Yapriori','Yapost'],
-                             diff_include=['Yapriori','Yapost'],
-                             add_unc=True,
-                             y_lim=None):
+def plot_mf_timeseries(
+        ds_all: dict[str, xr.Dataset],
+        specie: str,
+        site: str,
+        model_colors: dict[str, str],
+        config_data: dict[str, dict],
+        annotate_coords: dict[int, list],
+        ppt_mode: bool = False,
+        plot_type: Literal['separate','together'] = 'separate',
+        include: list[str] = ['Yobs','Yapriori','Yapost'],
+        diff_include: list[str] = ['Yapriori','Yapost'],
+        add_unc: bool = True,
+        y_lim: None | list[float] = None
+):
     """
     Timeseries plots of observations and modelled mole fractions or 
     baselines from each model.
@@ -21,16 +30,15 @@ def plot_obs_modelled_separate(ds_all,species,site,
         ds_all (dictionary of datasets):
             xarray datasets, scaled and sliced between chosen dates and for 
             chosen site.
-        species (str): 
-            Gas species, e.g. 'ch4'.
+        specie (str): 
+            Gas specie, e.g. 'ch4'.
         site (str):
             Obs site, e.g. 'MHD'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
-        s_data (dict of dict):
-            Dictionary of species with information for plotting (read from json file).
-        m_data (dict of dict):
-            Dictionary of inversion runs with filename and plot label (read from json file).
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filenames as keys.
         annotate_coords (dict of lists):
             Coordinates to annotate histogram.
         ppt_mode (logical) (optional):
@@ -49,92 +57,76 @@ def plot_obs_modelled_separate(ds_all,species,site,
         fig (figure): 
             A timeseries and histogram plot for each model included.
     """
-        
-    var_labels = {'Yapriori':'prior mf',
-                  'Yapost':'posterior mean mf',
-                  'YaprioriBC':'prior baseline',
-                  'YapostBC':'posterior mean baseline',
-                  'Yapriori_bias':'prior bias',
-                  'Yapost_bias':'posterior bias',
-                  'YaprioriOUTER':'prior outer region mf',
-                  'YapostOUTER':'posterior outer region mf',
-                  'Yobs':'observed mf',
-                  'uYobs_repeatability':'obs repeatability mf uncertainty',
-                  'uYobs_variability':'obs variability mf uncertainty',
-                  'uYmod':'model uncertainty',
-                  'uYtotal':'total uncertainty'}
-    var_colors = {'Yapriori':1,
-                  'Yapost':0,
-                  'YaprioriBC':1,
-                  'YapostBC':0,
-                  'Yapriori_bias':0,
-                  'Yapost_bias':1,
-                  'YaprioriOUTER':1,
-                  'YapostOUTER':0,
-                  'Yobs':0,
-                  'uYobs_repeatability':0,
-                  'uYobs_variability':0,
-                  'uYmod':1,
-                  'uYtotal':1}
-        
+      
     models = ds_all.keys()
-    min_mf = []
-    max_mf = []
-    ax_all = []
-    ax2_all = []
-        
-    fig = plt.figure(constrained_layout=True,figsize=(15,len(models)*3))
-    gs = fig.add_gridspec(len(models),2,width_ratios=[0.8,0.2])
+    specie_info = config_data["species_info"][specie]
+
+    min_mf = np.inf
+    max_mf = -np.inf
+ 
+    # Define number of rows in figure
+    if plot_type == 'separate':
+        nrows = len(models)
+    elif plot_type == 'together':
+        nrows = 1
+    else:
+        raise ValueError(f'Option {plot_type} not implemented. Set plot_type to \'separate\' or \'together\'.')
     
+    # Create figure
+    fig, ax = plt.subplots(nrows, 2, figsize=(15,nrows*3), gridspec_kw={'width_ratios': [0.8,0.2]}, constrained_layout=True)
+    
+    # Expand axis dimension if 1D
+    if nrows == 1: ax = np.expand_dims(ax, axis=0)
+
+    # Loop over all models
     for i,m in enumerate(models):
         
         m0 = m.split('_')[0]
-        
-        ax = fig.add_subplot(gs[i,0])
-        ax2 = fig.add_subplot(gs[i,1])
-        ax_all.append(ax)
-        ax2_all.append(ax2)
+        model_info = config_data["models_info"][m]
+
+        iax = 0
+        if plot_type == 'separate': iax = i
         
         for var in include:
 
             if var == 'Yobs':
                 if len(include) == 1:
-                    ax.scatter(ds_all[m].time.values,
+                    ax[iax,0].scatter(ds_all[m].time.values,
                                ds_all[m]['Yobs'].values,
-                               color=model_colors[m][var_colors[var]],
-                               label=f'Obs ({m_data[m]["label"]})',s=8,alpha=0.8,marker='s')
+                               color=model_colors[m][config.mf_color_index[var]],
+                               label=f'Obs ({model_info["label"]})',s=8,alpha=0.8,marker='s')
                     
                     if add_unc:
                         try:
-                            ax.errorbar(ds_all[m].time.values,
+                            ax[iax,0].errorbar(ds_all[m].time.values,
                                         ds_all[m]['Yobs'].values,
                                         ds_all[m]['uYobs_repeatability'].values,
-                                        color=model_colors[m][var_colors[var]],alpha=0.4,fmt='none')
+                                        color=model_colors[m][config.mf_color_index[var]],alpha=0.4,fmt='none')
 
                         except:
                             #handle old ncdf files
-                            ax.errorbar(ds_all[m].time.values,
+                            ax[iax,0].errorbar(ds_all[m].time.values,
                                         ds_all[m]['Yobs'].values,
                                         ds_all[m]['uYobs'].values,
-                                        color=model_colors[m][var_colors[var]],alpha=0.4,fmt='none')
+                                        color=model_colors[m][config.mf_color_index[var]],alpha=0.4,fmt='none')
                             print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead as error bars.')
 
                 else:
                     
-                    ax.scatter(ds_all[m].time.values,
+                    ax[iax,0].scatter(ds_all[m].time.values,
                                 ds_all[m]['Yobs'].values,
-                                color='black',label=f'Obs ({m_data[m]["label"]})',s=8,alpha=0.8,
+                                color='black',label=f'Obs ({model_info["label"]})',s=8,alpha=0.8,
                                 marker='s')
                     
                     if add_unc:
                         try:
-                            ax.errorbar(ds_all[m].time.values,
+                            ax[iax,0].errorbar(ds_all[m].time.values,
                                         ds_all[m]['Yobs'].values,
                                         ds_all[m]['uYobs_repeatability'].values,
                                         color='black',alpha=0.4,fmt='none')
                         except:
                             #handle old ncdf files
-                            ax.errorbar(ds_all[m].time.values,
+                            ax[iax,0].errorbar(ds_all[m].time.values,
                                         ds_all[m]['Yobs'].values,
                                         ds_all[m]['uYobs'].values,
                                         color='black',alpha=0.4,fmt='none')
@@ -142,288 +134,44 @@ def plot_obs_modelled_separate(ds_all,species,site,
 
             else:
                 try:
-                    ax.plot(ds_all[m].time.values,
+                    ax[iax,0].plot(ds_all[m].time.values,
                             ds_all[m][var].values,
-                            color=model_colors[m][var_colors[var]],alpha=0.8,
+                            color=model_colors[m][config.mf_color_index[var]],alpha=0.8,
                             linewidth=2.,
-                            label=f'{m_data[m]["label"]} {var_labels[var]}')
+                            label=f'{model_info["label"]} {config.mf_labels[var]}')
                 
                 except:
                     #handle old ncdf files
                     if var == 'uYmod':
                         uYmod = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,config.model_q_indices[m0][0]]
-                        ax.plot(ds_all[m].time.values,
+                        ax[iax,0].plot(ds_all[m].time.values,
                                 uYmod,
-                                color=model_colors[m][var_colors[var]],alpha=0.8,
+                                color=model_colors[m][config.mf_color_index[var]],alpha=0.8,
                                 linewidth=2.,
-                                label=f'{m_data[m]["label"]} {var_labels[var]}')
+                                label=f'{model_info["label"]} {config.mf_labels[var]}')
                         print(f'WARNING: uYmod is not present in {m}. This quantity is being computed from qYmod.')
 
                     elif var == 'uYobs_repeatability':
-                        ax.plot(ds_all[m].time.values,
+                        ax[iax,0].plot(ds_all[m].time.values,
                                 ds_all[m]['uYobs'].values,
-                                color=model_colors[m][var_colors[var]],alpha=0.8,
+                                color=model_colors[m][config.mf_color_index[var]],alpha=0.8,
                                 linewidth=2.,
-                                label=f'{m_data[m]["label"]} {var_labels[var]}')
+                                label=f'{model_info["label"]} {config.mf_labels[var]}')
                         print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead.')
 
                     else:
                         print(f'ERROR: variable {var} not found in {m} or deprecated!')
 
                 if (var == 'Yapost') and add_unc:
-                    ax.fill_between(ds_all[m].time.values,
+                    ax[iax,0].fill_between(ds_all[m].time.values,
                                     ds_all[m]['qYapost'].values[:,config.model_q_indices[m0][0]],
                                     ds_all[m]['qYapost'].values[:,config.model_q_indices[m0][1]],
-                                    color=model_colors[m][var_colors[var]],alpha=0.2)
+                                    color=model_colors[m][config.mf_color_index[var]],alpha=0.2)
                 #if var == 'YapostBC':
                 #    ax.fill_between(ds_all[m].time.values,
                 #                    ds_all[m]['qYapostBC'].values[:,config.model_q_indices[m][0]],
                 #                    ds_all[m]['qYapostBC'].values[:,config.model_q_indices[m][1]],
-                #                    color=model_colors[m][var_colors[var]],alpha=0.5)
-
-        # Plot histogram
-        if len(diff_include) == 0:
-            make_diff   = False
-            vars        = include
-            legend_hist = 'Modelled mean'
-
-        else:
-            make_diff   = True
-            vars        = diff_include
-            legend_hist = 'Obs - modelled mean'
-
-        for i,var in enumerate(vars):
-            
-            if make_diff:
-                var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            else:
-                try:
-                    var_plot = ds_all[m][var].values
-                except:
-                    if var == 'uYmod':
-                        var_plot = uYmod
-                    elif var == 'uYobs_repeatability':
-                        var_plot = ds_all[m]['uYobs'].values
-                    else:
-                        continue
-
-            if np.nanmean(var_plot) <= 0.01:
-                var_mean = np.round(np.nanmean(var_plot),5)
-                var_sd = np.round(np.nanstd(var_plot),5)
-            else:
-                var_mean = np.round(np.nanmean(var_plot),2)
-                var_sd = np.round(np.nanstd(var_plot),2)
-
-            a,b,c = ax2.hist(var_plot,bins=30,color=model_colors[m][var_colors[var]],density=1)
-            if make_diff:
-                ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
-            
-            with np.printoptions(precision=2, suppress=True):
-
-                ax2.annotate('$\mu$: '+str(var_mean)+'\n$\sigma$: '+str(var_sd),xy=annotate_coords[i],
-                                xycoords='axes fraction',color=model_colors[m][var_colors[var]])
-
-        # Write number of obs to plot
-        n_obs = (~np.isnan(ds_all[m]['Yobs'].values)).sum()
-        if (ppt_mode):
-            pos_xy = [0.57,1.05]
-        else:
-            pos_xy = [0.65,1.05]
-        ax2.annotate('\n$N_{obs}$: '+str(n_obs),xy=pos_xy,xycoords='axes fraction',color='k')
-
-        ax2.set_xlabel(legend_hist)
-    
-        min_mf.append(ax.get_ylim()[0])
-        max_mf.append(ax.get_ylim()[1])
-        
-        ax.set_title(m_data[m]["label"])
-        ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
-        leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
-        try:
-            for l in leg.legend_handles:
-                l.set_linewidth(5.0)
-        except:
-            for l in leg.legendHandles:
-                l.set_linewidth(5.0)
-        
-        if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
-            ax.xaxis.set_minor_locator(MonthLocator())
-            ax.xaxis.set_minor_formatter(NullFormatter())
-            ax.xaxis.set_major_locator(YearLocator())
-        else:
-            ax.xaxis.set_major_locator(MonthLocator())
-            if (ppt_mode):
-                ax.tick_params(axis='x', rotation=70)
-                    
-    if y_lim == None:    
-        for i in range(len(models)):
-            ax_all[i].set_ylim([min(min_mf)-(0.02*min(min_mf)),
-                                max(max_mf)+(0.05*max(max_mf))])
-    else:
-        for i in range(len(models)):
-            ax_all[i].set_ylim(y_lim)
-            
-    print('NOTE: If all the data is not within axis limits, adjust the set_ylim')
-    print('NOTE: If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
-    
-    return fig
-
-
-def plot_obs_modelled_together(ds_all,species,site,
-                               model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
-                               include=['Yapost'],
-                               diff_include=['Yapost'],
-                               add_unc=True,
-                               y_lim=None):
-    """
-    Timeseries plots of observations and modelled mole fractions or 
-    baselines from each model, all on one plot.
-    Also includes a histogram for each model, showing the difference between
-    the prior and posterior fit to the observations.
-    
-    Args:
-        ds_all (dictionary of datasets):
-            xarray datasets, scaled and sliced between chosen dates and for 
-            chosen site.
-        species (str): 
-            Gas species, e.g. 'ch4'.
-        site (str):
-            Obs site, e.g. 'MHD'.
-        model_colors (dict of str):
-            Models and corresponding colours used to plot the model.
-        s_data (dict of dict):
-            Dictionary of species with information for plotting (read from json file).
-        m_data (dict of dict):
-            Dictionary of inversion runs with filename and plot label (read from json file).
-        annotate_coords (dict of lists):
-            Coordinates to annotate histogram.
-        ppt_mode (logical) (optional):
-            If True, adjust xlabel rotation to accomodate bigger fonts.
-        include (list of str):
-            Variables included in the plot, options for 'Yobs', 'Yapriori',
-            'Yapost', 'YaprioriBC', 'YapostBC'.
-        diff_include (list of str):
-            Variables included in the 'obs - variable' difference histogram, 
-            same options as above.
-        add_unc (bool):
-            if True, plot uncertainty bar on Yobs and Yapost timeseries.
-        y_lim (list of float, optional):
-            Mix/max y axis limits to apply to all plots.
-    Returns:
-        fig (figure): 
-            One timeseries and histogram plot containing data from all models.
-    """
-
-    var_labels = {'Yapriori':'prior mf',
-                  'Yapost':'posterior mean mf',
-                  'YaprioriBC':'prior baseline',
-                  'YapostBC':'posterior mean baseline',
-                  'Yapriori_bias':'prior bias',
-                  'Yapost_bias':'posterior bias',
-                  'YaprioriOUTER':'prior outer region mf',
-                  'YapostOUTER':'posterior outer region mf',
-                  'Yobs':'observed mf',
-                  'uYobs_repeatability':'obs repeatability mf uncertainty',
-                  'uYobs_variability':'obs variability mf uncertainty',
-                  'uYmod':'model uncertainty',
-                  'uYtotal':'total uncertainty'}
-    var_colors = {'Yapriori':1,
-                  'Yapost':0,
-                  'YaprioriBC':1,
-                  'YapostBC':0,
-                  'Yapriori_bias':0,
-                  'Yapost_bias':1,
-                  'YaprioriOUTER':1,
-                  'YapostOUTER':0,
-                  'Yobs':0,
-                  'uYobs_repeatability':0,
-                  'uYobs_variability':0,
-                  'uYmod':0,
-                  'uYtotal':0}
-        
-    models = ds_all.keys()
-    min_mf = []
-    max_mf = []
-        
-    fig = plt.figure(constrained_layout=True,figsize=(15,7))
-    gs = fig.add_gridspec(len(models),2,width_ratios=[0.8,0.2])
-
-    ax = fig.add_subplot(gs[0])
-    ax2 = fig.add_subplot(gs[1])
-
-    for i,m in enumerate(models):
-        
-        m0 = m.split('_')[0]
-                
-        for var in include:
-
-            if var == 'Yobs':
-                if len(include) == 1:
-                    ax.scatter(ds_all[m].time.values,
-                                ds_all[m]['Yobs'].values,
-                                color=model_colors[m][var_colors[var]],label=f'Obs ({m_data[m]["label"]})',s=5,alpha=0.5)
-
-                    if add_unc:
-                        try:
-                            ax.errorbar(ds_all[m].time.values,
-                                        ds_all[m]['Yobs'].values,
-                                        ds_all[m]['uYobs_repeatability'].values,
-                                        color=model_colors[m][var_colors[var]],alpha=0.4,fmt='none')
-
-                        except:
-                            #handle old ncdf files
-                            ax.errorbar(ds_all[m].time.values,
-                                        ds_all[m]['Yobs'].values,
-                                        ds_all[m]['uYobs'].values,
-                                        color=model_colors[m][var_colors[var]],alpha=0.4,fmt='none')
-                            print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead as error bars.')
-
-                else:
-                    ax.scatter(ds_all[m].time.values,
-                                ds_all[m]['Yobs'].values,
-                                color='dimgrey',label=f'Obs ({m_data[m]["label"]})',s=5,alpha=0.5)
-
-            else:
-                try:
-                    ax.scatter(ds_all[m].time.values,
-                            ds_all[m][var].values,
-                            color=model_colors[m][var_colors[var]],alpha=0.5,
-                            label=f'{m_data[m]["label"]} {var_labels[var]}',
-                            linewidth=2,s=5)
-
-                except:
-                    # handle old ncdf files
-                    if var == 'uYmod':
-                        uYmod = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,config.model_q_indices[m0][0]]
-                        ax.scatter(ds_all[m].time.values,
-                                   uYmod,
-                                   color=model_colors[m][var_colors[var]],
-                                   label=f'{m_data[m]["label"]} {var_labels[var]}',
-                                   linewidth=2,s=5,alpha=0.5)
-                        print(f'WARNING: uYmod is not present in {m}. This quantity is being computed from qYmod.')
-
-                    elif var == 'uYobs_repeatability':
-                        ax.scatter(ds_all[m].time.values,
-                                   ds_all[m]['uYobs'].values,
-                                   color=model_colors[m][var_colors[var]],
-                                   label=f'{m_data[m]["label"]} {var_labels[var]}',
-                                   linewidth=2.,s=5,alpha=0.5)
-                        print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead.')
-
-                    else:
-                        print(f'ERROR: variable {var} not found in {m} or deprecated!')
-
-                if (var == 'Yapost') and add_unc:
-                    ax.fill_between(ds_all[m].time.values,
-                                    ds_all[m]['qYapost'].values[:,config.model_q_indices[m0][0]],
-                                    ds_all[m]['qYapost'].values[:,config.model_q_indices[m0][1]],
-                                    color=model_colors[m][var_colors[var]],alpha=0.3)
-                #if var == 'YapostBC':
-                #    ax.fill_between(ds_all[m].time.values,
-                #                    ds_all[m]['qYapostBC'].values[:,config.model_q_indices[m][0]],
-                #                    ds_all[m]['qYapostBC'].values[:,config.model_q_indices[m][1]],
-                #                    color=model_colors[m][var_colors[var]],alpha=0.5)
-        
+                #                    color=model_colors[m][config.mf_color_index[var]],alpha=0.5)
 
         # Plot histogram
         if len(diff_include) == 0:
@@ -457,52 +205,72 @@ def plot_obs_modelled_together(ds_all,species,site,
             else:
                 var_mean = np.round(np.nanmean(var_plot),2)
                 var_sd = np.round(np.nanstd(var_plot),2)
-            
-            a,b,c = ax2.hist(var_plot,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
+
+            a,b,c = ax[iax,1].hist(var_plot,bins=30,color=model_colors[m][config.mf_color_index[var]],density=1)
             if make_diff:
-                ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
+                ax[iax,1].vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
+            
+            if plot_type == 'separate':
+                index = v
+            elif plot_type == 'together':
+                index = i
             
             with np.printoptions(precision=2, suppress=True):
 
-                ax2.annotate('$\mu$: '+str(var_mean)+'\n$\sigma$: '+str(var_sd),xy=annotate_coords[i],
-                                xycoords='axes fraction',color=model_colors[m][var_colors[var]])
-        
-    ax2.set_xlabel(legend_hist)
+                ax[iax,1].annotate('$\mu$: '+str(var_mean)+'\n$\sigma$: '+str(var_sd),xy=annotate_coords[index],
+                                xycoords='axes fraction',color=model_colors[m][config.mf_color_index[var]])
 
-    min_mf.append(ax.get_ylim()[0])
-    max_mf.append(ax.get_ylim()[1])
+        # Write number of obs
+        if plot_type == 'separate':
+            n_obs = (~np.isnan(ds_all[m]['Yobs'].values)).sum()
+            if (ppt_mode):
+                pos_xy = [0.57,1.05]
+            else:
+                pos_xy = [0.65,1.05]
+            ax[iax,1].annotate('\n$N_{obs}$: '+str(n_obs),xy=pos_xy,xycoords='axes fraction',color='k')
+
+        ax[iax,1].set_xlabel(legend_hist)
     
-    ax.set_title('All models')
-    ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
-    leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
-    try:
-        for l in leg.legend_handles:
-            l.set_linewidth(5.0)
-    except:
-        for l in leg.legendHandles:
-            l.set_linewidth(5.0)
-    
-    if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
-        ax.xaxis.set_minor_locator(MonthLocator())
-        ax.xaxis.set_minor_formatter(NullFormatter())
-        ax.xaxis.set_major_locator(YearLocator())
-    else:
-        ax.xaxis.set_major_locator(MonthLocator())
-        if (ppt_mode):
-            ax.tick_params(axis='x', rotation=70)
+        # Get y-axis minimum and maximum
+        min_mf = min(min_mf, ax[iax,0].get_ylim()[0])
+        max_mf = max(max_mf, ax[iax,0].get_ylim()[1])
         
-    if y_lim is None:
-        ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
-                                max(max_mf)+(0.05*max(max_mf))])
-    else:
-        ax.set_ylim(y_lim)
+        # Set plot title
+        if plot_type == 'separate':
+            plot_title = model_info["label"]
+        elif plot_type == 'together':
+            plot_title = 'All models'
+        ax[iax,0].set_title(plot_title)
+
+        ax[iax,0].set_ylabel(f'{specie_info["species_print"]} {site} ({specie_info["mf_units_print"]})')
+        leg = ax[iax,0].legend(ncol=2,borderpad=.2,columnspacing=1.0)
+        try:
+            for l in leg.legend_handles:
+                l.set_linewidth(5.0)
+        except:
+            for l in leg.legendHandles:
+                l.set_linewidth(5.0)
         
+        if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
+            ax[iax,0].xaxis.set_minor_locator(MonthLocator())
+            ax[iax,0].xaxis.set_minor_formatter(NullFormatter())
+            ax[iax,0].xaxis.set_major_locator(YearLocator())
+        else:
+            ax[iax,0].xaxis.set_major_locator(MonthLocator())
+            if (ppt_mode):
+                ax[iax,0].tick_params(axis='x', rotation=70)
+                    
+    if y_lim == None:
+        for ax0 in ax[:,0]:
+            ax0.set_ylim([min_mf - 0.02*min_mf, max_mf + 0.05*max_mf])
+    else:
+        for ax0 in ax[:,0]:
+                ax0.set_ylim(y_lim)
+            
     print('NOTE: If all the data is not within axis limits, adjust the set_ylim')
     print('NOTE: If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
     
     return fig
-
-
 
 def plot_obs_diff(ds_all,species,site,
                                model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
