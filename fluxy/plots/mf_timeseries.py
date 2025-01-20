@@ -15,16 +15,16 @@ def plot_mf_timeseries(
         annotate_coords: dict[int, list],
         ppt_mode: bool = False,
         plot_type: Literal['separate','together'] = 'separate',
-        include: list[str] = ['Yobs','Yapriori','Yapost'],
+        include: dict[str, str | None] = {'Yobs': None,
+                                          'Yapost': 'qYapost'},
         diff_include: list[str] = ['Yapriori','Yapost'],
-        add_unc: bool = True,
         y_lim: None | list[float] = None
 ):
     """
-    Timeseries plots of observations and modelled mole fractions or 
-    baselines from each model.
-    Also includes a histogram for each model, showing the difference between
-    the prior and posterior fit to the observations.
+    Timeseries plots of observations, modelled mole fractions, baseline mf and/or 
+    uncertainties from each model.
+    Includes a histogram of the variables plotted in the timeseries plot or 
+    the difference between specified variables and observations.
     
     Args:
         ds_all (dictionary of datasets):
@@ -43,14 +43,13 @@ def plot_mf_timeseries(
             Coordinates to annotate histogram.
         ppt_mode (logical) (optional):
             If True, adjust annotation position and xlabel rotation to accomodate bigger fonts.
-        include (list of str):
-            Variables included in the plot, options for 'Yobs', 'Yapriori',
-            'Yapost', 'YaprioriBC', 'YapostBC'.
+        include (dict of str):
+            Dictionary keys are variables to include in the plot.
+            The respective values are the uncertainty variables to plot as error bar/uncertainty band.
         diff_include (list of str):
             Variables included in the 'obs - variable' difference histogram, 
             same options as above.
-        add_unc (bool):
-            if True, plot uncertainty bar on Yobs and Yapost timeseries.
+            If empty list, plots the histogram of the variables specified in include.
         y_lim (list of float, optional):
             Mix/max y axis limits to apply to all plots.
     Returns:
@@ -60,6 +59,7 @@ def plot_mf_timeseries(
       
     models = ds_all.keys()
     specie_info = config_data["species_info"][specie]
+    vars_to_plot = include.keys()
 
     min_mf = np.inf
     max_mf = -np.inf
@@ -84,94 +84,63 @@ def plot_mf_timeseries(
         m0 = m.split('_')[0]
         model_info = config_data["models_info"][m]
 
-        iax = 0
-        if plot_type == 'separate': iax = i
+        # Define axis index
+        if plot_type == 'separate':
+            iax = i
+        elif plot_type == 'together':
+            iax = 0
         
-        for var in include:
+        # Loop over all variables to plot
+        for var in vars_to_plot:
+
+            if var not in ds_all[m].keys():
+                raise KeyError(f'Variable {var} not found in {m}.')
+            
+            # Define plotting color
+            plot_color = model_colors[m][config.mf_color_index[var]]
+            if var == 'Yobs' and len(vars_to_plot) > 1:
+                plot_color = 'black'                
 
             if var == 'Yobs':
-                if len(include) == 1:
-                    ax[iax,0].scatter(ds_all[m].time.values,
-                               ds_all[m]['Yobs'].values,
-                               color=model_colors[m][config.mf_color_index[var]],
-                               label=f'Obs ({model_info["label"]})',s=8,alpha=0.8,marker='s')
-                    
-                    if add_unc:
-                        try:
-                            ax[iax,0].errorbar(ds_all[m].time.values,
-                                        ds_all[m]['Yobs'].values,
-                                        ds_all[m]['uYobs_repeatability'].values,
-                                        color=model_colors[m][config.mf_color_index[var]],alpha=0.4,fmt='none')
-
-                        except:
-                            #handle old ncdf files
-                            ax[iax,0].errorbar(ds_all[m].time.values,
-                                        ds_all[m]['Yobs'].values,
-                                        ds_all[m]['uYobs'].values,
-                                        color=model_colors[m][config.mf_color_index[var]],alpha=0.4,fmt='none')
-                            print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead as error bars.')
-
-                else:
-                    
-                    ax[iax,0].scatter(ds_all[m].time.values,
-                                ds_all[m]['Yobs'].values,
-                                color='black',label=f'Obs ({model_info["label"]})',s=8,alpha=0.8,
-                                marker='s')
-                    
-                    if add_unc:
-                        try:
-                            ax[iax,0].errorbar(ds_all[m].time.values,
-                                        ds_all[m]['Yobs'].values,
-                                        ds_all[m]['uYobs_repeatability'].values,
-                                        color='black',alpha=0.4,fmt='none')
-                        except:
-                            #handle old ncdf files
-                            ax[iax,0].errorbar(ds_all[m].time.values,
-                                        ds_all[m]['Yobs'].values,
-                                        ds_all[m]['uYobs'].values,
-                                        color='black',alpha=0.4,fmt='none')
-                            print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead as error bars.')
+                # Make scatter plot
+                ax[iax,0].scatter(ds_all[m].time.values,
+                                  ds_all[m][var].values,
+                                  color=plot_color,
+                                  label=f'Obs ({model_info["label"]})',
+                                  s=8,
+                                  alpha=0.8,
+                                  marker='s')        
 
             else:
-                try:
-                    ax[iax,0].plot(ds_all[m].time.values,
-                            ds_all[m][var].values,
-                            color=model_colors[m][config.mf_color_index[var]],alpha=0.8,
-                            linewidth=2.,
-                            label=f'{model_info["label"]} {config.mf_labels[var]}')
-                
-                except:
-                    #handle old ncdf files
-                    if var == 'uYmod':
-                        uYmod = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,config.model_q_indices[m0][0]]
-                        ax[iax,0].plot(ds_all[m].time.values,
-                                uYmod,
-                                color=model_colors[m][config.mf_color_index[var]],alpha=0.8,
-                                linewidth=2.,
-                                label=f'{model_info["label"]} {config.mf_labels[var]}')
-                        print(f'WARNING: uYmod is not present in {m}. This quantity is being computed from qYmod.')
+                # Make line plot
+                ax[iax,0].plot(ds_all[m].time.values,
+                               ds_all[m][var].values,
+                               color=plot_color,alpha=0.8,
+                               linewidth=2.,
+                               label=f'{model_info["label"]} {config.mf_labels[var]}')
 
-                    elif var == 'uYobs_repeatability':
-                        ax[iax,0].plot(ds_all[m].time.values,
-                                ds_all[m]['uYobs'].values,
-                                color=model_colors[m][config.mf_color_index[var]],alpha=0.8,
-                                linewidth=2.,
-                                label=f'{model_info["label"]} {config.mf_labels[var]}')
-                        print(f'WARNING: uYobs_repeatability is not present in {m}. uYobs is being plotted instead.')
+            unc_var = include[var]
 
-                    else:
-                        print(f'ERROR: variable {var} not found in {m} or deprecated!')
+            if unc_var:
+                if unc_var not in ds_all[m].keys():
+                    raise KeyError(f'Variable {unc_var} not found in {m}.')
 
-                if (var == 'Yapost') and add_unc:
+                if unc_var[0] == 'q':
+                    # Add uncertainty band
                     ax[iax,0].fill_between(ds_all[m].time.values,
-                                    ds_all[m]['qYapost'].values[:,config.model_q_indices[m0][0]],
-                                    ds_all[m]['qYapost'].values[:,config.model_q_indices[m0][1]],
-                                    color=model_colors[m][config.mf_color_index[var]],alpha=0.2)
-                #if var == 'YapostBC':
-                #    ax.fill_between(ds_all[m].time.values,
-                #                    ds_all[m]['qYapostBC'].values[:,config.model_q_indices[m][0]],
-                #                    ds_all[m]['qYapostBC'].values[:,config.model_q_indices[m][1]],
-                #                    color=model_colors[m][config.mf_color_index[var]],alpha=0.5)
+                                           ds_all[m][unc_var].values[:,config.model_q_indices[m0][0]],
+                                           ds_all[m][unc_var].values[:,config.model_q_indices[m0][1]],
+                                           color=plot_color,
+                                           alpha=0.2)
+                    
+                else:
+                    # Add error bar
+                    ax[iax,0].errorbar(ds_all[m].time.values,
+                                       ds_all[m][var].values,
+                                       ds_all[m][unc_var].values,
+                                       color=plot_color,
+                                       alpha=0.4,
+                                       fmt='none')                  
 
         # Plot histogram
         if len(diff_include) == 0:
