@@ -63,7 +63,9 @@ def slice_flux(ds_all,start_date,end_date,config_data,
             xarray datasets, scaled, converted, and sliced between chosen dates.
     
     """
-    specie_info = config_data['species_info'][specie] 
+    
+    if specie is not None:
+        specie_info = config_data['species_info'][specie] 
 
     #variables that aren't scaled by units
     skip_var = ['flux_total_prior','flux_total_posterior','percentile_flux_total_prior',
