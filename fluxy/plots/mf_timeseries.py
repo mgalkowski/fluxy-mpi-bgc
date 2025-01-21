@@ -51,8 +51,7 @@ def plot_mf_timeseries(
             Dictionary keys are variables to include in the plot.
             The respective values are the uncertainty variables to plot as error bar/uncertainty band.
         diff_include (list of str):
-            Variables included in the 'obs - variable' difference histogram, 
-            same options as above.
+            Variables included in the 'obs - variable' difference histogram.
             If empty list, plots the histogram of the variables specified in include.
         y_lim (list of float, optional):
             Mix/max y axis limits to apply to all plots.
@@ -243,7 +242,7 @@ def plot_mf_timeseries(
                 ax[iax,0].tick_params(axis='x', rotation=70)
 
     # Set timeseries y-axis min/max                
-    if y_lim == None:
+    if y_lim is None:
         for ax0 in ax[:,0]:
             ax0.set_ylim([min_mf - 0.02*min_mf, max_mf + 0.05*max_mf])
     else:
@@ -254,15 +253,23 @@ def plot_mf_timeseries(
     
     return fig
 
-def plot_obs_diff(ds_all,species,site,
-                               model_colors,s_data,m_data,annotate_coords,ppt_mode=False,
-                               include=['Yapost'],
-                               diff_include=['Yapost'],
-                               y_lim=None):
+def plot_mf_diff(
+        ds_all: dict[str, xr.Dataset],
+        specie: str,
+        site: str,
+        model_colors: dict[str, str],
+        config_data: dict[str, dict],
+        annotate_coords: dict[int, list],
+        ppt_mode: bool = False,
+        include: list[str] = ['Yapost'],
+        diff_include: list[str] = ['Yapost'],
+        y_lim: None | list[float] = None
+):
     """
     Plot of the absolute difference between variables from two models.
     Also includes a histogram for each model, showing the difference between
-    the 'include' variables fit to the observations.
+    the 'diff_include' variables and the observations or the histograms of
+    the 'include' variables.
     
     If more than two models are included in ds_all, only the first two
     models will be plotted.
@@ -271,185 +278,131 @@ def plot_obs_diff(ds_all,species,site,
         ds_all (dictionary of datasets):
             xarray datasets, scaled and sliced between chosen dates and for 
             chosen site.
-        species (str): 
+        specie (str): 
             Gas species, e.g. 'ch4'.
         site (str):
             Obs site, e.g. 'MHD'.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
-        s_data (dict of dict):
-            Dictionary of species with information for plotting (read from json file).
-        m_data (dict of dict):
-            Dictionary of inversion runs with filename and plot label (read from json file).
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filenames as keys.
         annotate_coords (dict of lists):
             Coordinates to annotate histogram.
         ppt_mode (logical) (optional):
             If True, adjust xlabel rotation to accomodate bigger fonts.
         include (list of str):
-            Variables included in the plot, options for 'Yobs', 'Yapriori',
-            'Yapost', 'YaprioriBC', 'YapostBC'.
+            Variables to include in the plot.
         diff_include (list of str):
-            Variables included in the 'obs - variable' difference histogram, 
-            same options as above.
+            Variables included in the 'obs - variable' difference histogram.
+            If empty list, plots the histogram of the variables specified in include.
         y_lim (list of float, optional):
             Mix/max y axis limits to apply to all plots.
     Returns:
         fig (figure): 
             A timeseries and histogram plot for each model included.
     """
-
-    var_labels = {'Yapriori':'prior mf',
-                  'Yapost':'posterior mean mf',
-                  'YaprioriBC':'prior baseline',
-                  'YapostBC':'posterior mean baseline',
-                  'Yapriori_bias':'prior bias',
-                  'Yapost_bias':'posterior bias',
-                  'YaprioriOUTER':'prior outer region mf',
-                  'YapostOUTER':'posterior outer region mf',
-                  'Yobs':'observed mf',
-                  'uYobs_repeatability':'obs repeatability mf uncertainty',
-                  'uYobs_variability':'obs variability mf uncertainty',
-                  'uYmod':'model uncertainty',
-                  'uYtotal':'total uncertainty'}
-    var_colors = {'Yapriori':1,
-                  'Yapost':0,
-                  'YaprioriBC':1,
-                  'YapostBC':0,
-                  'Yapriori_bias':0,
-                  'Yapost_bias':1,
-                  'YaprioriOUTER':1,
-                  'YapostOUTER':0,
-                  'Yobs':0,
-                  'uYobs_repeatability':0,
-                  'uYobs_variability':0,
-                  'uYmod':1,
-                  'uYtotal':1}
         
     models = list(ds_all.keys())
-    min_mf = []
-    max_mf = []
-        
-    fig = plt.figure(constrained_layout=True,figsize=(15,7))
-    gs = fig.add_gridspec(len(models),2,width_ratios=[0.8,0.2])
+    specie_info = config_data["species_info"][specie]
 
-    ax = fig.add_subplot(gs[0])
-    ax2 = fig.add_subplot(gs[1])
+    min_mf = np.inf
+    max_mf = -np.inf
+        
+    if len(models) < 2:
+        raise ValueError('The dictionary of datasets has less than 2 keys: data from 2 model runs are needed to compute the difference.')
+    elif len(models) > 2:
+        models = models[:2]
+        logger.warning('This function plots the difference between the first 2 models. The remaining models will be neglected.')
     
+    # Create figure
+    fig, ax = plt.subplots(1, 2, figsize=(15,3), gridspec_kw={'width_ratios': [0.8,0.2]}, constrained_layout=True)
+    
+    # Get timestamps which are common to both models
     both_times0 = np.isin(ds_all[models[0]].time.values,ds_all[models[1]].time.values)
     both_times1 = np.isin(ds_all[models[1]].time.values,ds_all[models[0]].time.values)
     
     ds_all[models[0]] = ds_all[models[0]].sel(time=both_times0)
     ds_all[models[1]] = ds_all[models[1]].sel(time=both_times1)
+
+    # Get model info
+    model_info_0 = config_data["models_info"][models[0]]
+    model_info_1 = config_data["models_info"][models[1]]
     
-            
+    # Loop over all variables to plot
     for var in include:
-        try:
-            ax.scatter(ds_all[models[0]].time.values,
-                       ds_all[models[0]][var].values - ds_all[models[1]][var].values,
-                       color=model_colors[models[0]][var_colors[var]],alpha=0.5,
-                       label=f'{m_data[models[0]]["label"]} - {m_data[models[1]]["label"]}\n{var_labels[var]}',
-                       linewidth=2,s=8)
 
-        except:
-            # handle old ncdf files
-            if var == 'uYmod':
-                m00 = models[0].split('_')[0]
-                m01 = models[1].split('_')[0]
-
-                try:
-                    uYmod0 = ds_all[models[0]]['Yobs'].values - ds_all[models[0]]['qYmod'].values[:,config.model_q_indices[m00][0]]
-                    uYmod1 = ds_all[models[1]]['Yobs'].values - ds_all[models[1]]['qYmod'].values[:,config.model_q_indices[m01][0]]
-
-                    ax.scatter(ds_all[models[0]].time.values,
-                                uYmod0 - uYmod1,
-                                color=model_colors[models[0]][var_colors[var]],alpha=0.5,
-                                label=f'{m_data[models[0]]["label"]} - {m_data[models[1]]["label"]}\n{var_labels[var]}',
-                                linewidth=2,s=8)
-                    print(f'WARNING: uYmod is not present in both models. This quantity is being computed from qYmod.')
-
-                except:
-                    print(f'ERROR: {models[0]} and {models[1]} have different definitions of uYmod!')
-
-            elif var == 'uYobs_repeatability':
-                try:
-                    ax.scatter(ds_all[models[0]].time.values,
-                                ds_all[models[0]]['uYobs'].values - ds_all[models[1]]['uYobs'].values,
-                                color=model_colors[models[0]][var_colors[var]],alpha=0.5,
-                                label=f'{m_data[models[0]]["label"]} - {m_data[models[1]]["label"]}\n{var_labels[var]}',
-                                linewidth=2,s=8)
-                    print(f'WARNING: uYobs_repeatability is not present in both models. uYobs is being plotted instead.')
-
-                except:
-                    print(f'ERROR: {models[0]} and {models[1]} have different definitions of uYobs!')
-
-            else:
-                print(f'ERROR: variable {var} not found or deprecated in {models[0]} or {models[1]}!')
-
-        #if var == 'Yapost':
-        #    ax.fill_between(ds_all[m].time.values,
-        #                    ds_all[m]['qYapost'].values[:,config.model_q_indices[m0][0]],
-        #                    ds_all[m]['qYapost'].values[:,config.model_q_indices[m0][1]],
-        #                    color=model_colors[m][var_colors[var]],alpha=0.3)
-                #if var == 'YapostBC':
-                #    ax.fill_between(ds_all[m].time.values,
-                #                    ds_all[m]['qYapostBC'].values[:,config.model_q_indices[m][0]],
-                #                    ds_all[m]['qYapostBC'].values[:,config.model_q_indices[m][1]],
-                #                    color=model_colors[m][var_colors[var]],alpha=0.5)
+        for i in range(2):
+            if var not in ds_all[models[i]].keys():
+                raise KeyError(f'Variable {var} not found in {models[i]}.')
+        
+        # Make scatter plot
+        ax[0].scatter(ds_all[models[0]].time.values,
+                      ds_all[models[0]][var].values - ds_all[models[1]][var].values,
+                      color=model_colors[models[0]][config.mf_color_index[var]],
+                      alpha=0.5,
+                      label=f'{model_info_0["label"]} - {model_info_1["label"]}\n{config.mf_labels[var]}',
+                      linewidth=2,
+                      s=8
+                      )
         
     for i,m in enumerate(models):
         
-        m0 = m.split('_')[0]
-
-        # Plot histogram
+        # Get histogram variables and legend
         if len(diff_include) == 0:
-            make_diff   = False
-            vars        = include
-            legend_hist = 'Modelled mean'
+            make_diff    = False
+            hist_to_plot = include
+            legend_hist  = 'Modelled mean'
 
         else:
-            make_diff   = True
-            vars        = diff_include
-            legend_hist = 'Obs - modelled mean'
+            make_diff    = True
+            hist_to_plot = diff_include
+            legend_hist  = 'Obs - modelled mean'
 
-        for v,var in enumerate(vars):
+        for var in hist_to_plot:
 
+            if var not in ds_all[m].keys():
+                raise KeyError(f'Variable {var} not found in {m}.')
+            
             if make_diff:
-                var_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
+                var_to_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
             else:
-                try:
-                    var_plot = ds_all[m][var].values
-                except:
-                    if var == 'uYmod':
-                        var_plot = ds_all[m]['Yobs'].values - ds_all[m]['qYmod'].values[:,config.model_q_indices[m0][0]]
-                    elif var == 'uYobs_repeatability':
-                        var_plot = ds_all[m]['uYobs'].values
-                    else:
-                        continue
+                var_to_plot = ds_all[m][var].values
             
-            if np.nanmean(var_plot) <= 0.01:
-                var_mean = np.round(np.nanmean(var_plot),5)
-                var_sd = np.round(np.nanstd(var_plot),5)
-            else:
-                var_mean = np.round(np.nanmean(var_plot),2)
-                var_sd = np.round(np.nanstd(var_plot),2)
-            
-            a,b,c = ax2.hist(var_plot,bins=30,color=model_colors[m][var_colors[var]],density=1,alpha=0.7)
+            # Plot histogram            
+            a,b,c = ax[1].hist(var_to_plot,
+                               bins=30,
+                               color=model_colors[m][config.mf_color_index[var]],
+                               density=1,
+                               alpha=0.7
+                               )
             if make_diff:
-                ax2.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
+                ax[1].vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
             
-            with np.printoptions(precision=2, suppress=True):
+            # Compute and format mean and std of the histogram
+            var_mean = np.nanmean(var_to_plot)
+            var_std = np.nanstd(var_to_plot)
+            str_mean = set_min_decimal_points(var_mean)
+            str_std = set_min_decimal_points(var_std)
 
-                ax2.annotate('$\mu$: '+str(var_mean)+'\n$\sigma$: '+str(var_sd),xy=annotate_coords[i],
-                                xycoords='axes fraction',color=model_colors[m][var_colors[var]])
+            # Write mean/std to histogram
+            ax[1].annotate(f'$\mu$: {str_mean}\n$\sigma$: {str_std}',
+                           xy=annotate_coords[i],
+                           xycoords='axes fraction',
+                           color=model_colors[m][config.mf_color_index[var]]
+                           )
         
-    ax2.set_xlabel(legend_hist)
+    # Set histogram x-axis label
+    ax[1].set_xlabel(legend_hist)
 
-    min_mf.append(ax.get_ylim()[0])
-    max_mf.append(ax.get_ylim()[1])
+    # Get timeseries y-axis minimum and maximum
+    min_mf = min(min_mf, ax[0].get_ylim()[0])
+    max_mf = max(max_mf, ax[0].get_ylim()[1])
     
-    ax.set_title(f'{m_data[models[0]]["label"]} - {m_data[models[1]]["label"]}')
-    ax.set_ylabel(f'{s_data[species]["species_print"]} {site} ({s_data[species]["mf_units_print"]})')
-    leg = ax.legend(ncol=2,borderpad=.2,columnspacing=1.0)
+    # Set timeseries title, y-axis label and legend
+    ax[0].set_title(f'{model_info_0["label"]} - {model_info_1["label"]}')
+    ax[0].set_ylabel(f'{specie_info["species_print"]} {site} ({specie_info["mf_units_print"]})')
+    leg = ax[0].legend(ncol=2,borderpad=.2,columnspacing=1.0)
     try:
         for l in leg.legend_handles:
             l.set_linewidth(5.0)
@@ -457,23 +410,23 @@ def plot_obs_diff(ds_all,species,site,
         for l in leg.legendHandles:
             l.set_linewidth(5.0)
     
+    # Set timeseries x-axis ticks
     if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
-        ax.xaxis.set_minor_locator(MonthLocator())
-        ax.xaxis.set_minor_formatter(NullFormatter())
-        ax.xaxis.set_major_locator(YearLocator())
+        ax[0].xaxis.set_minor_locator(MonthLocator())
+        ax[0].xaxis.set_minor_formatter(NullFormatter())
+        ax[0].xaxis.set_major_locator(YearLocator())
     else:
-        ax.xaxis.set_major_locator(MonthLocator())
+        ax[0].xaxis.set_major_locator(MonthLocator())
         if (ppt_mode):
-            ax.tick_params(axis='x', rotation=70)
+            ax[0].tick_params(axis='x', rotation=70)
         
+    # Set timeseries y-axis min/max   
     if y_lim is None:
-        ax.set_ylim([min(min_mf)-(0.02*min(min_mf)),
-                                max(max_mf)+(0.05*max(max_mf))])
+        ax[0].set_ylim([min_mf - 0.02*min_mf, max_mf + 0.05*max_mf])
     else:
-        ax.set_ylim(y_lim)
+        ax[0].set_ylim(y_lim)
         
-    print('NOTE: If all the data is not within axis limits, adjust the set_ylim')
-    print('NOTE: If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
+    logger.info('If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
     
     return fig
 
