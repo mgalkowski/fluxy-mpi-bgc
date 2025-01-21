@@ -45,7 +45,7 @@ def read_config_files() -> dict:
     return data_dict
 
 
-def read_flux_total_fgases(data_dir,specie,models,config_data,regions,
+def read_flux_total_fgases(data_dir,species,models,config_data,regions,
                            start_date,end_date,period_override=None,apply_pop_scale=True):
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
@@ -55,7 +55,7 @@ def read_flux_total_fgases(data_dir,specie,models,config_data,regions,
     Args:
         data_dir (str): 
             Path to top data directory.
-        specie (str): 
+        species (str): 
             'all_hfc' or 'all_pfc'
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
@@ -78,10 +78,10 @@ def read_flux_total_fgases(data_dir,specie,models,config_data,regions,
             xarray dataset read directly from each model's flux netCDF.
     """
     
-    if specie == 'all_hfc':
+    if species == 'all_hfc':
         all_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
                        'hfc227ea','hfc245fa','hfc32','hfc365mfc'] #,'hfc4310mee']
-    elif specie == 'all_pfc':
+    elif species == 'all_pfc':
         all_species = ['cf4','pfc116','pfc218','pfc318']
     else:
         raise ValueError('This function can only be used to read total hfc (all_hfc) or total pfc (all_pfc).')
@@ -113,26 +113,26 @@ def read_flux_total_fgases(data_dir,specie,models,config_data,regions,
         missing_species[model] = []
         m0 = model.split('_')[0]
         
-        for s,specie in enumerate(all_species):
+        for s,species in enumerate(all_species):
 
             
             #dictionary containing datasets for each species, these are then summed/averaged across the time coordinate
             ds_out = {}
 
-            specie_info = config_data['species_info'][specie]
+            species_info = config_data['species_info'][species]
             
             #tries to read from standard filename
             try:
-                model_read = f'{m0}_{specie_info["std_run"][m0]}'
+                model_read = f'{m0}_{species_info["std_run"][m0]}'
                 if 'longrun' in model: model_read = f'{model_read}_longrun'
                 
-                ds_in[model] = read_model_output(data_dir,"flux",specie,[model_read],config_data,period_override[s])[model_read]
+                ds_in[model] = read_model_output(data_dir,"flux",species,[model_read],config_data,period_override[s])[model_read]
                 ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],config_data,scale_units=False)[model]
 
             except:
                 ds_in[model] = None
-                if specie not in missing_species[model]:
-                    missing_species[model].append(specie)
+                if species not in missing_species[model]:
+                    missing_species[model].append(species)
 
             for r,region in enumerate(regions):
                 
@@ -142,13 +142,13 @@ def read_flux_total_fgases(data_dir,specie,models,config_data,regions,
                     region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region,apply_pop_scale,verbose=False)
                     
                     #for percentiles, first convert to upper and lower standard deviations (difference from mean)
-                    region_flux_total_posterior_lower = (region_flux_total_posterior-region_flux_total_posterior_lower) * 1e3 * specie_info['gwp'] * 1e-12
-                    region_flux_total_posterior_upper = (region_flux_total_posterior_upper-region_flux_total_posterior) * 1e3 * specie_info['gwp'] * 1e-12
-                    region_flux_total_prior_lower = (region_flux_total_prior-region_flux_total_prior_lower) * 1e3 * specie_info['gwp'] * 1e-12
-                    region_flux_total_prior_upper = (region_flux_total_prior_upper-region_flux_total_prior) * 1e3 * specie_info['gwp'] * 1e-12
+                    region_flux_total_posterior_lower = (region_flux_total_posterior-region_flux_total_posterior_lower) * 1e3 * species_info['gwp'] * 1e-12
+                    region_flux_total_posterior_upper = (region_flux_total_posterior_upper-region_flux_total_posterior) * 1e3 * species_info['gwp'] * 1e-12
+                    region_flux_total_prior_lower = (region_flux_total_prior-region_flux_total_prior_lower) * 1e3 * species_info['gwp'] * 1e-12
+                    region_flux_total_prior_upper = (region_flux_total_prior_upper-region_flux_total_prior) * 1e3 * species_info['gwp'] * 1e-12
                     
-                    region_flux_total_posterior = region_flux_total_posterior * 1e3 * specie_info['gwp'] * 1e-12
-                    region_flux_total_prior = region_flux_total_prior * 1e3 * specie_info['gwp'] * 1e-12
+                    region_flux_total_posterior = region_flux_total_posterior * 1e3 * species_info['gwp'] * 1e-12
+                    region_flux_total_prior = region_flux_total_prior * 1e3 * species_info['gwp'] * 1e-12
 
                     #fix to replace rhime's timestamps, which aren't always in the centre of the inversion period
                     # which breaks the .sum() steps below if trying to include data from missing species
@@ -165,7 +165,7 @@ def read_flux_total_fgases(data_dir,specie,models,config_data,regions,
                 
                 except:
                     # create empty set of values for this region and species, so it can be skipped if needed
-                    print(f'No {specie} {region} fluxes found for {model} check directory paths and netcdf contents.')
+                    print(f'No {species} {region} fluxes found for {model} check directory paths and netcdf contents.')
                     region_time = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),np.datetime64(end_date[m]).astype('datetime64[Y]'),
                                             np.timedelta64(1,'Y')).astype('datetime64[ns]')
                     region_time_extended = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),
@@ -180,8 +180,8 @@ def read_flux_total_fgases(data_dir,specie,models,config_data,regions,
                     region_flux_total_prior_lower,region_flux_total_prior_upper = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
                     region_flux_total_posterior,region_flux_total_prior = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
                  
-                    if specie not in missing_species[model]:
-                        missing_species[model].append(specie)
+                    if species not in missing_species[model]:
+                        missing_species[model].append(species)
                         
                 #print(f'{model} {species}')
                 #print(region_time)
