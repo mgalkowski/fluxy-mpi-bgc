@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def plot_mf_timeseries(
+def plot_mole_fraction(
         ds_all: dict[str, xr.Dataset],
         specie: str,
         site: str,
@@ -144,72 +144,19 @@ def plot_mf_timeseries(
                                        color=plot_color,
                                        alpha=0.4,
                                        fmt='none')                  
+        
+        # Plot histogram
+        plot_histogram(ax[iax,1],
+                       ds_all[m],
+                       m,
+                       vars_to_plot,
+                       diff_include,
+                       model_colors[m],
+                       ppt_mode,
+                       annotate_coords,
+                       annotate_index=i,
+                       plot_type=plot_type)
 
-        # Get histogram variables and legend
-        if len(diff_include) == 0:
-            make_diff    = False
-            hist_to_plot = vars_to_plot
-            legend_hist  = 'Modelled mean'
-
-        else:
-            make_diff    = True
-            hist_to_plot = diff_include
-            legend_hist  = 'Obs - modelled mean'
-
-        # Loop over all variables to plot in histogram
-        for v,var in enumerate(hist_to_plot):
-            
-            if var not in ds_all[m].keys():
-                raise KeyError(f'Variable {var} not found in {m}.')
-            
-            if make_diff:
-                var_to_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            else:
-                var_to_plot = ds_all[m][var].values
-
-            # Plot histogram
-            a,b,c = ax[iax,1].hist(var_to_plot,
-                                   bins=30,
-                                   color=model_colors[m][config.mf_color_index[var]],
-                                   density=1
-                                   )
-            if make_diff:
-                ax[iax,1].vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
-            
-            if plot_type == 'separate':
-                index = v
-            elif plot_type == 'together':
-                index = i
-            
-            # Compute and format mean and std of the histogram
-            var_mean = np.nanmean(var_to_plot)
-            var_std = np.nanstd(var_to_plot)
-            str_mean = set_min_decimal_points(var_mean)
-            str_std = set_min_decimal_points(var_std)
-
-            # Write mean/std to histogram
-            ax[iax,1].annotate(f'$\mu$: {str_mean}\n$\sigma$: {str_std}',
-                               xy=annotate_coords[index],
-                               xycoords='axes fraction',
-                               color=model_colors[m][config.mf_color_index[var]]
-                               )
-
-        # Write number of obs
-        if plot_type == 'separate':
-            n_obs = (~np.isnan(ds_all[m]['Yobs'].values)).sum()
-            if (ppt_mode):
-                pos_xy = [0.57,1.05]
-            else:
-                pos_xy = [0.65,1.05]
-            ax[iax,1].annotate('$N_{obs}$: '+str(n_obs),
-                               xy=pos_xy,
-                               xycoords='axes fraction',
-                               color='k'
-                               )
-
-        # Set histogram x-axis label
-        ax[iax,1].set_xlabel(legend_hist)
-    
         # Get timeseries y-axis minimum and maximum
         min_mf = min(min_mf, ax[iax,0].get_ylim()[0])
         max_mf = max(max_mf, ax[iax,0].get_ylim()[1])
@@ -253,7 +200,7 @@ def plot_mf_timeseries(
     
     return fig
 
-def plot_mf_diff(
+def plot_mole_fraction_diff(
         ds_all: dict[str, xr.Dataset],
         specie: str,
         site: str,
@@ -345,56 +292,7 @@ def plot_mf_diff(
                       linewidth=2,
                       s=8
                       )
-        
-    for i,m in enumerate(models):
-        
-        # Get histogram variables and legend
-        if len(diff_include) == 0:
-            make_diff    = False
-            hist_to_plot = include
-            legend_hist  = 'Modelled mean'
-
-        else:
-            make_diff    = True
-            hist_to_plot = diff_include
-            legend_hist  = 'Obs - modelled mean'
-
-        for var in hist_to_plot:
-
-            if var not in ds_all[m].keys():
-                raise KeyError(f'Variable {var} not found in {m}.')
-            
-            if make_diff:
-                var_to_plot = ds_all[m]['Yobs'].values - ds_all[m][var].values
-            else:
-                var_to_plot = ds_all[m][var].values
-            
-            # Plot histogram            
-            a,b,c = ax[1].hist(var_to_plot,
-                               bins=30,
-                               color=model_colors[m][config.mf_color_index[var]],
-                               density=1,
-                               alpha=0.7
-                               )
-            if make_diff:
-                ax[1].vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
-            
-            # Compute and format mean and std of the histogram
-            var_mean = np.nanmean(var_to_plot)
-            var_std = np.nanstd(var_to_plot)
-            str_mean = set_min_decimal_points(var_mean)
-            str_std = set_min_decimal_points(var_std)
-
-            # Write mean/std to histogram
-            ax[1].annotate(f'$\mu$: {str_mean}\n$\sigma$: {str_std}',
-                           xy=annotate_coords[i],
-                           xycoords='axes fraction',
-                           color=model_colors[m][config.mf_color_index[var]]
-                           )
-        
-    # Set histogram x-axis label
-    ax[1].set_xlabel(legend_hist)
-
+       
     # Get timeseries y-axis minimum and maximum
     min_mf = min(min_mf, ax[0].get_ylim()[0])
     max_mf = max(max_mf, ax[0].get_ylim()[1])
@@ -411,7 +309,7 @@ def plot_mf_diff(
             l.set_linewidth(5.0)
     
     # Set timeseries x-axis ticks
-    if int(ds_all[m].time.values[-1].astype('datetime64[M]')-ds_all[m].time.values[0].astype('datetime64[M]')) > 12:
+    if int(ds_all[models[0]].time.values[-1].astype('datetime64[M]')-ds_all[models[0]].time.values[0].astype('datetime64[M]')) > 12:
         ax[0].xaxis.set_minor_locator(MonthLocator())
         ax[0].xaxis.set_minor_formatter(NullFormatter())
         ax[0].xaxis.set_major_locator(YearLocator())
@@ -426,6 +324,20 @@ def plot_mf_diff(
     else:
         ax[0].set_ylim(y_lim)
         
+    # Plot histogram
+    for i,m in enumerate(models):
+        plot_histogram(ax[1],
+                       ds_all[m],
+                       m,
+                       include,
+                       diff_include,
+                       model_colors[m],
+                       ppt_mode,
+                       annotate_coords,
+                       annotate_index=i,
+                       plot_type='together'
+                       )
+    
     logger.info('If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
     
     return fig
@@ -495,3 +407,84 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,m_data):
     plt.legend(loc='upper right')
     
     return fig
+
+def plot_histogram(axis,
+                   ds: xr.Dataset,
+                   model: str,
+                   vars_to_plot: list[str],
+                   diff_include: list[str],
+                   model_color: list[str],
+                   ppt_mode: bool,
+                   annotate_coords: dict[int, list],
+                   annotate_index: int,
+                   plot_type: Literal['separate','together']
+):
+
+    # Get histogram variables and legend
+    if len(diff_include) == 0:
+        make_diff    = False
+        hist_to_plot = vars_to_plot
+        legend_hist  = 'Modelled mean'
+
+    else:
+        make_diff    = True
+        hist_to_plot = diff_include
+        legend_hist  = 'Obs - modelled mean'
+
+    # Loop over all variables to plot in histogram
+    for v,var in enumerate(hist_to_plot):
+        
+        if var not in ds.keys():
+            raise KeyError(f'Variable {var} not found in {model}.')
+        
+        if make_diff:
+            var_to_plot = ds['Yobs'].values - ds[var].values
+        else:
+            var_to_plot = ds[var].values
+
+        # Plot histogram
+        a,b,c = axis.hist(var_to_plot,
+                          bins=30,
+                          color=model_color[config.mf_color_index[var]],
+                          density=1
+                          )
+
+        if make_diff:
+            axis.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
+        
+        if plot_type == 'separate':
+            index = v
+        elif plot_type == 'together':
+            index = annotate_index
+        
+        # Compute and format mean and std of the histogram
+        var_mean = np.nanmean(var_to_plot)
+        var_std = np.nanstd(var_to_plot)
+        str_mean = set_min_decimal_points(var_mean)
+        str_std = set_min_decimal_points(var_std)
+
+        # Write mean/std to histogram
+        axis.annotate(f'$\mu$: {str_mean}\n$\sigma$: {str_std}',
+                      xy=annotate_coords[index],
+                      xycoords='axes fraction',
+                      color=model_color[config.mf_color_index[var]]
+                      )
+
+    # Write number of obs
+    if plot_type == 'separate':
+        n_obs = (~np.isnan(ds['Yobs'].values)).sum()
+        if (ppt_mode):
+            pos_xy = [0.57,1.05]
+        else:
+            pos_xy = [0.65,1.05]
+
+        axis.annotate('$N_{obs}$: '+str(n_obs),
+                      xy=pos_xy,
+                      xycoords='axes fraction',
+                      color='k'
+                      )
+
+    # Set histogram x-axis label
+    axis.set_xlabel(legend_hist)
+
+    return None

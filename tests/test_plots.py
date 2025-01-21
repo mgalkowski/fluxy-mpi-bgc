@@ -12,8 +12,8 @@ from fluxy.plots.flux_map import (
 )
 from fluxy.plots.flux_timeseries import plot_country_flux
 from fluxy.plots.mf_timeseries import (
-    plot_mf_diff,
-    plot_mf_timeseries,
+    plot_mole_fraction_diff,
+    plot_mole_fraction,
     plot_sites_timeseries,
 )
 
@@ -192,7 +192,7 @@ def test_mf_timeseries():
 
 
 def test_obs_modelled_separate():
-    fig = plot_mf_timeseries(
+    fig = plot_mole_fraction(
         ds_all_mf_sliced,
         specie,
         site,
@@ -209,7 +209,7 @@ def test_obs_modelled_separate():
 
 def test_obs_modelled_together():
 
-    fig = plot_mf_timeseries(
+    fig = plot_mole_fraction(
         ds_all_mf_sliced,
         specie,
         site,
@@ -223,8 +223,8 @@ def test_obs_modelled_together():
     )
 
 
-def test_mf_diff():
-    fig = plot_mf_diff(
+def test_mole_fraction_diff():
+    fig = plot_mole_fraction_diff(
         ds_all_mf_sliced,
         specie,
         site,
