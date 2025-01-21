@@ -8,6 +8,7 @@ import logging
 from pathlib import Path
 from typing import Literal
 
+from fluxy import config
 from fluxy.operators.regions import extract_region_flux
 from fluxy.operators.select import slice_flux
 
@@ -44,83 +45,7 @@ def read_config_files() -> dict:
     return data_dict
 
 
-def read_flux(data_dir,species,models,s_data,m_data,period_override=None,verbose=True):
-    """
-    Extracts flux and country flux timeseries from each model.
-    
-    Args:
-        data_dir (str): 
-            Path to top data directory.
-        species (str): 
-            Gas species, e.g. 'ch4'.
-        models (list of str): 
-            Keys specifying model names, e.g. ['intem','elris']
-        s_data (dict of dict):
-            Dictionary of species with information for plotting (read from json file).
-        m_data (dict of dict):
-            Dictionary of inversion runs with filename and plot label (read from json file).
-        period_override (list of str) (optional):
-            Inversion periods to include, to override the standards in species_info.json.
-            Must be the same length as models, e.g. ['monthly',None,'yearly']
-        verbose (logical) (optional):
-            If True, print execution tracking messages.
-                                       
-    Returns:
-        ds_all (dictionary of datasets): 
-            xarray dataset read directly from each model's flux netCDF.
-    """
-    
-    period_all = {}
-    
-    if period_override != None and len(period_override) != len(models):
-        print('ERROR: if using period_override, this list must be the same length as models.')
-        return None
-    
-    for i,m in enumerate(models):
-        if period_override is not None:
-            if period_override[i] is not None:
-                period_all[m] = period_override[i]
-            else:
-                period_all[m] = s_data[species]["period"]
-        else:
-            period_all[m] = s_data[species]["period"]
-    
-    ds_all = {}
-
-    for m in models:
-        if verbose: print(f'\nAttempting to read data from {m}')
-        
-        m0 = m.split('_')[0]
-        
-        model_dir = m_data[m]["filename"].split('_')[0]
-
-        try:
-            filepath = glob.glob(os.path.join(data_dir,model_dir,species,
-                                              f'{m_data[m]["filename"]}_{s_data[species]["model_species"][m0]}_{period_all[m]}.nc'))
-            if verbose: print(f'Reading data from: {filepath[0]}')
-            with xr.open_dataset(filepath[0]) as in_ds:
-                ds_all[m] = in_ds
-                if verbose: print('Done!')
-        except:
-            try:
-                if (m_data[m]["filename"].split('_')[-1] == 'std*'):
-                    alternative_filename = f'{m_data[m]["filename"][0:-5]}_{m0}_obs_{m0}_baseline_optimized'
-                    filepath = glob.glob(os.path.join(data_dir,model_dir,species,f'{alternative_filename}_{s_data[species]["model_species"][m0]}_{period_all[m]}.nc'))
-                    print(f'Cannot find {m} file for {species}. Reading data from: {filepath[0]}')
-                    with xr.open_dataset(filepath[0]) as in_ds:
-                        ds_all[m] = in_ds
-                    print('Done!')
-                else:
-                    print(f'\nFailed!')
-                    print(f'Cannot find {m} file for {species}. This data will not be included.')
-            except:
-                print(f'Failed!')
-                print(f'Cannot find {m} file for {species}. This data will not be included.')
-    
-    return ds_all
-
-
-def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
+def read_flux_total_fgases(data_dir,species,models,config_data,regions,
                            start_date,end_date,period_override=None,apply_pop_scale=True):
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
@@ -136,8 +61,9 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
             Keys specifying model names, e.g. ['intem','elris']
         regions (list of str):
             Region names used to extract fluxes. Only these regions can then be plotted.
-        s_data (dict of dict):
-            Dictionary of species with information for plotting (read from json file).
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filenames as keys.
         start_date (str):
             Date to slice data from, e.g. '2021-01-01'
         end_date (str):
@@ -192,14 +118,16 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
             
             #dictionary containing datasets for each species, these are then summed/averaged across the time coordinate
             ds_out = {}
+
+            species_info = config_data['species_info'][species]
             
             #tries to read from standard filename
             try:
-                model_read = f'{m0}_{s_data[species]["std_run"][m0]}'
+                model_read = f'{m0}_{species_info["std_run"][m0]}'
                 if 'longrun' in model: model_read = f'{model_read}_longrun'
                 
-                ds_in[model] = read_flux(data_dir,species,[model_read],s_data,m_data,period_override[s],verbose=False)[model_read]    #edit read_flux so that it searches for correct filename per gas
-                ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],s_data,scale_units=False,species=None)[model]
+                ds_in[model] = read_model_output(data_dir,"flux",species,[model_read],config_data,period_override[s])[model_read]
+                ds_in[model] = slice_flux(ds_in,start_date[m],end_date[m],config_data,scale_units=False)[model]
 
             except:
                 ds_in[model] = None
@@ -214,13 +142,13 @@ def read_flux_total_fgases(data_dir,species,models,s_data,m_data,regions,
                     region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region,apply_pop_scale,verbose=False)
                     
                     #for percentiles, first convert to upper and lower standard deviations (difference from mean)
-                    region_flux_total_posterior_lower = (region_flux_total_posterior-region_flux_total_posterior_lower) * 1e3 * s_data[species]['gwp'] * 1e-12
-                    region_flux_total_posterior_upper = (region_flux_total_posterior_upper-region_flux_total_posterior) * 1e3 * s_data[species]['gwp'] * 1e-12
-                    region_flux_total_prior_lower = (region_flux_total_prior-region_flux_total_prior_lower) * 1e3 * s_data[species]['gwp'] * 1e-12
-                    region_flux_total_prior_upper = (region_flux_total_prior_upper-region_flux_total_prior) * 1e3 * s_data[species]['gwp'] * 1e-12
+                    region_flux_total_posterior_lower = (region_flux_total_posterior-region_flux_total_posterior_lower) * 1e3 * species_info['gwp'] * 1e-12
+                    region_flux_total_posterior_upper = (region_flux_total_posterior_upper-region_flux_total_posterior) * 1e3 * species_info['gwp'] * 1e-12
+                    region_flux_total_prior_lower = (region_flux_total_prior-region_flux_total_prior_lower) * 1e3 * species_info['gwp'] * 1e-12
+                    region_flux_total_prior_upper = (region_flux_total_prior_upper-region_flux_total_prior) * 1e3 * species_info['gwp'] * 1e-12
                     
-                    region_flux_total_posterior = region_flux_total_posterior * 1e3 * s_data[species]['gwp'] * 1e-12
-                    region_flux_total_prior = region_flux_total_prior * 1e3 * s_data[species]['gwp'] * 1e-12
+                    region_flux_total_posterior = region_flux_total_posterior * 1e3 * species_info['gwp'] * 1e-12
+                    region_flux_total_prior = region_flux_total_prior * 1e3 * species_info['gwp'] * 1e-12
 
                     #fix to replace rhime's timestamps, which aren't always in the centre of the inversion period
                     # which breaks the .sum() steps below if trying to include data from missing species
