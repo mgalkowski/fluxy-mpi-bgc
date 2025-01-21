@@ -12,7 +12,7 @@ from fluxy.plots.flux_map import (
 )
 from fluxy.plots.flux_timeseries import plot_country_flux
 from fluxy.plots.mf_timeseries import (
-    plot_obs_diff,
+    plot_mf_diff,
     plot_mf_timeseries,
     plot_sites_timeseries,
 )
@@ -223,14 +223,13 @@ def test_obs_modelled_together():
     )
 
 
-def test_obs_diff():
-    fig = plot_obs_diff(
+def test_mf_diff():
+    fig = plot_mf_diff(
         ds_all_mf_sliced,
         specie,
         site,
         model_colors,
-        config_data["species_info"],
-        config_data["models_info"],
+        config_data,
         annotate_coords,
         include=["Yapost"],
         diff_include=["Yapost"],
