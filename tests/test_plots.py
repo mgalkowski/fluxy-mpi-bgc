@@ -12,11 +12,10 @@ from fluxy.plots.flux_map import (
 )
 from fluxy.plots.flux_timeseries import plot_country_flux
 from fluxy.plots.mf_timeseries import (
-    plot_mole_fraction_diff,
-    plot_mole_fraction,
+    plot_mf_timeseries,
     plot_sites_timeseries,
 )
-
+from fluxy.operators.mf import compute_diff_dataset
 
 data_dir = Path(fluxy.__path__[0]).parent / "data" / "tests"
 
@@ -192,7 +191,7 @@ def test_mf_timeseries():
 
 
 def test_obs_modelled_separate():
-    fig = plot_mole_fraction(
+    fig = plot_mf_timeseries(
         ds_all_mf_sliced,
         specie,
         site,
@@ -209,7 +208,7 @@ def test_obs_modelled_separate():
 
 def test_obs_modelled_together():
 
-    fig = plot_mole_fraction(
+    fig = plot_mf_timeseries(
         ds_all_mf_sliced,
         specie,
         site,
@@ -224,15 +223,19 @@ def test_obs_modelled_together():
 
 
 def test_mole_fraction_diff():
-    fig = plot_mole_fraction_diff(
-        ds_all_mf_sliced,
+
+    ds_diff = compute_diff_dataset(ds_all_mf_sliced.copy(), models[:2])
+
+    fig = plot_mf_timeseries(
+        ds_diff,
         specie,
         site,
         model_colors,
         config_data,
         annotate_coords,
-        include=["Yapost"],
-        diff_include=["Yapost"],
+        plot_type='diff',
+        include={'Yobs': None},
+        diff_include=None,
         y_lim=None,
     )
 
