@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def plot_mole_fraction(
+def plot_mf_timeseries(
         ds_all: dict[str, xr.Dataset],
         specie: str,
         site: str,
@@ -18,10 +18,10 @@ def plot_mole_fraction(
         config_data: dict[str, dict],
         annotate_coords: dict[int, list],
         ppt_mode: bool = False,
-        plot_type: Literal['separate','together'] = 'separate',
+        plot_type: Literal['separate','together','diff'] = 'separate',
         include: dict[str, str | None] = {'Yobs': None,
                                           'Yapost': 'qYapost'},
-        diff_include: list[str] = ['Yapriori','Yapost'],
+        diff_include: list[str] | None = None,
         y_lim: None | list[float] = None
 ):
     """
@@ -52,7 +52,7 @@ def plot_mole_fraction(
             The respective values are the uncertainty variables to plot as error bar/uncertainty band.
         diff_include (list of str):
             Variables included in the 'obs - variable' difference histogram.
-            If empty list, plots the histogram of the variables specified in include.
+            If None, plots the histogram of the variables specified in include.
         y_lim (list of float, optional):
             Mix/max y axis limits to apply to all plots.
     Returns:
@@ -70,10 +70,10 @@ def plot_mole_fraction(
     # Define number of rows in figure
     if plot_type == 'separate':
         nrows = len(models)
-    elif plot_type == 'together':
+    elif plot_type in ['together', 'diff']:
         nrows = 1
     else:
-        raise ValueError(f'Option {plot_type} not implemented. Set plot_type to \'separate\' or \'together\'.')
+        raise ValueError(f'Option {plot_type} not implemented. Set plot_type to \'separate\', \'together\' or \'diff\'.')
     
     # Create figure
     fig, ax = plt.subplots(nrows, 2, figsize=(15,nrows*3), gridspec_kw={'width_ratios': [0.8,0.2]}, constrained_layout=True)
@@ -85,13 +85,21 @@ def plot_mole_fraction(
     for i,m in enumerate(models):
         
         m0 = m.split('_')[0]
-        model_info = config_data["models_info"][m]
 
-        # Define axis index
+        # Define plot_type specific settings
         if plot_type == 'separate':
-            iax = i
+            iax = i #axis index
+            model_label = config_data["models_info"][m]["label"]
+            model_color = model_colors[m]
         elif plot_type == 'together':
             iax = 0
+            model_label = config_data["models_info"][m]["label"]
+            model_color = model_colors[m]
+        elif plot_type == 'diff':
+            iax = 0
+            mdiff0, mdiff1 = m.split('-')
+            model_label = f'{config_data["models_info"][mdiff0]["label"]} - {config_data["models_info"][mdiff1]["label"]}'
+            model_color = model_colors[mdiff0]
         
         # Loop over all variables to plot
         for var in vars_to_plot:
@@ -100,16 +108,16 @@ def plot_mole_fraction(
                 raise KeyError(f'Variable {var} not found in {m}.')
             
             # Define plotting color
-            plot_color = model_colors[m][config.mf_color_index[var]]
+            plot_color = model_color[config.mf_color_index[var]]
             if var == 'Yobs' and len(vars_to_plot) > 1:
                 plot_color = 'black'                
 
-            if var == 'Yobs':
+            if var == 'Yobs' or plot_type == 'diff':
                 # Make scatter plot
                 ax[iax,0].scatter(ds_all[m].time.values,
                                   ds_all[m][var].values,
                                   color=plot_color,
-                                  label=f'Obs ({model_info["label"]})',
+                                  label=f'{model_label} {config.mf_labels[var]}',
                                   s=8,
                                   alpha=0.8,
                                   marker='s')        
@@ -120,11 +128,14 @@ def plot_mole_fraction(
                                ds_all[m][var].values,
                                color=plot_color,alpha=0.8,
                                linewidth=2.,
-                               label=f'{model_info["label"]} {config.mf_labels[var]}')
+                               label=f'{model_label} {config.mf_labels[var]}')
 
             unc_var = include[var]
 
             if unc_var:
+                if plot_type == 'diff':
+                    raise ValueError(f'Option plot_type=\'diff\' does not accept uncertainties. Replace \'{unc_var}\' by None.')
+
                 if unc_var not in ds_all[m].keys():
                     raise KeyError(f'Variable {unc_var} not found in {m}.')
 
@@ -151,7 +162,7 @@ def plot_mole_fraction(
                        m,
                        vars_to_plot,
                        diff_include,
-                       model_colors[m],
+                       model_color,
                        ppt_mode,
                        annotate_coords,
                        annotate_index=i,
@@ -162,8 +173,8 @@ def plot_mole_fraction(
         max_mf = max(max_mf, ax[iax,0].get_ylim()[1])
         
         # Set timeseries title
-        if plot_type == 'separate':
-            plot_title = model_info["label"]
+        if plot_type in ['separate','diff']:
+            plot_title = model_label
         elif plot_type == 'together':
             plot_title = 'All models'
         ax[iax,0].set_title(plot_title)
@@ -199,149 +210,6 @@ def plot_mole_fraction(
     logger.info('If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
     
     return fig
-
-def plot_mole_fraction_diff(
-        ds_all: dict[str, xr.Dataset],
-        specie: str,
-        site: str,
-        model_colors: dict[str, str],
-        config_data: dict[str, dict],
-        annotate_coords: dict[int, list],
-        ppt_mode: bool = False,
-        include: list[str] = ['Yapost'],
-        diff_include: list[str] = ['Yapost'],
-        y_lim: None | list[float] = None
-):
-    """
-    Plot of the absolute difference between variables from two models.
-    Also includes a histogram for each model, showing the difference between
-    the 'diff_include' variables and the observations or the histograms of
-    the 'include' variables.
-    
-    If more than two models are included in ds_all, only the first two
-    models will be plotted.
-    
-    Args:
-        ds_all (dictionary of datasets):
-            xarray datasets, scaled and sliced between chosen dates and for 
-            chosen site.
-        specie (str): 
-            Gas species, e.g. 'ch4'.
-        site (str):
-            Obs site, e.g. 'MHD'.
-        model_colors (dict of str):
-            Models and corresponding colours used to plot the model.
-        config_data (dict of dict):
-            Dictionary with settings read from json file.
-            Use json filenames as keys.
-        annotate_coords (dict of lists):
-            Coordinates to annotate histogram.
-        ppt_mode (logical) (optional):
-            If True, adjust xlabel rotation to accomodate bigger fonts.
-        include (list of str):
-            Variables to include in the plot.
-        diff_include (list of str):
-            Variables included in the 'obs - variable' difference histogram.
-            If empty list, plots the histogram of the variables specified in include.
-        y_lim (list of float, optional):
-            Mix/max y axis limits to apply to all plots.
-    Returns:
-        fig (figure): 
-            A timeseries and histogram plot for each model included.
-    """
-        
-    models = list(ds_all.keys())
-    specie_info = config_data["species_info"][specie]
-
-    min_mf = np.inf
-    max_mf = -np.inf
-        
-    if len(models) < 2:
-        raise ValueError('The dictionary of datasets has less than 2 keys: data from 2 model runs are needed to compute the difference.')
-    elif len(models) > 2:
-        models = models[:2]
-        logger.warning('This function plots the difference between the first 2 models. The remaining models will be neglected.')
-    
-    # Create figure
-    fig, ax = plt.subplots(1, 2, figsize=(15,3), gridspec_kw={'width_ratios': [0.8,0.2]}, constrained_layout=True)
-    
-    # Get timestamps which are common to both models
-    both_times0 = np.isin(ds_all[models[0]].time.values,ds_all[models[1]].time.values)
-    both_times1 = np.isin(ds_all[models[1]].time.values,ds_all[models[0]].time.values)
-    
-    ds_all[models[0]] = ds_all[models[0]].sel(time=both_times0)
-    ds_all[models[1]] = ds_all[models[1]].sel(time=both_times1)
-
-    # Get model info
-    model_info_0 = config_data["models_info"][models[0]]
-    model_info_1 = config_data["models_info"][models[1]]
-    
-    # Loop over all variables to plot
-    for var in include:
-
-        for i in range(2):
-            if var not in ds_all[models[i]].keys():
-                raise KeyError(f'Variable {var} not found in {models[i]}.')
-        
-        # Make scatter plot
-        ax[0].scatter(ds_all[models[0]].time.values,
-                      ds_all[models[0]][var].values - ds_all[models[1]][var].values,
-                      color=model_colors[models[0]][config.mf_color_index[var]],
-                      alpha=0.5,
-                      label=f'{model_info_0["label"]} - {model_info_1["label"]}\n{config.mf_labels[var]}',
-                      linewidth=2,
-                      s=8
-                      )
-       
-    # Get timeseries y-axis minimum and maximum
-    min_mf = min(min_mf, ax[0].get_ylim()[0])
-    max_mf = max(max_mf, ax[0].get_ylim()[1])
-    
-    # Set timeseries title, y-axis label and legend
-    ax[0].set_title(f'{model_info_0["label"]} - {model_info_1["label"]}')
-    ax[0].set_ylabel(f'{specie_info["species_print"]} {site} ({specie_info["mf_units_print"]})')
-    leg = ax[0].legend(ncol=2,borderpad=.2,columnspacing=1.0)
-    try:
-        for l in leg.legend_handles:
-            l.set_linewidth(5.0)
-    except:
-        for l in leg.legendHandles:
-            l.set_linewidth(5.0)
-    
-    # Set timeseries x-axis ticks
-    if int(ds_all[models[0]].time.values[-1].astype('datetime64[M]')-ds_all[models[0]].time.values[0].astype('datetime64[M]')) > 12:
-        ax[0].xaxis.set_minor_locator(MonthLocator())
-        ax[0].xaxis.set_minor_formatter(NullFormatter())
-        ax[0].xaxis.set_major_locator(YearLocator())
-    else:
-        ax[0].xaxis.set_major_locator(MonthLocator())
-        if (ppt_mode):
-            ax[0].tick_params(axis='x', rotation=70)
-        
-    # Set timeseries y-axis min/max   
-    if y_lim is None:
-        ax[0].set_ylim([min_mf - 0.02*min_mf, max_mf + 0.05*max_mf])
-    else:
-        ax[0].set_ylim(y_lim)
-        
-    # Plot histogram
-    for i,m in enumerate(models):
-        plot_histogram(ax[1],
-                       ds_all[m],
-                       m,
-                       include,
-                       diff_include,
-                       model_colors[m],
-                       ppt_mode,
-                       annotate_coords,
-                       annotate_index=i,
-                       plot_type='together'
-                       )
-    
-    logger.info('If annotations in the histograms are not displaying correctly, adjust annotate_coords.')
-    
-    return fig
-
 
 def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,m_data):
     """
@@ -412,7 +280,7 @@ def plot_histogram(axis,
                    ds: xr.Dataset,
                    model: str,
                    vars_to_plot: list[str],
-                   diff_include: list[str],
+                   diff_include: list[str] | None,
                    model_color: list[str],
                    ppt_mode: bool,
                    annotate_coords: dict[int, list],
@@ -421,15 +289,12 @@ def plot_histogram(axis,
 ):
 
     # Get histogram variables and legend
-    if len(diff_include) == 0:
-        make_diff    = False
-        hist_to_plot = vars_to_plot
-        legend_hist  = 'Modelled mean'
-
-    else:
-        make_diff    = True
+    if diff_include:
         hist_to_plot = diff_include
-        legend_hist  = 'Obs - modelled mean'
+        legend_hist  = 'Obs - Plotted variable'
+    else:
+        hist_to_plot = vars_to_plot
+        legend_hist  = 'Plotted variable'
 
     # Loop over all variables to plot in histogram
     for v,var in enumerate(hist_to_plot):
@@ -437,7 +302,7 @@ def plot_histogram(axis,
         if var not in ds.keys():
             raise KeyError(f'Variable {var} not found in {model}.')
         
-        if make_diff:
+        if diff_include:
             var_to_plot = ds['Yobs'].values - ds[var].values
         else:
             var_to_plot = ds[var].values
@@ -449,12 +314,12 @@ def plot_histogram(axis,
                           density=1
                           )
 
-        if make_diff:
+        if diff_include:
             axis.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
         
         if plot_type == 'separate':
             index = v
-        elif plot_type == 'together':
+        elif plot_type in ['together', 'diff']:
             index = annotate_index
         
         # Compute and format mean and std of the histogram
