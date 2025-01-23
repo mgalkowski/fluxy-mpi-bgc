@@ -35,6 +35,27 @@ def convert_molar_to_mass_flux(ds, M):
     
     return ds
 
+def scale_mf(model, ds_model, specie_info):
+        
+    logger.info(f'Dividing {model} mole fractions by {specie_info["mf_units_scaling"]}')
+    var_names = []
+
+    # Find mole fraction variables in dataset
+    for k in ds_model.keys():
+        if 'units' in ds_model[k].attrs.keys():
+            if ds_model[k].attrs['units'] == 'mol mol-1':
+                var_names.append(k)
+
+    # Correction for InTEM
+    if 'sitenames' in var_names:
+        var_names.remove('sitenames')
+    
+    # Scale mole fractions
+    for v in var_names:
+        ds_model[v] = ds_model[v]/specie_info["mf_units_scaling"]
+        ds_model[v].attrs['units'] = specie_info["mf_units_print"]
+        
+    return ds_model
 
 def slice_flux(ds_all,start_date,end_date,config_data,
                scale_units=True,scale_co2eq=False,convert_flux_units=False,specie=None):
@@ -178,7 +199,7 @@ def slice_mf(
             baseline = f.sel(time=slice(start_date,end_date))
     
     for m in models:
-        logger.info(f'Masking data from {m}')
+        logger.info(f'Masking data from {m}.')
         
         # Compute offset
         if 'Yav' in ds_all[m].keys():
@@ -217,14 +238,11 @@ def slice_mf(
 
         # Scale mole fractions
         if scale_units == True and 'flexinvert' not in m:
-            logger.info(f'Scaling {m} units by {specie_info["mf_units_scaling"]}')
-            var_names = [k for k in ds_all[m].keys() if k not in ['sitenames','Yav','median_poll_uncert_flag']]
-            for v in var_names:
-                 ds_all[m][v] = ds_all[m][v]/specie_info["mf_units_scaling"]
+            ds_all[m] = scale_mf(m, ds_all[m], specie_info)
 
         # Mask mole fractions according to baseline timestamps
         if baseline_site is not None:
-            logger.info('Masking timeseries to only include baseline times')
+            logger.info('Masking timeseries to only include baseline times.')
                                 
             #average baseline mask over obs averaging period
             b = baseline.resample(time=f'{offset}h').mean()

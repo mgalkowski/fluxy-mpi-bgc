@@ -337,7 +337,7 @@ def plot_histogram(axis,
 
     # Write number of obs
     if plot_type == 'separate':
-        n_obs = (~np.isnan(ds['Yobs'].values)).sum()
+        n_obs = ds['Yobs'].count().values
         if (ppt_mode):
             pos_xy = [0.57,1.05]
         else:
