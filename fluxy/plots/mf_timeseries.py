@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from typing import Literal
 from fluxy import config
 from fluxy.plots.utils import set_min_decimal_points
+from fluxy.operators.select import get_unique_sites, get_site_index
 import logging
 
 logger = logging.getLogger(__name__)
@@ -211,7 +212,7 @@ def plot_mf_timeseries(
     
     return fig
 
-def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,m_data):
+def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,config_data):
     """
     Plot the timeseries of data available for each site and model.
     
@@ -227,42 +228,57 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,m_data):
             data up to 2021-12-31.
         model_colors (dict of str):
             Models and corresponding colours used to plot the model.
-        m_data (dict of dict):
-            Dictionary of inversion runs with filename and plot label (read from json file).
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filenames as keys.
     """
-    siteList = np.sort(np.unique(np.concatenate([ds_all[m].sitenames.values.astype(str) for m in ds_all.keys()])))
+    
+    models = ds_all.keys()
+    dt_start_date = np.datetime64(start_date)
+    dt_end_date = np.datetime64(end_date)
+    siteList = get_unique_sites(ds_all)
 
+    # Create figure
     fig,ax = plt.subplots(1,1,figsize = (0.7*len(siteList),8))
-    leg = []
+
     for iSite,site in enumerate(siteList):
         if iSite!=0:
-            ax.plot([iSite-0.5,iSite-0.5],[np.datetime64(start_date),np.datetime64(end_date)],
-                   c='gray',ls='-',lw=1)
-        for i,m in enumerate(ds_all.keys()):
-            try:
-                if m not in leg:
-                    site_index = np.where(ds_all[m]['sitenames'].astype(str) == site)[0][0]
-                    data = ds_all[m].isel(nsite=site_index)[var].dropna(dim='time').time.values
-                    ax.scatter(-2*np.ones(data.size),
-                               data,c=model_colors[m][0],s=20,label=m_data[m]["label"])
-                    leg.append(m)
+            # Add grey vertical line between sites
+            ax.plot([iSite-0.5, iSite-0.5],
+                    [dt_start_date, dt_end_date],
+                    c='gray',
+                    ls='-',
+                    lw=1)
 
-                site_index = np.where(ds_all[m]['sitenames'].astype(str) == site)[0][0]
+        for i,m in enumerate(models):
+            # Define label
+            if iSite == 0:
+                label = config_data['models_info'][m]['label']
+            else:
+                label = None
+       
+            site_index = get_site_index(ds_all[m], site)
+
+            if site_index is not None:
+                # Make scatter plot
                 data = ds_all[m].isel(nsite=site_index)[var].dropna(dim='time').time.values
                 ax.scatter((iSite+0.2*(i-1))*np.ones(data.size),
-                           data,c=model_colors[m][0],s=2)
+                           data,
+                           c=model_colors[m][0],
+                           s=2,
+                           label=label)
 
-            except:
-                pass
-    ax.set_ylim(np.datetime64(start_date)-np.timedelta64(1,'D'),
-                np.datetime64(end_date)+np.timedelta64(1,'D'))
-    
+            else:
+                continue
+
+    # Define plot settings
+    ax.set_ylim(dt_start_date - np.timedelta64(1,'D'),
+                dt_end_date + np.timedelta64(1,'D'))
     
     ax.set_xticks(np.arange(siteList.size))
     ax.set_xticklabels(siteList)
-    
-    
-    if int(np.datetime64(end_date).astype('datetime64[M]')-np.datetime64(start_date).astype('datetime64[M]')) > 12:
+        
+    if int(dt_end_date.astype('datetime64[M]')-dt_start_date.astype('datetime64[M]')) > 12:
         ax.yaxis.set_minor_locator(MonthLocator())
         ax.yaxis.set_minor_formatter(NullFormatter())
         ax.yaxis.set_major_locator(YearLocator())
@@ -272,7 +288,7 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,m_data):
     
     ax.set_xlim(-1,siteList.size)
         
-    plt.legend(loc='upper right')
+    plt.legend(loc='lower right', markerscale=4, bbox_to_anchor=(1, 1))
     
     return fig
 

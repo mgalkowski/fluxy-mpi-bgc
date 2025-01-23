@@ -269,3 +269,13 @@ def get_site_index(ds: xr.Dataset, site: str) -> int | None:
         return index
     
     return None
+
+def get_unique_sites(ds: dict[str, xr.Dataset]):
+
+    sites = []
+    for m in ds.keys():
+        sites.append(ds[m]['sitenames'].values.astype(str))
+
+    sites = np.sort(np.unique(sites))
+
+    return sites

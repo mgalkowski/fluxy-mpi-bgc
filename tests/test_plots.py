@@ -186,7 +186,7 @@ def test_mf_timeseries():
         start_date,
         end_date,
         model_colors,
-        config_data["models_info"],
+        config_data,
     )
 
 
