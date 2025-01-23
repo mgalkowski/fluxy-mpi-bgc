@@ -115,8 +115,8 @@ def plot_mf_timeseries(
 
             if var == 'Yobs' or plot_type == 'diff':
                 # Make scatter plot
-                ax[iax,0].scatter(ds_all[m].time.values,
-                                  ds_all[m][var].values,
+                ax[iax,0].scatter(ds_all[m].time,
+                                  ds_all[m][var],
                                   color=plot_color,
                                   label=f'{model_label} {config.mf_labels[var]}',
                                   s=8,
@@ -125,8 +125,8 @@ def plot_mf_timeseries(
 
             else:
                 # Make line plot
-                ax[iax,0].plot(ds_all[m].time.values,
-                               ds_all[m][var].values,
+                ax[iax,0].plot(ds_all[m].time,
+                               ds_all[m][var],
                                color=plot_color,alpha=0.8,
                                linewidth=2.,
                                label=f'{model_label} {config.mf_labels[var]}')
@@ -142,17 +142,17 @@ def plot_mf_timeseries(
 
                 if unc_var[0] == 'q':
                     # Add uncertainty band
-                    ax[iax,0].fill_between(ds_all[m].time.values,
-                                           ds_all[m][unc_var].values[:,config.model_q_indices[m0][0]],
-                                           ds_all[m][unc_var].values[:,config.model_q_indices[m0][1]],
+                    ax[iax,0].fill_between(ds_all[m].time,
+                                           ds_all[m][unc_var][:,config.model_q_indices[m0][0]],
+                                           ds_all[m][unc_var][:,config.model_q_indices[m0][1]],
                                            color=plot_color,
                                            alpha=0.2)
                     
                 else:
                     # Add error bar
-                    ax[iax,0].errorbar(ds_all[m].time.values,
-                                       ds_all[m][var].values,
-                                       ds_all[m][unc_var].values,
+                    ax[iax,0].errorbar(ds_all[m].time,
+                                       ds_all[m][var],
+                                       ds_all[m][unc_var],
                                        color=plot_color,
                                        alpha=0.4,
                                        fmt='none')                  
@@ -261,7 +261,7 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,config_dat
 
             if site_index is not None:
                 # Make scatter plot
-                data = ds_all[m].isel(nsite=site_index)[var].dropna(dim='time').time.values
+                data = ds_all[m].isel(nsite=site_index)[var].dropna(dim='time').time
                 ax.scatter((iSite+0.2*(i-1))*np.ones(data.size),
                            data,
                            c=model_colors[m][0],
@@ -319,9 +319,9 @@ def plot_histogram(axis,
             raise KeyError(f'Variable {var} not found in {model}.')
         
         if diff_include:
-            var_to_plot = ds['Yobs'].values - ds[var].values
+            var_to_plot = ds['Yobs'] - ds[var]
         else:
-            var_to_plot = ds[var].values
+            var_to_plot = ds[var]
 
         # Plot histogram
         a,b,c = axis.hist(var_to_plot,
