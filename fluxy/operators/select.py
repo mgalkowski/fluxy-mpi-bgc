@@ -203,7 +203,7 @@ def slice_mf(
         
         # Compute offset
         if 'Yav' in ds_all[m].keys():
-            offset = int(np.mean(ds_all[m]['Yav'].values))
+            offset = int(np.mean(ds_all[m]['Yav']))
         else:
             offset = (ds_all[m].time.values[1].astype('datetime64[h]') - ds_all[m].time.values[0].astype('datetime64[h]')).astype(int)
 
@@ -250,10 +250,10 @@ def slice_mf(
             b['time'] = b['time'] + np.timedelta64(offset,'h')/2
                                 
             #mask baseline mask again, to only include timestamps where every period in the averaging period is classified as baseline
-            b_masked = b.sel(time=b['time'].values[np.where(b['baseline'] == 1.)])
+            b_masked = b.sel(time=b['time'][np.where(b['baseline'] == 1.)])
                             
             #mask dataset using only baseline times
-            both_times = np.isin(ds_all[m].time.values,b_masked.time.values)          
+            both_times = np.isin(ds_all[m].time,b_masked.time)          
             ds_all[m] = ds_all[m].sel(time=both_times)
                    
     return ds_all
@@ -274,7 +274,7 @@ def get_unique_sites(ds: dict[str, xr.Dataset]):
 
     sites = []
     for m in ds.keys():
-        sites.append(ds[m]['sitenames'].values.astype(str))
+        sites.append(ds[m]['sitenames'].astype(str))
 
     sites = np.sort(np.unique(sites))
 
