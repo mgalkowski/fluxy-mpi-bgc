@@ -101,6 +101,35 @@ bel_pop = np.array([11.399,11.455,11.522,11.555,11.618,11.723])
 lux_pop = np.array([0.602,0.614,0.626,0.635,0.645,0.661])
 bel_pop_r = np.round(np.mean(bel_pop/(bel_pop+lux_pop)),3)
 
+mf_labels = {'Yapriori':'prior mf',
+             'Yapost':'posterior mean mf',
+             'YaprioriBC':'prior baseline',
+             'YapostBC':'posterior mean baseline',
+             'Yapost_bias':'posterior bias',
+             'YaprioriOUTER':'prior outer region mf',
+             'YapostOUTER':'posterior outer region mf',
+             'Yobs':'observed mf',
+             'uYobs_repeatability':'obs repeatability mf uncertainty',
+             'uYobs_variability':'obs variability mf uncertainty',
+             'uYmod':'model uncertainty',
+             'uYtotal':'total uncertainty'
+             }
+
+mf_color_index = {'Yapriori':1,
+                  'Yapost':0,
+                  'YaprioriBC':1,
+                  'YapostBC':0,
+                  'Yapriori_bias':0,
+                  'Yapost_bias':1,
+                  'YaprioriOUTER':1,
+                  'YapostOUTER':0,
+                  'Yobs':0,
+                  'uYobs_repeatability':0,
+                  'uYobs_variability':0,
+                  'uYmod':1,
+                  'uYtotal':1
+                  }
+
 def initialize_settings(ppt_mode: bool = False):
     """
     Defines plotting settings.

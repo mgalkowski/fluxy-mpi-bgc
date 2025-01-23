@@ -44,6 +44,82 @@ def read_config_files() -> dict:
 
     return data_dict
 
+def read_model_output(
+    data_dir: os.PathLike,
+    file_type: Literal["concentration","flux"],
+    specie: str,
+    models: list[str],
+    config_data: dict[str, dict],
+    period_override: str | list[str] = None
+) -> dict[str, xr.Dataset]:
+    """
+    Extracts mole fraction or flux timeseries data from each model.
+    Args:
+        data_dir (str): 
+            Path to top data directory.
+        specie (str): 
+            Gas species, e.g. 'ch4'.
+        models (list of str): 
+            Keys specifying model names, e.g. ['intem','elris']
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filenames as keys.
+        period_override (list of str) (optional):
+            Inversion periods to include, to override the standards in species_info.json.
+            Must be the same length as models, e.g. ['monthly',None,'yearly']
+    Returns:
+        ds_all (dictionary of datasets): 
+            xarray dataset read directly from each model's mole fraction netCDF.
+    """
+
+    specie_info = config_data['species_info'][specie]
+
+    # Set inversion period to default or user defined value
+    period_all = {}
+    
+    if period_override != None and len(period_override) != len(models):
+        raise ValueError(f'If using period_override, this list must be of the same length as models.')
+    
+    for i,m in enumerate(models):
+        if period_override is not None:
+            if period_override[i] is not None:
+                period_all[m] = period_override[i]
+            else:
+                period_all[m] = specie_info["period"]
+        else:
+            period_all[m] = specie_info["period"]
+
+    # Define file pattern
+    if file_type == 'flux':
+        file_pattern = '.nc'
+    elif file_type == 'concentration':
+        file_pattern = '_concentrations.nc'
+    else:
+        raise ValueError(f'file_pattern must be equal to "concentration" or "flux".')
+
+    ds_all = {}
+
+    for m in models:
+        
+        # Get model tag and name
+        m0 = m.split('_')[0]
+        model_filename = config_data["models_info"][m]["filename"]
+        model_dir = model_filename.split('_')[0]
+               
+        # Define filepath
+        data_dir = Path(data_dir) 
+        filepath = data_dir / model_dir / specie / f'{model_filename}_{specie_info["model_species"][m0]}_{period_all[m]}{file_pattern}'
+
+        # Check if files exists
+        if not filepath.is_file():
+            logger.warning(f'Cannot find {file_type} file: {filepath}.')
+            continue
+ 
+        # Read file
+        logger.info(f'Reading {file_type} file: {filepath}')
+        ds_all[m] = xr.open_dataset(filepath)
+
+    return ds_all
 
 def read_flux_total_fgases(data_dir,species,models,config_data,regions,
                            start_date,end_date,period_override=None,apply_pop_scale=True):
@@ -277,84 +353,6 @@ def read_flux_total_fgases(data_dir,species,models,config_data,regions,
     print('\nTo change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
 
     return ds_all
-
-def read_model_output(
-    data_dir: os.PathLike,
-    file_type: Literal["concentration","flux"],
-    specie: str,
-    models: list[str],
-    config_data: dict[str, dict],
-    period_override: str | list[str] = None
-) -> dict[str, xr.Dataset]:
-    """
-    Extracts mole fraction or flux timeseries data from each model.
-    Args:
-        data_dir (str): 
-            Path to top data directory.
-        specie (str): 
-            Gas species, e.g. 'ch4'.
-        models (list of str): 
-            Keys specifying model names, e.g. ['intem','elris']
-        config_data (dict of dict):
-            Dictionary with settings read from json file.
-            Use json filenames as keys.
-        period_override (list of str) (optional):
-            Inversion periods to include, to override the standards in species_info.json.
-            Must be the same length as models, e.g. ['monthly',None,'yearly']
-    Returns:
-        ds_all (dictionary of datasets): 
-            xarray dataset read directly from each model's mole fraction netCDF.
-    """
-
-    specie_info = config_data['species_info'][specie]
-
-    # Set inversion period to default or user defined value
-    period_all = {}
-    
-    if period_override != None and len(period_override) != len(models):
-        raise ValueError(f'If using period_override, this list must be of the same length as models.')
-    
-    for i,m in enumerate(models):
-        if period_override is not None:
-            if period_override[i] is not None:
-                period_all[m] = period_override[i]
-            else:
-                period_all[m] = specie_info["period"]
-        else:
-            period_all[m] = specie_info["period"]
-
-    # Define file pattern
-    if file_type == 'flux':
-        file_pattern = '.nc'
-    elif file_type == 'concentration':
-        file_pattern = '_concentrations.nc'
-    else:
-        raise ValueError(f'file_pattern must be equal to "concentration" or "flux".')
-
-    ds_all = {}
-
-    for m in models:
-        
-        # Get model tag and name
-        m0 = m.split('_')[0]
-        model_filename = config_data["models_info"][m]["filename"]
-        model_dir = model_filename.split('_')[0]
-               
-        # Define filepath
-        data_dir = Path(data_dir) 
-        filepath = data_dir / model_dir / specie / f'{model_filename}_{specie_info["model_species"][m0]}_{period_all[m]}{file_pattern}'
-
-        # Check if files exists
-        if not filepath.is_file():
-            logger.warning(f'Cannot find {file_type} file: {filepath}.')
-            continue
- 
-        # Read file
-        logger.info(f'Reading {file_type} file: {filepath}')
-        ds_all[m] = xr.open_dataset(filepath)
-
-    return ds_all
-
 
 def extract_site_info(sites: list[str], config_data: dict[str, dict]):
     """

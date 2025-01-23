@@ -1,7 +1,33 @@
 import pprint
 import numpy as np
+import xarray as xr
 
+def compute_diff_dataset(ds_all: dict[str, xr.Dataset],
+                         models_to_subtract: list[str]
+) -> dict[str, xr.Dataset]:
 
+    models = list(ds_all.keys())
+        
+    if len(models_to_subtract) != 2:
+        raise ValueError('List of models to subtract must be of size 2.')
+    
+    for m in models_to_subtract:
+        if m not in models:
+            raise KeyError(f'{m} not found in the dataset.')
+     
+    # Reduce datasets to timestamps/sites common to both models
+    ds0, ds1 = xr.align(ds_all[models_to_subtract[0]], ds_all[models_to_subtract[1]], join="inner")
+
+    ds_diff = {}
+    key_name = f'{models_to_subtract[0]}-{models_to_subtract[1]}'
+    ds_diff[key_name] = ds0
+
+    # Compute difference between the two datasets (excluding non float variables)
+    var_names = [k for k in ds_diff[key_name].keys() if k not in ['sitenames','Yav','median_poll_uncert_flag']]
+    for v in var_names:
+        ds_diff[key_name][v] = ds0[v] - ds1[v]
+
+    return ds_diff
 
 def stats_mf(ds_all):
     """

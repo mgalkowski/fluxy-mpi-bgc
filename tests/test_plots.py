@@ -12,12 +12,10 @@ from fluxy.plots.flux_map import (
 )
 from fluxy.plots.flux_timeseries import plot_country_flux
 from fluxy.plots.mf_timeseries import (
-    plot_obs_diff,
-    plot_obs_modelled_together,
+    plot_mf_timeseries,
     plot_sites_timeseries,
 )
-from fluxy.plots.mf_timeseries import plot_obs_modelled_separate
-
+from fluxy.operators.mf import compute_diff_dataset
 
 data_dir = Path(fluxy.__path__[0]).parent / "data" / "tests"
 
@@ -115,7 +113,7 @@ ds_all_mf_sliced = slice_mf(
     baseline_site=baseline_site,
     data_dir=data_dir,
     scale_units=True,
-    species=specie,
+    specie=specie,
 )
 
 model_colors = set_model_colors(models, m_colors)
@@ -188,20 +186,21 @@ def test_mf_timeseries():
         start_date,
         end_date,
         model_colors,
-        config_data["models_info"],
+        config_data,
     )
 
 
 def test_obs_modelled_separate():
-    fig = plot_obs_modelled_separate(
+    fig = plot_mf_timeseries(
         ds_all_mf_sliced,
         specie,
         site,
         model_colors,
-        config_data["species_info"],
-        config_data["models_info"],
+        config_data,
         annotate_coords,
-        include=["Yobs", "Yapost"],
+        plot_type='separate',
+        include={"Yobs": None,
+                 "Yapost": 'qYapost'},
         diff_include=["Yapost"],
         y_lim=None,
     )
@@ -209,31 +208,34 @@ def test_obs_modelled_separate():
 
 def test_obs_modelled_together():
 
-    fig = plot_obs_modelled_together(
+    fig = plot_mf_timeseries(
         ds_all_mf_sliced,
         specie,
         site,
         model_colors,
-        config_data["species_info"],
-        config_data["models_info"],
+        config_data,
         annotate_coords,
-        include=["Yapost"],
+        plot_type='together',
+        include={"Yapost": 'qYapost'},
         diff_include=["Yapost"],
         y_lim=None,
     )
 
 
-def test_obs_diff():
-    fig = plot_obs_diff(
-        ds_all_mf_sliced,
+def test_mole_fraction_diff():
+
+    ds_diff = compute_diff_dataset(ds_all_mf_sliced.copy(), models[:2])
+
+    fig = plot_mf_timeseries(
+        ds_diff,
         specie,
         site,
         model_colors,
-        config_data["species_info"],
-        config_data["models_info"],
+        config_data,
         annotate_coords,
-        include=["Yapost"],
-        diff_include=["Yapost"],
+        plot_type='diff',
+        include={'Yobs': None},
+        diff_include=None,
         y_lim=None,
     )
 

@@ -81,3 +81,9 @@ def set_flux_limits(ds_all, var, region_plot, species_info, option='default', cu
         raise ValueError(f"The lower flux limit {fluxlim[0]} must be less than the upper flux limit {fluxlim[1]}.") 
         
     return fluxlim
+
+def set_min_decimal_points(value, sig_fig = 2, dec_points = 2):
+
+    formatted_str = f"{value:.{dec_points}f}" if value >= 1 else f"{value:.{sig_fig}g}"
+    
+    return formatted_str
