@@ -6,7 +6,7 @@ from fluxy.io import read_config_files, read_model_output, read_flux_total_fgase
 from fluxy.operators.mf import stats_mf
 from fluxy.operators.select import slice_flux, slice_mf
 from fluxy.plots.flux_map import (
-    plot_spatial_flux,
+    plot_flux_map,
     plot_spatial_flux_comparison,
     plot_spatial_flux_per_timestamp,
 )
@@ -268,20 +268,19 @@ def plot_stats_mf():
     )
 
 
-def test_spatial_flux():
+def test_plot_flux_map():
 
-    fig = plot_spatial_flux(
+    fig = plot_flux_map(
         ds_all_flux_scaled,
         specie,
         plot_area,
-        config_data["species_info"],
-        config_data["models_info"],
+        config_data,
         cmap=cmap,
         cmap_diff=cmap_diff,
         c_border=c_border,
         period_override=period_override,
-        plot_site_locations=plot_site_locations,
-        plot_point_markers=plot_point_markers,
+        add_sites=plot_site_locations,
+        add_markers=plot_point_markers,
         season=season,
         set_fluxlim=set_fluxlim,
         set_fluxlim_percentile=set_fluxlim_percentile,

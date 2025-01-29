@@ -3,8 +3,12 @@ import glob
 import xarray as xr
 import numpy as np
 import json 
+import geopandas as gpd
 import logging
 
+from io import BytesIO
+from zipfile import ZipFile
+from urllib.request import urlopen
 from pathlib import Path
 from typing import Literal
 
@@ -354,17 +358,42 @@ def read_flux_total_fgases(data_dir,species,models,config_data,regions,
 
     return ds_all
 
-def extract_site_info(sites: list[str], config_data: dict[str, dict]):
+def load_countries_shape(
+    region_bounds: tuple =None
+    ) -> gpd:
     """
-    Uses info from site_info.json to create a dictionary
-    of sites with latitude and longitudes.
+    Load Natural Earth vector map data and optionally filters for a specific region.
+
+    Args:
+        region_bounds (tuple, optional):
+            A tuple of (min_lon, max_lon, min_lat, max_lat) to filter the map.
+            Default is None, which loads the full world.
+
+    Returns:
+        gdf (GeoDataFrame): 
+            A GeoDataFrame containing the country boundaries for the specified region.
     """
-        
-    site_info = {}
-    site_data = config_data['site_info']
-    
-    for s in sites:
-        site_info[s] = {'latitude':site_data[s][list(site_data[s].keys())[0]]['latitude'],
-                        'longitude':site_data[s][list(site_data[s].keys())[0]]['longitude']}
-    
-    return site_info
+
+    # Scale of the map (1:50m)
+    res = "50m"  # Can be 10m, 50m, 110m
+
+    this_file = Path(__file__).parent.parent
+    path_to_save = this_file / "data" / "ne_data"
+    url = f"https://naturalearth.s3.amazonaws.com/{res}_cultural/ne_{res}_admin_0_countries.zip"
+    path_to_save.mkdir(parents=True, exist_ok=True)
+
+    shpfile = path_to_save / f"ne_{res}_admin_0_countries.shp"
+
+    if not shpfile.is_file():
+        resp = urlopen(url)
+        zipfile = ZipFile(BytesIO(resp.read()))
+        zipfile.extractall(path_to_save)
+
+    gdf = gpd.read_file(shpfile)
+
+    # If a region is specified, filter the GeoDataFrame
+    if region_bounds:
+        min_lon, max_lon, min_lat, max_lat = region_bounds
+        gdf = gdf.cx[min_lon:max_lon, min_lat:max_lat]
+
+    return gdf

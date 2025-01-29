@@ -9,6 +9,7 @@ dependencies = [
   "matplotlib",
   "xarray",
   "netcdf4",
+  "geopandas",
 ]
 requires-python = ">=3.8"
 authors = [
