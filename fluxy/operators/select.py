@@ -3,6 +3,10 @@ import numpy as np
 import os
 from pathlib import Path
 import logging
+from typing import Literal
+import re
+from collections import Counter
+from fluxy import config
 
 logger = logging.getLogger(__name__)
 
@@ -23,38 +27,64 @@ def convert_molar_to_mass_flux(ds, M):
     
     for var_name, variable in ds.items():
         if 'units' in variable.attrs and variable.attrs['units'] == 'mol m-2 s-1':
-            # Convert the variable data
-            # Multiply by molar mass, seconds per year, and convert m² to km²
-            ds[var_name] = variable * M_kg * 31.536e6 # kg/km²/year
-            ds[var_name].attrs['units'] = 'kg km-2 yr-1' # Update the units
+            target_units = "kg km-2 yr-1" # TODO: create variable flux_units_print in json file
             
-            # Add the variable name to the list of converted variables
+            # Apply scaling and adjust units
+            ds[var_name] = variable * M_kg
+            ds[var_name].attrs['units'] = 'kg m-2 s-1' # Update units
+
+            scaling_factor = get_unit_conversion_factor(ds[var_name].attrs['units'], target_units)
+            ds[var_name] = ds[var_name] * scaling_factor 
+            ds[var_name].attrs['units'] = target_units # Update units
+
+            # Add variable name to the list of converted variables
             converted_vars.append(var_name)
 
-    print("Converting molar flux variables to mass flux (kg km-2 yr-1)")
+    if converted_vars:
+        logger.info(f"Converting molar flux variables to mass flux using M = {M_kg} kg mol-1")
+        logger.info(f"Scaling mass flux variables by {scaling_factor}.")
     
     return ds
 
-def scale_mf(model, ds_model, specie_info):
-        
-    logger.info(f'Dividing {model} mole fractions by {specie_info["mf_units_scaling"]}')
-    var_names = []
+def scale_mf(
+        model: str,
+        ds_model: xr.Dataset,
+        specie_info: dict[str]
+) -> xr.Dataset:
+    """
+    Scales mole fractions according to pre-defined scaling factor.
 
-    # Find mole fraction variables in dataset
-    for k in ds_model.keys():
-        if 'units' in ds_model[k].attrs.keys():
-            if ds_model[k].attrs['units'] == 'mol mol-1':
-                var_names.append(k)
+    Args:
+        model (str):
+            Name tag of the model being scaled.
+        ds_model (xarray dataset):
+            Sliced dataset with mf data from model. 
+        specie_info (dictionary of str):
+            Dictionary with species-specific settings.
+    Returns:
+        ds_model (xarray dataset):
+            Sliced and scaled dataset.
+    """
 
-    # Correction for InTEM
-    if 'sitenames' in var_names:
-        var_names.remove('sitenames')
-    
+    # Get list of variables with mf units
+    var_names, var_unit = get_mf_variables(ds_model)
+
+    if len(var_names) == 0:
+        raise ValueError(f'There are no variables in {model} with mole fraction units in the attributes. Scaling to {specie_info["mf_units_print"]} cannot be applied.')
+
+    if var_unit is None:
+        raise ValueError(f'{model} dataset considers different mole fraction units. Uniform scaling to {specie_info["mf_units_print"]} cannot be applied.')
+
+    # Get scaling factor
+    scaling_factor = get_unit_conversion_factor(var_unit,specie_info["mf_units_print"])
+
     # Scale mole fractions
     for v in var_names:
-        ds_model[v] = ds_model[v]/specie_info["mf_units_scaling"]
+        ds_model[v] = ds_model[v]*scaling_factor
         ds_model[v].attrs['units'] = specie_info["mf_units_print"]
-        
+    
+    logger.info(f'Scaling {model} mole fractions by {scaling_factor}.')
+
     return ds_model
 
 def slice_flux(ds_all,start_date,end_date,config_data,
@@ -207,9 +237,8 @@ def slice_mf(
         else:
             offset = (ds_all[m].time.values[1].astype('datetime64[h]') - ds_all[m].time.values[0].astype('datetime64[h]')).astype(int)
 
-        # Round seconds to integer (correction for elris)
-        if 'elris' in m:
-            ds_all[m]['time'] = ds_all[m]['time'].dt.round('s')
+        # Round time to seconds (for consistency between models)
+        ds_all[m]['time'] = ds_all[m]['time'].dt.round('s')
 
         # Slice data according to site and time window
         if site is not None:
@@ -237,6 +266,7 @@ def slice_mf(
                 continue
 
         # Scale mole fractions
+        # Correction for Flexinvert (no units attribute)
         if scale_units == True and 'flexinvert' not in m:
             ds_all[m] = scale_mf(m, ds_all[m], specie_info)
 
@@ -259,6 +289,19 @@ def slice_mf(
     return ds_all
 
 def get_site_index(ds: xr.Dataset, site: str) -> int | None:
+    """
+    Gets the index of a given site in a dataset.
+
+    Args:
+        ds (xarray dataset):
+            Dataset with mf data of a given model.
+        site (str):
+            Site of interest.
+    Returns:
+        index (int):
+            Index of site of interest in the dataset.
+            Returns None if site does not exist.
+    """
 
     # Get all sites
     sites = ds['sitenames'].astype(str)
@@ -270,12 +313,155 @@ def get_site_index(ds: xr.Dataset, site: str) -> int | None:
     
     return None
 
-def get_unique_sites(ds: dict[str, xr.Dataset]):
+def get_unique_sites(ds_all: dict[str, xr.Dataset]) -> list[str]:
+    """
+    Gets list of all sites present in all datasets.
+
+    Args:
+        ds (xarray dataset):
+            Dictionary of datasets with mf data from all models.
+    Returns:
+        sites (list of str):
+            List of unique and sorted sites from all datasets.
+    """
 
     sites = []
-    for m in ds.keys():
-        sites.append(ds[m]['sitenames'].astype(str))
+    for ds in ds_all.values():
+        sites.append(ds['sitenames'].astype(str))
 
     sites = np.sort(np.unique(sites))
 
     return sites
+
+def get_mf_variables(ds_model: xr.Dataset) -> tuple[list[str], str | None]:
+    """
+    Finds mole fraction variables in a dataset.
+
+    Args:
+        ds_model (xarray dataset):
+            Dataset with mf data from a model.
+    Returns:
+        var_names (list of str):
+            Names of variables in the dataset with mole fraction units.
+        unique_units (str | None):
+            Mole fraction units used in the dataset.
+            Set to None if different units are present.
+    """
+
+    var_names = []
+    var_units = []
+
+    # Find mole fraction variables in dataset
+    for var in ds_model.keys():
+        if 'units' in ds_model[var].attrs.keys():
+            unit = ds_model[var].attrs['units']
+            if unit in config.units_scale['mf'].keys():
+                if var == 'sitenames':
+                    # Correction for InTEM (units are wrongly set to mol mol-1)
+                    continue
+
+                var_names.append(var)
+                var_units.append(unit)
+
+    # Get mf units if unique
+    unique_units = list(set(var_units))
+    if len(unique_units) == 1:
+        unique_units = unique_units[0]
+    else:
+        unique_units = None
+
+    return var_names, unique_units
+
+def get_unit_conversion_factor(from_unit: str, to_unit: str) -> float:
+    """
+    Computes conversion factors of compound units.
+    Units are expected to have the following format:
+        "<letters><(-)numbers>" separated by spaces (e.g. "kg m-2 s-1")
+
+    Consistency between base and target units are verified.
+    Consistency between the exponents of the base and target units are verified until the 2nd decimal point.
+
+    Args:
+        from_unit (str):
+            Units of the variable to be converted.
+        to_unit (str):
+            Target units.
+    Returns:
+        conversion_factor (float):
+            Scaling factor that guarantees the requested units convertion.
+    """
+
+    # Deal with particular case of mol mol-1
+    if from_unit == "mol mol-1" or to_unit == "mol mol-1":
+
+        factor_to_base = config.units_scale['mf'].get(from_unit, None)
+        if factor_to_base is None:
+            raise KeyError(f'Conversion factor to/from {from_unit} does not exist in units_scale dictionary.')
+        
+        factor_to_target = config.units_scale['mf'].get(to_unit, None)
+        if factor_to_target is None:
+            raise KeyError(f'Conversion factor to/from {to_unit} does not exist in units_scale dictionary.')
+        
+        return factor_to_base / factor_to_target
+
+    # General case
+    # Get individual units
+    units_list = from_unit.split(' ')
+    target_list = to_unit.split(' ')
+
+    # Initialize list of dimensions and exponents
+    unit_dim = []
+    unit_exponent = [1]*len(units_list)
+    target_dim = []
+    target_exponent = [1]*len(target_list)
+
+    # Get unit dimension and exponent (original units)
+    for i,unit_exp in enumerate(units_list):
+        unit_elements = list(re.findall(r'[a-zA-Z]+|[-+]?\d*\.?\d+', unit_exp))
+        unit_dim.append(unit_elements[0])
+        if len(unit_elements) > 1:
+            unit_exponent[i] = float(unit_elements[1])
+
+    # Get unit dimension and exponent (target units)
+    for i,unit_exp in enumerate(target_list):
+        target_elements = list(re.findall(r'[a-zA-Z]+|[-+]?\d*\.?\d+', unit_exp))
+        target_dim.append(target_elements[0])
+        if len(target_elements) > 1:
+            target_exponent[i] = float(target_elements[1])
+
+    conversion_factor = 1
+    unit_dim_type = []
+    target_dim_type = []
+
+    # Get conversion factor to base units
+    for i,unit in enumerate(unit_dim):
+        factor_to_base = None
+        for unit_family, units in config.units_scale.items():
+            if unit in units:
+                factor_to_base = units[unit]**unit_exponent[i]
+                unit_dim_type.append(unit_family+f"{unit_exponent[i]:.2f}")
+                break
+        
+        if factor_to_base is None:
+            raise KeyError(f'Unit {unit} does not exist in units_scale dictionary.')
+        
+        conversion_factor = conversion_factor * factor_to_base
+
+    # Get conversion factor to target units
+    for i,target in enumerate(target_dim):
+        factor_to_target = None
+        for target_family, units in config.units_scale.items():
+            if target in units:
+                factor_to_target = units[target]**target_exponent[i]
+                target_dim_type.append(target_family+f"{target_exponent[i]:.2f}")
+                break
+        
+        if factor_to_target is None:
+            raise KeyError(f'Unit {target} does not exist in units_scale dictionary.')
+        
+        conversion_factor = conversion_factor / factor_to_target
+
+    if Counter(unit_dim_type) != Counter(target_dim_type):
+        raise ValueError(f'Units {from_unit} ({unit_dim_type}) and {to_unit} ({target_dim_type}) are not consistent.')
+
+    return conversion_factor

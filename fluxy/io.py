@@ -18,7 +18,17 @@ from fluxy.operators.select import slice_flux
 
 logger = logging.getLogger(__name__)
 
-def read_json(filepath: os.PathLike) -> dict:
+def read_json(filepath: os.PathLike) -> dict[str, dict]:
+    """
+    Reads json file.
+
+    Args:
+        filepath (str or Path):
+            Path to json file including filename.
+    Returns:
+        json_data (dictionary of dictionaries):
+            Dictionary with data read from filepath.
+    """
 
     filepath = Path(filepath)
 
@@ -30,7 +40,15 @@ def read_json(filepath: os.PathLike) -> dict:
 
     return json_data
 
-def read_config_files() -> dict:
+def read_config_files() -> dict[str, dict]:
+    """
+    Reads all configuration json files.
+
+    Returns:
+        data_dict (dictionary of dictionaries):
+            Dictionary with keys equal to json basename (without extension).
+            Each key points to a dictionary with the data from each json file.
+    """
 
     # Get location of json files
     parent_dir = Path(__file__).parent.parent
@@ -58,6 +76,7 @@ def read_model_output(
 ) -> dict[str, xr.Dataset]:
     """
     Extracts mole fraction or flux timeseries data from each model.
+
     Args:
         data_dir (str): 
             Path to top data directory.
