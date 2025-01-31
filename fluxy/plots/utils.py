@@ -496,7 +496,26 @@ def set_flux_limits(
         
     return flux_lim
 
-def set_min_decimal_points(value, sig_fig = 2, dec_points = 2):
+def set_min_decimal_points(value: float, sig_fig: int = 2, dec_points: int = 2) -> str:
+    """
+    Converts float to string with a specified number of significant digits and
+    decimal points.
+
+    Args:
+        value (float):
+            Floating point number to be converted to string.
+        sig_fig (int):
+            Number of significant figures to specify in the output if 'value'
+            is lowet than 1.
+        dec_points (int):
+            Number of decimal points to specify in the output if 'value'
+            is greater or equal than 1.
+    Returns:
+        formatted_str (str):
+            Floating point 'value' converted to string.
+            E.g. if value=0.00123 and sig_fig=2 -> formatted_str=0.0012
+                 if value=10.456 and dec_points=2 -> formatted_str=10.45
+    """
 
     formatted_str = f"{value:.{dec_points}f}" if value >= 1 else f"{value:.{sig_fig}g}"
     

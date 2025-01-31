@@ -1,6 +1,6 @@
 from pathlib import Path
 import fluxy
-from fluxy.config import initialize_settings
+from fluxy.config import set_print_settings
 from fluxy.config import set_model_colors
 from fluxy.io import read_config_files, read_model_output, read_flux_total_fgases
 from fluxy.operators.mf import stats_mf
@@ -15,7 +15,8 @@ from fluxy.plots.mf_timeseries import (
     plot_mf_timeseries,
     plot_sites_timeseries,
 )
-from fluxy.operators.mf import compute_diff_dataset
+from fluxy.operators.mf import compute_mf_difference
+from fluxy.plots.mf_stats import plot_stats_mf
 
 data_dir = Path(fluxy.__path__[0]).parent / "data" / "tests"
 
@@ -49,7 +50,7 @@ experiments = {
 }
 
 config_data = read_config_files()
-m_colors, annotate_coords = initialize_settings()
+annotate_coords = set_print_settings()
 
 specie = "hfc134a"  # options for individual species, or 'all_hfc' or 'all_pfc'
 models = experiments[
@@ -116,7 +117,7 @@ ds_all_mf_sliced = slice_mf(
     specie=specie,
 )
 
-model_colors = set_model_colors(models, m_colors)
+model_colors = set_model_colors(models)
 
 
 plot_area = "UK"
@@ -130,6 +131,7 @@ set_fluxlim = "auto"
 set_fluxlim_percentile = None
 plot_inversion_grid_flux = False
 
+stats_to_plot = ['pearson','nrmse','rmse']
 
 def test_flux_timeseries():
     plot_inventory = False
@@ -224,7 +226,7 @@ def test_obs_modelled_together():
 
 def test_mole_fraction_diff():
 
-    ds_diff = compute_diff_dataset(ds_all_mf_sliced.copy(), models[:2])
+    ds_diff = compute_mf_difference(ds_all_mf_sliced.copy(), models[:2])
 
     fig = plot_mf_timeseries(
         ds_diff,
@@ -240,29 +242,27 @@ def test_mole_fraction_diff():
     )
 
 
-def plot_stats_mf():
+def test_plot_stats():
     ds_all_allsites = slice_mf(
         ds_all_mf.copy(),
-        config_data["species_info"],
+        config_data,
         start_date,
         end_date,
         site=None,
         baseline_site=baseline_site,
         data_dir=data_dir,
         scale_units=True,
-        species=specie,
+        specie=specie,
     )
 
-    pearson, nrmse, rmse = stats_mf(ds_all_allsites)
+    stats = stats_mf(ds_all_allsites)
 
     fig = plot_stats_mf(
-        pearson,
-        nrmse,
-        rmse,
+        stats,
+        stats_to_plot,
         specie,
         model_colors,
-        config_data["species_info"],
-        config_data["models_info"],
+        config_data,
         start_date=start_date,
         end_date=end_date,
     )

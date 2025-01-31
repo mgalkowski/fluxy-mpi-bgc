@@ -218,7 +218,7 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,config_dat
     
     Args:
         ds_all : 
-            Dictionnary of xarray returned by read_mf
+            Dictionnary of xarray returned by read_output_model.
         var : 
             Var for which the timeseries should be plotted
         start_date (str): 
@@ -301,7 +301,7 @@ def plot_histogram(axis,
                    ppt_mode: bool,
                    annotate_coords: dict[int, list],
                    annotate_index: int,
-                   plot_type: Literal['separate','together']
+                   plot_type: Literal['separate','together','diff']
 ):
 
     # Get histogram variables and legend
@@ -333,9 +333,9 @@ def plot_histogram(axis,
         if diff_include:
             axis.vlines(0,0,np.max(a),color='dimgrey',linewidth=3.)
         
-        if plot_type == 'separate':
+        if plot_type in ['separate','diff']:
             index = v
-        elif plot_type in ['together', 'diff']:
+        elif plot_type == 'together':
             index = annotate_index
         
         # Compute and format mean and std of the histogram
@@ -345,11 +345,13 @@ def plot_histogram(axis,
         str_std = set_min_decimal_points(var_std)
 
         # Write mean/std to histogram
-        axis.annotate(f'$\mu$: {str_mean}\n$\sigma$: {str_std}',
-                      xy=annotate_coords[index],
-                      xycoords='axes fraction',
-                      color=model_color[config.mf_color_index[var]]
-                      )
+        # If plot_type = togehter, print only mean/std of the first variable
+        if not(plot_type == 'together' and v != 0):
+            axis.annotate(f'$\mu$: {str_mean}\n$\sigma$: {str_std}',
+                        xy=annotate_coords[index],
+                        xycoords='axes fraction',
+                        color=model_color[config.mf_color_index[var]]
+                        )
 
     # Write number of obs
     if plot_type == 'separate':
