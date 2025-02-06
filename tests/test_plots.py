@@ -7,7 +7,7 @@ from fluxy.operators.mf import stats_mf
 from fluxy.operators.select import slice_flux, slice_mf
 from fluxy.plots.flux_map import (
     plot_flux_map,
-    plot_spatial_flux_comparison,
+    plot_flux_map_model_comparison,
     plot_spatial_flux_per_timestamp,
 )
 from fluxy.plots.flux_timeseries import plot_country_flux
@@ -288,21 +288,28 @@ def test_plot_flux_map():
     )
 
 
-def test_spatial_flux_comparison():
+def test_plot_flux_map_model_comparison():
 
-    fig = plot_spatial_flux_comparison(
+    var = 'flux_total_posterior'
+    model_1 = 'intem_name_edgar'
+    model_2 = 'elris_name_edgar'
+
+    fig = plot_flux_map_model_comparison(
         ds_all_flux_scaled,
+        var,
+        model_1,
+        model_2,
         specie,
         plot_area,
-        config_data["species_info"],
-        config_data["models_info"],
+        config_data,
+        presentation_mode=True,
         cmap=cmap,
         cmap_diff=cmap_diff,
         c_border=c_border,
         period_override=period_override,
-        plot_site_locations=plot_site_locations,
-        plot_point_markers=plot_point_markers,
-        plot_inversion_grid_flux=plot_inversion_grid_flux,
+        add_sites=plot_site_locations,
+        add_markers=plot_point_markers,
+        season=season,
         set_fluxlim=set_fluxlim,
         set_fluxlim_percentile=set_fluxlim_percentile,
     )
