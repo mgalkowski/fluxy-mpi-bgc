@@ -140,6 +140,11 @@ mf_color_index = {'Yapriori':1,
                   'uYtotal':1
                   }
 
+flux_labels = {'flux_total_prior':'Prior',
+               'flux_total_posterior_inversion_grid':'Posterior',
+               'flux_total_posterior':'Posterior',
+              }
+
 stat_labels = {'pearson': 'Pearson correlation coefficient',
                'rmse'   : 'RMSE',
                'nrmse'  : 'Normalised RMSE',

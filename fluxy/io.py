@@ -410,6 +410,17 @@ def load_countries_shape(
 
     gdf = gpd.read_file(shpfile)
 
+    # Update the missing ISO_A3 values in the data
+    name_to_iso_a3_mapping = {
+        'Norway': 'NOR',
+        'Kosovo': 'KOS',
+        'France': 'FRA',
+        'Indian Ocean Ter.': 'IOT',
+    }
+
+    for name, iso_a3 in name_to_iso_a3_mapping.items():
+        gdf.loc[gdf['NAME'] == name, 'ISO_A3'] = iso_a3
+
     # If a region is specified, filter the GeoDataFrame
     if region_bounds:
         min_lon, max_lon, min_lat, max_lat = region_bounds
