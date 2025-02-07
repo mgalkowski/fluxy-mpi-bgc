@@ -24,7 +24,7 @@ data_dir = Path(fluxy.__path__[0]).parent / "data" / "tests"
 config_data = read_config_files()
 annotate_coords = set_print_settings()
 
-specie = "hfc134a"  # options for individual species, or 'all_hfc' or 'all_pfc'
+species = "hfc134a"  # options for individual species, or 'all_hfc' or 'all_pfc'
 models = ['InTEM_NAME_EDGAR_std','ELRIS_NAME_EDGAR_std','RHIME_NAME_EDGAR_std']
 regions = ["GERMANY", "UK", "BENELUX", "NW_EU2"]
 period = 'yearly'  # use to override standard inversion periods, must be a list the same length as models, e.g. ['monthly','yearly']
@@ -35,10 +35,10 @@ get_labels_from_file = False
 
 ds_all_flux_scaled = {}
 
-if "all" in specie:
+if "all" in species:
     ds_all_flux_scaled = read_flux_total_fgases(
         data_dir,
-        specie,
+        species,
         models,
         config_data,
         regions,
@@ -48,7 +48,7 @@ if "all" in specie:
     )
 else:
     ds_all_flux = read_model_output(
-        data_dir, "flux", specie, models, config_data, period=period
+        data_dir, "flux", species, models, config_data, period=period
     )
 
     for m in models:
@@ -57,7 +57,7 @@ else:
             config_data,
             start_date,
             end_date,
-            specie=specie,
+            species=species,
             country_flux_units_print=country_flux_units_print,
         )[m]
 
@@ -68,7 +68,7 @@ mf_units_print = 'ppt'
 ds_all_mf = read_model_output(
     data_dir,
     file_type='concentration',
-    specie=specie,
+    species=species,
     models=models,
     config_data=config_data,
     period=period,
@@ -119,7 +119,7 @@ def test_flux_timeseries():
 
     fig = plot_country_flux(
         ds_all_flux_scaled,
-        specie,
+        species,
         regions,
         config_data["species_info"],
         model_colors,
@@ -159,7 +159,7 @@ def test_mf_timeseries():
 def test_obs_modelled_separate():
     fig = plot_mf_timeseries(
         ds_all_mf_sliced,
-        specie,
+        species,
         site,
         model_colors,
         model_labels,
@@ -177,7 +177,7 @@ def test_obs_modelled_together():
 
     fig = plot_mf_timeseries(
         ds_all_mf_sliced,
-        specie,
+        species,
         site,
         model_colors,
         model_labels,
@@ -196,7 +196,7 @@ def test_mole_fraction_diff():
 
     fig = plot_mf_timeseries(
         ds_diff,
-        specie,
+        species,
         site,
         model_colors,
         model_labels,
@@ -225,7 +225,7 @@ def test_plot_stats():
     fig = plot_stats_mf(
         stats,
         stats_to_plot,
-        specie,
+        species,
         model_colors,
         model_labels,
         config_data,
@@ -238,7 +238,7 @@ def deactivate_test_plot_flux_map():
 
     fig = plot_flux_map(
         ds_all_flux_scaled,
-        specie,
+        species,
         plot_area,
         config_data,
         cmap=cmap,
@@ -265,7 +265,7 @@ def deactivate_test_plot_flux_map_model_comparison():
         var,
         model_1,
         model_2,
-        specie,
+        species,
         plot_area,
         config_data,
         presentation_mode=True,
@@ -290,7 +290,7 @@ def deactivate_test_spatial_flux_per_timestamp():
     dt = 1
     fig = plot_spatial_flux_per_timestamp(
         ds_all_flux_scaled,
-        specie,
+        species,
         plot_area,
         end_date,
         config_data["species_info"],

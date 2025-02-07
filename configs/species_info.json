@@ -1,248 +1,122 @@
 {
     "ch4": {
         "species_print": "CH$_4$",
-        "dt_units": {
-            "intem": "datetime64[M]",
-            "rhime": "datetime64[M]",
-            "elris": "datetime64[M]"
-        },
         "gwp": 28,
         "molar_mass": 16.04
     },
     "hfc134a": {
         "species_print": "HFC-134a",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 1300,
         "molar_mass": 102.03
     },
     "hfo1234yf": {
         "species_print":"HFO-1234yf",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp":1,
         "molar_mass": 114.04
     },
     "hfo1234zee": {
         "species_print":"HFO-1234ze(E)",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp":1,
         "molar_mass": 114.04
     },
     "hcfo1233zde": {
         "species_print":"HCFO-1233zd(E)",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp":4,
         "molar_mass": 130.49
     },
     "clch2ch2cl":{
         "species_print":"DCA",
-        "dt_units": {
-            "intem":"datetime64[Y]",
-            "rhime":"datetime64[Y]",
-            "elris":"datetime64[Y]",
-            "flexinvert":"int64"
-        },
         "mf_units_scaling": 1e-12,
         "gwp":1,
         "molar_mass": 98.959
     },
     "hfc143a": {
         "species_print": "HFC-143a",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 4800,
         "molar_mass": 84.04
     },
     "hfc125": {
         "species_print": "HFC-125",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 3170,
         "molar_mass": 120.02
     },
     "hfc152a": {
         "species_print": "HFC-152a",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 138,
         "molar_mass": 66.05
     },
     "hfc32": {
         "species_print": "HFC-32",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 677,
         "molar_mass": 52.02
     },
     "hfc227ea": {
         "species_print": "HFC-227ea",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 3350,
         "molar_mass": 170.03
     },
     "hfc23": {
         "species_print": "HFC-23",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 12400,
         "molar_mass": 70.01
     },
     "hfc245fa": {
         "species_print": "HFC-245fa",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 858,
         "molar_mass": 134.05
     },
     "hfc365mfc": {
         "species_print": "HFC-365mfc",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 804,
         "molar_mass": 148.07
     },
     "hfc4310mee": {
         "species_print": "HFC-4310mee",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 1650,
         "molar_mass": 252.04
     },
     "pfc218": {
         "species_print": "PFC-218",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 8900,
         "molar_mass": 188.02
     },
     "pfc318": {
         "species_print": "PFC-318",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 9540,
         "molar_mass": 200.03
     },
     "pfc116": {
         "species_print": "PFC-116",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 11100,
         "molar_mass": 138.01
     },
     "cf4": {
         "species_print": "PFC-14",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "gwp": 6630,
         "molar_mass": 88.0
     },
     "sf6": {
         "species_print": "SF$_6$",
-        "dt_units": {
-            "intem": "datetime64[M]",
-            "rhime": "datetime64[M]",
-            "elris": "datetime64[M]"
-        },
         "gwp": 23500,
         "molar_mass": 146.06
     },
     "n2o": {
         "species_print": "N$_2$O",
-        "dt_units": {
-            "intem": "datetime64[M]",
-            "rhime": "datetime64[M]",
-            "elris": "datetime64[M]"
-        },
         "gwp": 265,
         "molar_mass": 44.01
     },
     "ch3br": {
         "species_print": "CH$_3$Br",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "molar_mass": 94.94
     },
     "so2f2": {
         "species_print": "SO$_2$F$_2$",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        },
         "molar_mass": 102.06
     },
     "all_hfc": {
-        "species_print": "Total HFC",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        }
+        "species_print": "Total HFC"
     },
     "all_pfc": {
-        "species_print": "Total PFC",
-        "dt_units": {
-            "intem": "datetime64[Y]",
-            "rhime": "datetime64[Y]",
-            "elris": "datetime64[Y]"
-        }
+        "species_print": "Total PFC"
     }
 }

@@ -54,7 +54,7 @@ def scale_mf(
 def scale_country_flux(
         model: str,
         ds_model: xr.Dataset,
-        specie_info: dict[str, str|float],
+        species_info: dict[str, str|float],
         country_flux_units_print: str,
 ) -> xr.Dataset:
     """
@@ -65,7 +65,7 @@ def scale_country_flux(
             Name tag of the model being scaled.
         ds_model (xarray dataset):
             Sliced dataset with country fluxes data from model.
-        specie_info (dictionary of str):
+        species_info (dictionary of str):
             Dictionary with species-specific settings.
         country_flux_units_print (str):
             Units to which country fluxes should be converted to.
@@ -88,7 +88,7 @@ def scale_country_flux(
     gwp = 1
     target_unit = country_flux_units_print
     if "CO2-eq" in target_unit:
-        gwp = specie_info["gwp"]
+        gwp = species_info["gwp"]
         target_unit = country_flux_units_print.replace("CO2-eq","")
         logger.info(f'Converting to mass of CO2-eq using GWP = {gwp}.')
 
@@ -112,7 +112,7 @@ def scale_country_flux(
 def scale_flux(
         model: str,
         ds_model: xr.Dataset,
-        specie_info: dict[str, str|float],
+        species_info: dict[str, str|float],
         flux_units_print: str,
 ) -> xr.Dataset:
     """
@@ -123,7 +123,7 @@ def scale_flux(
             Name tag of the model being scaled.
         ds_model (xarray dataset):
             Sliced dataset with flux data from model. 
-        specie_info (dictionary of str):
+        species_info (dictionary of str):
             Dictionary with species-specific settings.
         flux_units_print (str):
             Units to which fluxes should be converted to.
@@ -148,7 +148,7 @@ def scale_flux(
         raise ValueError(f'{model} dataset considers different flux units. Uniform scaling to {flux_units_print} cannot be applied.')
     
     # Get scaling factor
-    scaling_factor = get_units_conversion_factor(var_unit, flux_units_print, specie_info["molar_mass"])
+    scaling_factor = get_units_conversion_factor(var_unit, flux_units_print, species_info["molar_mass"])
 
     # Scale mole fractions
     for v in var_names:
@@ -164,7 +164,7 @@ def slice_flux(
         config_data: dict[str, str | float],
         start_date: str = None,
         end_date: str = None,
-        specie: str = None,
+        species: str = None,
         flux_units_print: str = None,
         country_flux_units_print: str = None,
 ) -> dict[str, xr.Dataset]:
@@ -183,7 +183,7 @@ def slice_flux(
         config_data (dict of dict):
             Dictionary with settings read from json file.
             Use json filename as keys.
-        specie (str):
+        species (str):
             Gas species, used to choose scaling units, e.g. 'ch4'.
             Set to None to prevent scaling.
         flux_units_print (str):
@@ -199,8 +199,8 @@ def slice_flux(
     
     """
     
-    if specie is not None:
-        specie_info = config_data['species_info'][specie]   
+    if species is not None:
+        species_info = config_data['species_info'][species]   
 
     for m in ds_all.keys():
         logger.info(f'Masking data from {m}.')
@@ -214,12 +214,12 @@ def slice_flux(
             continue
 
         # Scale fluxes
-        if specie is not None:
+        if species is not None:
             if flux_units_print is not None:
-                ds_all[m] = scale_flux(m,ds_all[m],specie_info,flux_units_print)
+                ds_all[m] = scale_flux(m,ds_all[m],species_info,flux_units_print)
         
             if country_flux_units_print is not None:
-                ds_all[m] = scale_country_flux(m,ds_all[m],specie_info,country_flux_units_print)
+                ds_all[m] = scale_country_flux(m,ds_all[m],species_info,country_flux_units_print)
         
     return ds_all
 
