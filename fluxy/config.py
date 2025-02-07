@@ -193,9 +193,9 @@ def set_print_settings(presentation_mode: bool = False) -> dict[int, list]:
         plt.rc('ytick', labelsize=15)
         plt.rc('legend', fontsize=14)
 
-        annotate_coords = {0:[0.58,0.65],
-                           1:[0.58,0.40],
-                           2:[0.58,0.15]}
+        annotate_coords = {0:[0.58,0.7],
+                           1:[0.58,0.4],
+                           2:[0.58,0.1]}
 
         logger.warning('Using big fonts when plotting. You might need to define shorter labels.')
     
@@ -208,9 +208,9 @@ def set_print_settings(presentation_mode: bool = False) -> dict[int, list]:
         plt.rc('ytick', labelsize=11)
         plt.rc('legend', fontsize=10)
 
-        annotate_coords = {0:[0.6,0.80],
-                           1:[0.6,0.60],
-                           2:[0.6,0.40]}
+        annotate_coords = {0:[0.65,0.80],
+                           1:[0.65,0.60],
+                           2:[0.65,0.40]}
 
     return annotate_coords
 

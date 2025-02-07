@@ -66,7 +66,7 @@ def read_config_files() -> dict[str, dict]:
 
     return data_dict
 
-def get_filename(model, specie, period, file_pattern, config_data, data_dir):
+def get_filename(model, species, period, file_pattern, config_data, data_dir):
 
     # Get file name tags
     name_tags = model.split('_')
@@ -90,22 +90,22 @@ def get_filename(model, specie, period, file_pattern, config_data, data_dir):
     model_filename = "_".join(name_tags)
 
     # Get species name
-    specie_print = specie
+    species_print = species
     if (species_names := config_data["models_info"].get("species_name")) and \
        (model_species := species_names.get(model_name)) and \
-       (species_tag   := model_species.get(specie)):
-        specie_print = species_tag
+       (species_tag   := model_species.get(species)):
+        species_print = species_tag
             
     # Define filepath
     data_dir = Path(data_dir)
-    filepath = data_dir / model_name / specie / f'{model_filename}_{specie_print}_{period}{file_pattern}'
+    filepath = data_dir / model_name / species / f'{model_filename}_{species_print}_{period}{file_pattern}'
     
     return filepath
 
 def read_model_output(
     data_dir: os.PathLike,
     file_type: Literal["concentration","flux"],
-    specie: str,
+    species: str,
     models: list[str],
     config_data: dict[str, dict],
     period: str | list[str] = 'yearly',
@@ -116,7 +116,7 @@ def read_model_output(
     Args:
         data_dir (str): 
             Path to top data directory.
-        specie (str): 
+        species (str): 
             Gas species, e.g. 'ch4'.
         models (list of str): 
             Keys specifying model names, e.g. ['intem','elris']
@@ -149,7 +149,7 @@ def read_model_output(
     ds_all = {}
 
     for i,m in enumerate(models):
-        filepath = get_filename(m, specie, period[i], file_pattern, config_data, data_dir)
+        filepath = get_filename(m, species, period[i], file_pattern, config_data, data_dir)
 
         # Check if files exists
         if not filepath.is_file():
@@ -160,14 +160,8 @@ def read_model_output(
         logger.info(f'Reading {file_type} file: {filepath}')
         ds_all[m] = xr.open_dataset(filepath)
 
-        # Easy fix for InTEM ("units" attribute is wrongly set to "unit")
-        vars_to_check = ['country_flux_total_prior', 'country_flux_total_posterior',
-                         'percentile_country_flux_total_prior','percentile_country_flux_total_posterior']
-        
-        if file_type == 'flux':
-            for var in vars_to_check:
-                if 'units' not in ds_all[m][var].attrs.keys() and 'unit' in ds_all[m][var].attrs.keys():
-                    ds_all[m][var].attrs['units'] = ds_all[m][var].attrs['unit']
+        # Add/correct attributes
+        ds_all[m] = edit_ds_attributes(ds_all[m],period[i],file_type)
 
     return ds_all
 
@@ -464,3 +458,24 @@ def load_countries_shape(
         gdf = gdf.cx[min_lon:max_lon, min_lat:max_lat]
 
     return gdf
+
+def edit_ds_attributes(
+        ds: xr.Dataset,
+        period: str,
+        file_type: str,
+) -> xr.Dataset:
+    
+    # Add inversion frequency to global attributes
+    if "frequency" not in ds.attrs:
+        ds.attrs["frequency"] = period
+    
+    # Easy fix for InTEM ("units" attribute is wrongly set to "unit")
+    vars_to_check = ['country_flux_total_prior', 'country_flux_total_posterior',
+                        'percentile_country_flux_total_prior','percentile_country_flux_total_posterior']
+    
+    if file_type == 'flux':
+        for var in vars_to_check:
+            if 'units' not in ds[var].attrs.keys() and 'unit' in ds[var].attrs.keys():
+                ds[var].attrs['units'] = ds[var].attrs['unit']
+
+    return ds

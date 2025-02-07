@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 def plot_mf_timeseries(
         ds_all: dict[str, xr.Dataset],
-        specie: str,
+        species: str,
         site: str,
         model_colors: dict[str, str],
         model_labels: dict[str, dict],
@@ -36,8 +36,8 @@ def plot_mf_timeseries(
         ds_all (dictionary of datasets):
             xarray datasets, scaled and sliced between chosen dates and for 
             chosen site.
-        specie (str): 
-            Gas specie, e.g. 'ch4'.
+        species (str): 
+            Gas species, e.g. 'ch4'.
         site (str):
             Obs site, e.g. 'MHD'.
         model_colors (dict of str):
@@ -63,7 +63,7 @@ def plot_mf_timeseries(
     """
       
     models = ds_all.keys()
-    specie_info = config_data["species_info"][specie]
+    species_info = config_data["species_info"][species]
     vars_to_plot = include.keys()
     plot_units = []
 
@@ -118,8 +118,8 @@ def plot_mf_timeseries(
 
             if var == 'Yobs' or plot_type == 'diff':
                 # Make scatter plot
-                ax[iax,0].scatter(ds_all[m].time,
-                                  ds_all[m][var],
+                ax[iax,0].scatter(ds_all[m].time.values,
+                                  ds_all[m][var].values,
                                   color=plot_color,
                                   label=f'{model_label} {config.mf_labels[var]}',
                                   s=8,
@@ -128,8 +128,8 @@ def plot_mf_timeseries(
 
             else:
                 # Make line plot
-                ax[iax,0].plot(ds_all[m].time,
-                               ds_all[m][var],
+                ax[iax,0].plot(ds_all[m].time.values,
+                               ds_all[m][var].values,
                                color=plot_color,alpha=0.8,
                                linewidth=2.,
                                label=f'{model_label} {config.mf_labels[var]}')
@@ -145,17 +145,17 @@ def plot_mf_timeseries(
 
                 if unc_var[0] == 'q':
                     # Add uncertainty band
-                    ax[iax,0].fill_between(ds_all[m].time,
-                                           ds_all[m][unc_var][:,0],
-                                           ds_all[m][unc_var][:,1],
+                    ax[iax,0].fill_between(ds_all[m].time.values,
+                                           ds_all[m][unc_var][:,0].values,
+                                           ds_all[m][unc_var][:,1].values,
                                            color=plot_color,
                                            alpha=0.2)
                     
                 else:
                     # Add error bar
-                    ax[iax,0].errorbar(ds_all[m].time,
-                                       ds_all[m][var],
-                                       ds_all[m][unc_var],
+                    ax[iax,0].errorbar(ds_all[m].time.values,
+                                       ds_all[m][var].values,
+                                       ds_all[m][unc_var].values,
                                        color=plot_color,
                                        alpha=0.4,
                                        fmt='none')                  
@@ -189,7 +189,7 @@ def plot_mf_timeseries(
             raise ValueError(f"{vars_to_plot} in {models} do not have the same units. So far, the following were found: {plot_units}.")
 
         # Set timeseries y-axis label and legend
-        ax[iax,0].set_ylabel(f'{specie_info["species_print"]} {site} ({plot_units[0]})')
+        ax[iax,0].set_ylabel(f'{species_info["species_print"]} {site} ({plot_units[0]})')
         leg = ax[iax,0].legend(ncol=2,borderpad=.2,columnspacing=1.0)
         try:
             for l in leg.legend_handles:
@@ -331,7 +331,7 @@ def plot_histogram(axis,
             var_to_plot = ds[var]
 
         # Plot histogram
-        a,b,c = axis.hist(var_to_plot,
+        a,b,c = axis.hist(var_to_plot.values,
                           bins=30,
                           color=model_color[config.mf_color_index[var]],
                           density=1
