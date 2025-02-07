@@ -101,7 +101,7 @@ plot_inversion_grid_flux = False
 
 stats_to_plot = ['pearson','nrmse','rmse']
 
-def deactivate_test_flux_timeseries():
+def test_flux_timeseries():
     plot_inventory = False
     inventory_years = None
     fix_y_axes = False
@@ -114,7 +114,6 @@ def deactivate_test_flux_timeseries():
     resample = None
     resample_uncert_correlation = False
     plot_resample_and_original = False
-    period_override = None
     annex_mode = False
     rolling_mean = False
 
@@ -123,13 +122,11 @@ def deactivate_test_flux_timeseries():
         specie,
         regions,
         config_data["species_info"],
-        config_data["models_info"],
         model_colors,
+        model_labels,
         start_date,
         end_date,
-        False,
         annex_mode,
-        scale_co2eq,
         plot_inventory,
         inventory_years,
         data_dir,
@@ -143,7 +140,6 @@ def deactivate_test_flux_timeseries():
         resample=resample,
         resample_uncert_correlation=resample_uncert_correlation,
         plot_resample_and_original=plot_resample_and_original,
-        period_override=period_override,
         rolling_mean=rolling_mean,
     )
 
