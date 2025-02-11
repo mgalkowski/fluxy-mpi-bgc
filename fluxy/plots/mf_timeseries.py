@@ -299,17 +299,46 @@ def plot_sites_timeseries(ds_all,var,start_date,end_date,model_colors,model_labe
     
     return fig
 
-def plot_histogram(axis,
-                   ds: xr.Dataset,
-                   model: str,
-                   vars_to_plot: list[str],
-                   diff_include: list[str] | None,
-                   model_color: list[str],
-                   ppt_mode: bool,
-                   annotate_coords: dict[int, list],
-                   annotate_index: int,
-                   plot_type: Literal['separate','together','diff']
-):
+def plot_histogram(
+        axis: plt.axes,
+        ds: xr.Dataset,
+        model: str,
+        vars_to_plot: list[str],
+        diff_include: list[str] | None,
+        model_color: list[str],
+        presentation_mode: bool,
+        annotate_coords: dict[int, list],
+        annotate_index: int,
+        plot_type: Literal['separate','together','diff']
+) -> None:
+    """
+    Plots a histogram on a specified axis.
+
+    Args:
+        axis (matplotlib.axes.Axes):
+            Matplotlib subplot axis where the histogram should be plotted.
+        ds (xarray dataset):
+            Dataset with results from a particular model.
+        model (str):
+            Model name to which the dataset ds refers to.
+        vars_to_plot (list of str):
+            Variables plotted in the timeseries plot.
+            These variables are directly plotted in the histogram if diff_include is None.
+        diff_include (list of str):
+            Variables included in the 'obs - variable' difference histogram.
+            If None, plots the histogram of the variables specified in vars_to_plot.
+        model_color (list of str):
+            List of colors for plotting a specific model.
+        presentation_mode (logical) (optional):
+            If True, adjust annotation position to accomodate bigger fonts.
+        annotate_coords (dict of lists):
+            Coordinates to annotate histogram.
+        annotate_index (int):
+            Model index. Used to specify annotation location if plot_type == "together".
+        plot_type (str):
+            Type of timeseries plot in which the histogram will be plotted.
+            Options for "separate", "together" and "diff".
+    """
 
     # Get histogram variables and legend
     if diff_include:
@@ -363,7 +392,7 @@ def plot_histogram(axis,
     # Write number of obs
     if plot_type == 'separate':
         n_obs = ds['Yobs'].count().values
-        if (ppt_mode):
+        if (presentation_mode):
             pos_xy = [0.57,1.05]
         else:
             pos_xy = [0.65,1.05]

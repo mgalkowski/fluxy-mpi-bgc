@@ -272,8 +272,28 @@ def set_model_colors(models: list[str]) -> dict[str, list]:
 
     return model_colors
 
-def set_model_labels(models: list[str], config_data: dict[str, dict], get_labels_from_file: bool
+def set_model_labels(
+        models: list[str],
+        config_data: dict[str, dict],
+        get_labels_from_file: bool
 ) -> dict[str, str]:
+    """
+    Sets the label of each model.
+
+    Args:
+        models (list of str):
+            Keys specifying model names, e.g. ['intem','elris']
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filenames as keys.
+        get_labels_from_file (bool):
+            If True, tries to retrieve model labels from models_info.json.
+            If False, buids labels automatically from model names.
+
+    Returns:
+        model_labels (dict of str):
+            Label to be used in plot, per model.
+    """
 
     model_labels = {}
 
