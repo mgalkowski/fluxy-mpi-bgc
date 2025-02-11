@@ -66,7 +66,36 @@ def read_config_files() -> dict[str, dict]:
 
     return data_dict
 
-def get_filename(model, species, period, file_pattern, config_data, data_dir):
+def get_filename(
+        model: str,
+        species: str,
+        period: str,
+        file_pattern: str,
+        config_data: dict[str, dict],
+        data_dir: os.PathLike,
+) -> os.PathLike:
+    """
+    Get complete path to the output file.
+
+    Args:
+        models (str): 
+            Keys specifying model name, e.g. 'elris'
+        species (str): 
+            Gas species, e.g. 'ch4'.
+        period (str):
+            Inversion period as specified in the model filename.
+        file_pattern (str):
+            String that should be added at the end of the filename.
+        config_data (dict of dict):
+            Dictionary with settings read from json file.
+            Use json filenames as keys.
+        data_dir (str): 
+            Path to top data directory.
+
+    Returns:
+        filepath (Path):
+            Complete path to output file.
+    """
 
     # Get file name tags
     name_tags = model.split('_')
@@ -461,13 +490,31 @@ def load_countries_shape(
 
 def edit_ds_attributes(
         ds: xr.Dataset,
-        period: str,
+        frequency: str,
         file_type: str,
 ) -> xr.Dataset:
+    """
+    Add missing attributes to the datasets.
+    This function would not be needed if all files complied with the data format.
+
+    Args:
+        ds (xarray dataset):
+            xarray dataset which attributes should be changed.
+        frequency (str):
+            Frequency of the inversion results present in the dataset.
+            Options for "monthly" and "yearly".
+        file_type (str):
+            Output file type.
+            Options for "flux" and "concentration".
+
+    Returns:
+        ds (xarray dataset):
+            xarray dataset with updated attributes.
+    """
     
     # Add inversion frequency to global attributes
     if "frequency" not in ds.attrs:
-        ds.attrs["frequency"] = period
+        ds.attrs["frequency"] = frequency
     
     # Easy fix for InTEM ("units" attribute is wrongly set to "unit")
     vars_to_check = ['country_flux_total_prior', 'country_flux_total_posterior',
