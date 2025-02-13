@@ -162,8 +162,8 @@ def scale_flux(
 def slice_flux(
         ds_all: dict[str, xr.Dataset],
         config_data: dict[str, str | float],
-        start_date: str = None,
-        end_date: str = None,
+        start_date: str | list[str] = None,
+        end_date: str | list[str] = None,
         species: str = None,
         flux_units_print: str = None,
         country_flux_units_print: str = None,
@@ -200,16 +200,20 @@ def slice_flux(
     """
     
     if species is not None:
-        species_info = config_data['species_info'][species]   
+        species_info = config_data['species_info'][species]
+       
+    if type(start_date) is str:
+        start_date = [start_date]*len(ds_all.keys())
+        end_date = [end_date]*len(ds_all.keys())   
 
-    for m in ds_all.keys():
+    for im, m in enumerate(ds_all.keys()):
         logger.info(f'Masking data from {m}.')
 
         # Slice data according to time window
-        ds_all[m] = ds_all[m].sel(time=slice(start_date,end_date))
+        ds_all[m] = ds_all[m].sel(time=slice(start_date[im],end_date[im]))
 
         if len(ds_all[m]['time']) == 0:
-            logger.warning(f'No {m} fluxes found between {start_date} and {end_date}.')
+            logger.warning(f'No {m} fluxes found between {start_date[im]} and {end_date[im]}.')
             ds_all.pop(m)
             continue
 

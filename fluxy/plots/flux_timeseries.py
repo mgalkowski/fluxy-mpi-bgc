@@ -132,7 +132,7 @@ def prepare_data_to_plot(
 
 def plot_country_flux(
     ds_all: dict[str, xr.Dataset],
-    specie: str,
+    species: str,
     plot_regions: list[str],
     s_data: dict[str, str],
     model_colors: dict[str, str],
@@ -163,9 +163,9 @@ def plot_country_flux(
     Args:
         ds_all: xarray datasets of fluxes, scaled and sliced between 
             chosen dates.
-        specie: Gas specie, e.g. 'ch4'.
+        species: Gas species, e.g. 'ch4'.
         plot_regions: Country or regions to plot, e.g. ['UNITED KINGDOM','SWITZERLAND']
-        s_data: Dictionary of specie with information for plotting (read from json file).
+        s_data: Dictionary of species with information for plotting (read from json file).
         model_colors: Models and corresponding colours used to plot the model.
         start_date: Start dates of the data to plot (used to slice inventory data).
         end_date: Start dates of the data to plot (used to slice inventory data).
@@ -207,8 +207,10 @@ def plot_country_flux(
     # Create figure
     n_cols, n_rows = determine_subplots_arrangement(len(plot_regions))
     
-
-    units = {ds.country_flux_total_posterior.units for ds in ds_all.values()} 
+    if 'all' in species:
+        units =  {ds.posterior.units for ds in ds_all.values()} 
+    else:
+        units = {ds.country_flux_total_posterior.units for ds in ds_all.values()} 
     if len(units) == 1:
         unit = list(units)[0]
     else:
@@ -223,7 +225,7 @@ def plot_country_flux(
         ax = axes.flatten()[i]
 
         if plot_inventory :
-            inventories_to_plot = retrieve_inventories(data_dir,country,specie,start_date,end_date,unit,s_data,inventory_years)
+            inventories_to_plot = retrieve_inventories(data_dir,country,species,start_date,end_date,unit,s_data,inventory_years)
             for i_inv, inventory in enumerate(inventories_to_plot) :
                 ax.bar(inventory.time,inventory,
                        np.timedelta64(340-i_inv*20, 'D'),
@@ -234,7 +236,7 @@ def plot_country_flux(
                 if return_res:
                     res_dict[country][f'inventory_{inventory.year}']= {'time':inventory.time.values,
                                                                        'value':inventory.values}
-        
+
         ds_all_region = extract_region_flux(ds_all, country)
         ds_to_plot = prepare_data_to_plot(
             ds_all_region,
@@ -291,7 +293,7 @@ def plot_country_flux(
                                 color = ds_region.attrs['model_color'])
                 max_cf[i] = np.nanmax((max_cf[i], ds_region.prior_upper.max(skipna=True)))
                                            
-        ax.set_ylabel(f"{s_data[specie]['species_print']} ({unit.replace('-1','$^{{-1}}$')})")     
+        ax.set_ylabel(f"{s_data[species]['species_print']} ({unit.replace('-1','$^{{-1}}$')})")     
         
         # set legend if needed
         if not set_global_leg:
