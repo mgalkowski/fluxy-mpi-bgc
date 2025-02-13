@@ -174,7 +174,7 @@ def read_flux_total_fgases(data_dir: str,
     regions: list |str,
     start_date: str,end_date: str,
     period: str = 'yearly',
-    run_keys: str | list = 'default'
+    unit: str = 'Tg CO2-eq yr-1',
 ) -> dict[str, xr.Dataset]:
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
@@ -202,6 +202,8 @@ def read_flux_total_fgases(data_dir: str,
             Inversion period as specified in the model filename.
             If it is a string, the same period is considered for all models.
             If it is a list, one value per model must be specified, e.g. ['monthly','yearly']
+        unit (str):
+            unit in which to put the dataset. Must be in CO2-eq
                  
     Returns:
         ds_all (dictionary of datasets): 
@@ -210,7 +212,10 @@ def read_flux_total_fgases(data_dir: str,
 
     all_species = config_data['species_info'].get(species,{'list_species':None}).get('list_species',None)
     if all_species is None:
-        raise ValueError(f'No list of species was found in the config_data for {species}. Please update your config file.')
+        raise ValueError(f'No list of species was found in the config_data for {species}. '+
+                         f'If config_data was created with read_config_files from fluxy/io.py, update configs/species_info.json.')
+    if 'CO2-eq' not in unit:
+        raise ValueError(' unit should be in CO2-eq.')
     
     # Update parameters
     date_message = ('If this fails with an error message related to region_time dimensions, check the availablility\n'+
@@ -242,7 +247,7 @@ def read_flux_total_fgases(data_dir: str,
             m0,run_key = model, 'default'
         else:
             raise ValueError(f" Model input must be in the form <basic-model>_<config-key> (ex : 'RHIME_test') or <basic-model>. To many '_' detected in {model}")
-            
+
         filename_dict = config_data['models_info']["standard_run"][run_key]
         filename_dict_default = config_data['models_info']["standard_run"]['default']
         for species_p in all_species:
@@ -264,7 +269,7 @@ def read_flux_total_fgases(data_dir: str,
                                            [filename], 
                                            config_data, period[ik])[filename]
         ds_in = slice_flux(ds_in, config_data, start_date, end_date, species_p,
-                            country_flux_units_print = 'Tg CO2-eq yr-1')
+                            country_flux_units_print = unit)
         # extract regions
         for region in regions:
             ds_all_region = extract_region_flux(ds_in, region)
