@@ -202,82 +202,99 @@ def read_flux_total_fgases(data_dir: str,
             Inversion period as specified in the model filename.
             If it is a string, the same period is considered for all models.
             If it is a list, one value per model must be specified, e.g. ['monthly','yearly']
-        run_keys : 
-            keys to find the runs to use in the config file
                  
     Returns:
         ds_all (dictionary of datasets): 
             xarray dataset read directly from each model's flux netCDF.
     """
-    logger.warning(" /!!!!!\ start_date and end_date as lists won't work for now /!!!!!\ ")
 
     all_species = config_data['species_info'].get(species,{'list_species':None}).get('list_species',None)
     if all_species is None:
         raise ValueError(f'No list of species was found in the config_data for {species}. Please update your config file.')
-        
-    if type(start_date) is str:
-        logger.warning(' Using same start and end date for all models')
-        logger.info('If this fails with an error message related to region_time dimensions, check the availablility\n'+
+    
+    # Update parameters
+    date_message = ('If this fails with an error message related to region_time dimensions, check the availablility\n'+
               'of data from all models for all timestamps.\n'+
               'To fix this error, set start_date and end_date as lists with the correct start and end times\nfor each model.')
+    if type(start_date) is str:
+        logger.warning(' Using same start date for all models')
+        logger.info(date_message)
         start_date = [start_date]*len(models)
+    if type(end_date) is str:
+        logger.warning(' Using same end date for all models')
+        logger.info(date_message)
         end_date = [end_date]*len(models)
-
-    if isinstance(run_keys, str):
-        run_keys = [run_keys]
 
     if isinstance(period, str):
         period = [period]*len(models)    
     if len(period) != len(models):
         raise ValueError(f'period must be a string or a list of the same length as models.')
     
-    experiments = [f'{model}_{run_key}' for model in models for run_key in run_keys]
-    missing_species = {exp : list() for exp in experiments}
+    # Assign key to find file for each species and model according to the config file
+    missing_species = {model : list() for model in models}
+    default_overwrite = {model : list() for model in models}
     valid_experiments = {species_p: dict() for species_p in all_species}
-    for exp in experiments:
-        model,run_key = exp.split('_')
-        filename_dict = config_data['models_info']["standard_run"][run_key]
-        for species_p in all_species:
-            if species_p not in filename_dict:
-                missing_species[exp].append(species)
-            else:
-                valid_experiments[species_p][f'{model.upper()}_{filename_dict[species_p]}'] = exp
 
-    ds_output = {}
-    ds_all = {region : {exp : list() for exp in experiments} for region in regions}
-    for species_p in all_species:        
-        ds_tmp = read_model_output(data_dir, "flux", species_p,
-                                   list(valid_experiments[species_p].keys()), 
-                                   config_data, period)
-        ds_in = {valid_experiments[species_p][k] : ds for k, ds in ds_tmp.items()}
+    for model in models:
+        if len(model.split('_'))==2:
+            m0,run_key = model.split('_')
+        elif len(model.split('_'))==1:
+            m0,run_key = model, 'default'
+        else:
+            raise ValueError(f" Model input must be in the form <basic-model>_<config-key> (ex : 'RHIME_test') or <basic-model>. To many '_' detected in {model}")
+            
+        filename_dict = config_data['models_info']["standard_run"][run_key]
+        filename_dict_default = config_data['models_info']["standard_run"]['default']
+        for species_p in all_species:
+            if species_p in filename_dict:
+                valid_experiments[species_p][model] = f'{m0}_{filename_dict[species_p]}'
+            elif species_p in filename_dict_default:
+                valid_experiments[species_p][model] = f'{m0}_{filename_dict_default[species_p]}'
+                default_overwrite[model].append(species_p)
+            else:
+                missing_species[model].append(species_p)
+
+    # Extract data by species, model and region
+    ds_all = {region : {model : list() for model in models} for region in regions}
+    for species_p in all_species: 
+        # read and slice dataset for each species and model separately
+        ds_in = dict()
+        for ik, (key, filename) in enumerate(valid_experiments[species_p].items()):
+            ds_in[key] = read_model_output(data_dir, "flux", species_p,
+                                           [filename], 
+                                           config_data, period[ik])[filename]
         ds_in = slice_flux(ds_in, config_data, start_date, end_date, species_p,
                             country_flux_units_print = 'Tg CO2-eq yr-1')
+        # extract regions
         for region in regions:
             ds_all_region = extract_region_flux(ds_in, region)
-            for exp in experiments:
-                ds_all[region][exp].append(ds_all_region[exp])
+            for model in models:
+                ds_all[region][model].append(ds_all_region[model])
 
-    for exp in experiments :
+    # Sum species datasets by region and model to create output
+    ds_output = {}
+    for model in models :
         ds_list = []
-
         for region in regions:
-            ds_tmp = xr.concat(align_dataset(ds_all[region][exp]), dim = 'species', combine_attrs = "no_conflicts")
+            ds_tmp = xr.concat(align_dataset(ds_all[region][model]), dim = 'species', combine_attrs = "no_conflicts")
             ds_list.append(ds_tmp.sum(dim='species', keep_attrs= True))
 
         ds_tmp =  xr.concat(ds_list, dim = 'country', combine_attrs = "no_conflicts")
         ds_tmp.attrs['species'] = species
 
-        ds_output[exp] = ds_tmp
-        
-    missing = []
-    for exp in experiments:
-        if missing_species[exp] != []:
-            missing.append(exp)
+        ds_output[model] = ds_tmp
+    
+    # print messages about used config
+    messages_ordered_by_model = list()
+    for model in models:
+        if default_overwrite[model]:
+            messages_ordered_by_model.append([logger.warning, f' {default_overwrite[model]} have been overwritten by default config for {model}.'])
+        if missing_species[model]:
+            messages_ordered_by_model.append([logger.warning, f' Model {model} is missing species: {missing_species[model]}'])
         else:
-            logger.info(f' All species succesfully read for {model}!')
-            
-    for m in missing:
-        logger.warning(f' Model {m} is missing species: {missing_species[m]}')
+            messages_ordered_by_model.append([logger.info, f' All species succesfully read for {model}!'])
+    for message in messages_ordered_by_model:
+        message[0](message[1])
 
     logger.info(' To change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
 

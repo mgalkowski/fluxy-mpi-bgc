@@ -113,11 +113,11 @@
         "species_print": "SO$_2$F$_2$",
         "molar_mass": 102.06
     },
-    "all_hfc_test": {
+    "all_hfc": {
         "list_species": ["hfc134a","hfc143a"],
         "species_print": "Total HFC"
     },
-    "all_hfc": {
+    "all_hfc_sauv": {
         "list_species": ["hfc125","hfc134a","hfc143a","hfc152a","hfc23","hfc227ea","hfc245fa","hfc32","hfc365mfc"],
         "species_print": "Total HFC"
     },

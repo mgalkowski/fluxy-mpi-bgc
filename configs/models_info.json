@@ -58,9 +58,9 @@
                     "hcfo1233zde": "NAME_POPULATION",
                     "clch2ch2cl": "NAME_POPULATION"
     },
-        "Flexinvert": {"clch2ch2cl": "FLEXPART_POPULATION"
+        "flexinvert-dca": {"clch2ch2cl": "FLEXPART_POPULATION"
     },
-        "ELRIS": {"n2o": "NAME_EDGAR_28sites"
+        "elris-n2o": {"n2o": "NAME_EDGAR_28sites"
     }
     }
 }
