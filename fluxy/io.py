@@ -2,6 +2,7 @@ import os
 import glob
 import xarray as xr
 import numpy as np
+import pandas as pd
 import json 
 import geopandas as gpd
 import logging
@@ -15,6 +16,7 @@ from typing import Literal
 from fluxy import config
 from fluxy.operators.regions import extract_region_flux
 from fluxy.operators.select import slice_flux
+from fluxy.operators.flux_align_dataset import align_dataset
 
 logger = logging.getLogger(__name__)
 
@@ -190,12 +192,19 @@ def read_model_output(
         ds_all[m] = xr.open_dataset(filepath)
 
         # Add/correct attributes
-        ds_all[m] = edit_ds_attributes(ds_all[m],period[i],file_type)
+        ds_all[m] = edit_ds(ds_all[m],m,period[i],file_type)
 
     return ds_all
 
-def read_flux_total_fgases(data_dir,species,models,config_data,regions,
-                           start_date,end_date,period='yearly',apply_pop_scale=True):
+def read_flux_total_fgases(data_dir: str, 
+    species: str, 
+    models: str | list, 
+    config_data: dict[str, dict], 
+    regions: list |str,
+    start_date: str,end_date: str,
+    period: str = 'yearly',
+    unit: str = 'Tg CO2-eq yr-1',
+) -> dict[str, xr.Dataset]:
     """
     Reads in fluxes from a list of gases and sums/averages totals and uncertainties,
     to produce one dataset which can be used with plotting functions in the rest 
@@ -222,220 +231,101 @@ def read_flux_total_fgases(data_dir,species,models,config_data,regions,
             Inversion period as specified in the model filename.
             If it is a string, the same period is considered for all models.
             If it is a list, one value per model must be specified, e.g. ['monthly','yearly']
+        unit (str):
+            unit in which to put the dataset. Must be in CO2-eq
                  
     Returns:
         ds_all (dictionary of datasets): 
             xarray dataset read directly from each model's flux netCDF.
     """
+
+    all_species = config_data['species_info'].get(species,{'list_species':None}).get('list_species',None)
+    if all_species is None:
+        raise ValueError(f'No list of species was found in the config_data for {species}. '+
+                         f'If config_data was created with read_config_files from fluxy/io.py, update configs/species_info.json.')
+    if 'CO2-eq' not in unit:
+        raise ValueError('Unit should be in CO2-eq.')
     
-    if species == 'all_hfc':
-        all_species = ['hfc125','hfc134a','hfc143a','hfc152a','hfc23',
-                       'hfc227ea','hfc245fa','hfc32','hfc365mfc'] #,'hfc4310mee']
-    elif species == 'all_pfc':
-        all_species = ['cf4','pfc116','pfc218','pfc318']
-    else:
-        raise ValueError('This function can only be used to read total hfc (all_hfc) or total pfc (all_pfc).')
-        
-       
-    if type(start_date) is str:
-        print('\nNOTE: Using same start and end date for all models')
-        print('If this fails with an error message related to region_time dimensions, check the availablility\n'+
+    # Update parameters
+    date_message = (' If this fails with an error message related to region_time dimensions, check the availablility\n'+
               'of data from all models for all timestamps.\n'+
               'To fix this error, set start_date and end_date as lists with the correct start and end times\nfor each model.')
+    if type(start_date) is str:
+        logger.info(' Using same start date for all models')
+        logger.info(date_message)
         start_date = [start_date]*len(models)
+    if type(end_date) is str:
+        logger.info(' Using same end date for all models')
+        logger.info(date_message)
         end_date = [end_date]*len(models)
 
     if isinstance(period, str):
-        period = [period]*len(models)
-    
+        period = [period]*len(models)    
     if len(period) != len(models):
         raise ValueError(f'period must be a string or a list of the same length as models.')
-        
-    ds_all = {}
-    ds_in = {}
-    missing_species = {}
-
-    for m,model in enumerate(models):
-        
-        #longrun = False
-        #if 'longrun' in model:
-        #    model = model.split('_')[0]
-        #    models[m] = model
-        #    longrun = True
-
-        missing_species[model] = []
-        m0 = model.split('_')[0]
-        
-        for s,species in enumerate(all_species):
-
-            
-            #dictionary containing datasets for each species, these are then summed/averaged across the time coordinate
-            ds_out = {}
-
-            species_info = config_data['species_info'][species]
-            
-            #tries to read from standard filename
-            try:
-                # Get standard run name tag
-                std_run_all = config_data["models_info"]["standard_run"]
-                std_run = std_run_all["default"][species]
-                if (model_std_run := std_run_all.get(m0)) and (run_name := model_std_run.get(species)):
-                    std_run = run_name
-                
-                model_read = f'{m0}_{std_run}'
-                if 'longrun' in model: model_read = f'{model_read}_longrun'
-                
-                ds_in[model] = read_model_output(data_dir,"flux",species,[model_read],config_data,period[m])[model_read]
-                ds_in[model] = slice_flux({model:ds_in[model]},config_data,start_date[m],end_date[m])[model]
-
-            except:
-                ds_in[model] = None
-                if species not in missing_species[model]:
-                    missing_species[model].append(species)
-
-            for r,region in enumerate(regions):
-                
-                try:
-                    region_time,region_flux_total_posterior,region_flux_total_prior,\
-                    region_flux_total_posterior_lower,region_flux_total_posterior_upper,\
-                    region_flux_total_prior_lower,region_flux_total_prior_upper = extract_region_flux(ds_in,model,m0,region,apply_pop_scale,verbose=False)
-                    
-                    #for percentiles, first convert to upper and lower standard deviations (difference from mean)
-                    region_flux_total_posterior_lower = (region_flux_total_posterior-region_flux_total_posterior_lower) * 1e3 * species_info['gwp'] * 1e-12
-                    region_flux_total_posterior_upper = (region_flux_total_posterior_upper-region_flux_total_posterior) * 1e3 * species_info['gwp'] * 1e-12
-                    region_flux_total_prior_lower = (region_flux_total_prior-region_flux_total_prior_lower) * 1e3 * species_info['gwp'] * 1e-12
-                    region_flux_total_prior_upper = (region_flux_total_prior_upper-region_flux_total_prior) * 1e3 * species_info['gwp'] * 1e-12
-                    
-                    region_flux_total_posterior = region_flux_total_posterior * 1e3 * species_info['gwp'] * 1e-12
-                    region_flux_total_prior = region_flux_total_prior * 1e3 * species_info['gwp'] * 1e-12
-
-                    #fix to replace rhime's timestamps, which aren't always in the centre of the inversion period
-                    # which breaks the .sum() steps below if trying to include data from missing species
-                    if 'rhime' in model:
-                        region_time = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),np.datetime64(end_date[m]).astype('datetime64[Y]'),
-                                        np.timedelta64(1,'Y')).astype('datetime64[ns]')
-                        region_time_extended = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),
-                                                        np.datetime64(end_date[m]).astype('datetime64[Y]')+np.timedelta64(1,'Y'),
-                                                        np.timedelta64(1,'Y')).astype('datetime64[ns]')
-                        time_diff = []
-                        for t,test_time in enumerate(region_time):
-                            time_diff.append((region_time_extended[t+1] - region_time_extended[t])/2)
-                        region_time = region_time + time_diff
-                
-                except:
-                    # create empty set of values for this region and species, so it can be skipped if needed
-                    print(f'No {species} {region} fluxes found for {model} check directory paths and netcdf contents.')
-                    region_time = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),np.datetime64(end_date[m]).astype('datetime64[Y]'),
-                                            np.timedelta64(1,'Y')).astype('datetime64[ns]')
-                    region_time_extended = np.arange(np.datetime64(start_date[m]).astype('datetime64[Y]'),
-                                                    np.datetime64(end_date[m]).astype('datetime64[Y]')+np.timedelta64(1,'Y'),
-                                                    np.timedelta64(1,'Y')).astype('datetime64[ns]')
-                    time_diff = []
-                    for t,test_time in enumerate(region_time):
-                        time_diff.append((region_time_extended[t+1] - region_time_extended[t])/2)
-                    region_time = region_time + time_diff
-                    
-                    region_flux_total_posterior_lower,region_flux_total_posterior_upper = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
-                    region_flux_total_prior_lower,region_flux_total_prior_upper = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
-                    region_flux_total_posterior,region_flux_total_prior = np.ones(region_time.shape)*np.nan,np.ones(region_time.shape)*np.nan
-                 
-                    if species not in missing_species[model]:
-                        missing_species[model].append(species)
-                        
-                #print(f'{model} {species}')
-                #print(region_time)
-                 
-                if r == 0:
-                    country_out = np.array([region])
-                    region_flux_total_posterior_out = np.expand_dims(region_flux_total_posterior,axis=1)
-                    region_flux_total_prior_out = np.expand_dims(region_flux_total_prior,axis=1)
-                    region_flux_total_posterior_lower_out = np.expand_dims(region_flux_total_posterior_lower,axis=1)
-                    region_flux_total_posterior_upper_out = np.expand_dims(region_flux_total_posterior_upper,axis=1)
-                    region_flux_total_prior_lower_out = np.expand_dims(region_flux_total_prior_lower,axis=1)
-                    region_flux_total_prior_upper_out = np.expand_dims(region_flux_total_prior_upper,axis=1)
-                else:
-                    country_out = np.hstack((country_out,np.array([region])))
-                    region_flux_total_posterior_out = np.concatenate((region_flux_total_posterior_out,np.expand_dims(region_flux_total_posterior,axis=1)),axis=1)
-                    region_flux_total_prior_out = np.concatenate((region_flux_total_prior_out,np.expand_dims(region_flux_total_prior,axis=1)),axis=1)
-                    region_flux_total_posterior_lower_out = np.concatenate((region_flux_total_posterior_lower_out,np.expand_dims(region_flux_total_posterior_lower,axis=1)),axis=1)
-                    region_flux_total_posterior_upper_out = np.concatenate((region_flux_total_posterior_upper_out,np.expand_dims(region_flux_total_posterior_upper,axis=1)),axis=1)
-                    region_flux_total_prior_lower_out = np.concatenate((region_flux_total_prior_lower_out,np.expand_dims(region_flux_total_prior_lower,axis=1)),axis=1)
-                    region_flux_total_prior_upper_out = np.concatenate((region_flux_total_prior_upper_out,np.expand_dims(region_flux_total_prior_upper,axis=1)),axis=1)
-                #should be of shape (time,n_country)
-                    
-            ds_out = xr.Dataset({'region_flux_total_posterior_out':(['region_time','country_out'],region_flux_total_posterior_out),
-                                'region_flux_total_prior_out':(['region_time','country_out'],region_flux_total_prior_out),
-                                'region_flux_total_posterior_lower_out':(['region_time','country_out'],region_flux_total_posterior_lower_out),
-                                'region_flux_total_posterior_upper_out':(['region_time','country_out'],region_flux_total_posterior_upper_out),
-                                'region_flux_total_prior_lower_out':(['region_time','country_out'],region_flux_total_prior_lower_out),
-                                'region_flux_total_prior_upper_out':(['region_time','country_out'],region_flux_total_prior_upper_out)},
-                                coords={'region_time':(['region_time'],region_time),
-                                        'country_out':(['country_out'],country_out),
-                                        'percentile':(['percentile'],np.array([0.159,0.841]))})
-            
-            if s == 0:
-                ds_out_species_total = ds_out.copy()
-            else:
-                region_flux_total_posterior_all_species = xr.concat((ds_out_species_total['region_flux_total_posterior_out'],
-                                                                    ds_out['region_flux_total_posterior_out']),dim='stack').sum(dim='stack')   #this works when ds_out and ds_out_species_total have different time coordinates
-                region_flux_total_prior_all_species = xr.concat((ds_out_species_total['region_flux_total_prior_out'],
-                                                                    ds_out['region_flux_total_prior_out']),dim='stack').sum(dim='stack')
-                region_flux_total_posterior_lower_all_species = np.sqrt(xr.concat((ds_out_species_total['region_flux_total_posterior_lower_out']**2,
-                                                                    ds_out['region_flux_total_posterior_lower_out']**2),dim='stack').sum(dim='stack'))
-                region_flux_total_posterior_upper_all_species = np.sqrt(xr.concat((ds_out_species_total['region_flux_total_posterior_upper_out']**2,
-                                                                    ds_out['region_flux_total_posterior_upper_out']**2),dim='stack').sum(dim='stack'))
-                region_flux_total_prior_lower_all_species = np.sqrt(xr.concat((ds_out_species_total['region_flux_total_prior_lower_out']**2,
-                                                                    ds_out['region_flux_total_prior_lower_out']**2),dim='stack').sum(dim='stack'))
-                region_flux_total_prior_upper_all_species = np.sqrt(xr.concat((ds_out_species_total['region_flux_total_prior_upper_out']**2,
-                                                                    ds_out['region_flux_total_prior_upper_out']**2),dim='stack').sum(dim='stack'))
-                
-                ds_out_species_total = xr.Dataset({'region_flux_total_posterior_out':(['region_time','country_out'],region_flux_total_posterior_all_species.values),
-                                'region_flux_total_prior_out':(['region_time','country_out'],region_flux_total_prior_all_species.values),
-                                'region_flux_total_posterior_lower_out':(['region_time','country_out'],region_flux_total_posterior_lower_all_species.values),
-                                'region_flux_total_posterior_upper_out':(['region_time','country_out'],region_flux_total_posterior_upper_all_species.values),
-                                'region_flux_total_prior_lower_out':(['region_time','country_out'],region_flux_total_prior_lower_all_species.values),
-                                'region_flux_total_prior_upper_out':(['region_time','country_out'],region_flux_total_prior_upper_all_species.values)},
-                                coords={'region_time':(['region_time'],region_flux_total_prior_all_species['region_time'].values),
-                                        'country_out':(['country_out'],country_out)}) 
-                
-            #print(f"Total = {ds_out_species_total['region_flux_total_posterior_lower_out'].values}")
-                
-            if m0 == 'InTEM':
-                country_coord_name = 'countrynumber'
-            else:
-                country_coord_name = 'country'
-                
-        country_shortnames = []
-        for c in ds_out_species_total['country_out'].values:
-            try:
-                country_shortnames.append(config.countrycodes_dict[c])
-            except:
-                country_shortnames.append(config.regions_dict_old[c])
-                
-        ds_all[model] = xr.Dataset({'country_flux_total_prior':(['time',country_coord_name],ds_out_species_total['region_flux_total_prior_out'].values),
-                                    'country_flux_total_posterior':(['time',country_coord_name],ds_out_species_total['region_flux_total_posterior_out'].values),
-                                    'percentile_country_flux_total_prior':(['time','percentile',country_coord_name],
-                                                                        np.concatenate((np.expand_dims((ds_out_species_total['region_flux_total_prior_out'].values-ds_out_species_total['region_flux_total_prior_lower_out'].values),axis=1),
-                                                                                    np.expand_dims((ds_out_species_total['region_flux_total_prior_out'].values+ds_out_species_total['region_flux_total_prior_upper_out'].values),axis=1)),axis=1)),
-                                    'percentile_country_flux_total_posterior':(['time','percentile',country_coord_name],
-                                                                        np.concatenate((np.expand_dims((ds_out_species_total['region_flux_total_posterior_out'].values-ds_out_species_total['region_flux_total_posterior_lower_out'].values),axis=1),
-                                                                                    np.expand_dims((ds_out_species_total['region_flux_total_posterior_out'].values+ds_out_species_total['region_flux_total_posterior_upper_out'].values),axis=1)),axis=1))},
-                            coords={'time':(['time'],ds_out_species_total['region_time'].values),
-                                    country_coord_name:([country_coord_name],np.array(country_shortnames))}) 
     
-    missing = []
+    # Assign key to find file for each species and model according to the config file
+    default_overwrite = {model : list() for model in models}
+    valid_experiments = {species_p: dict() for species_p in all_species}
+
     for model in models:
-        if missing_species[model] != []:
-            missing.append(model)
+        m0, *run_key = model.split('_')
+        run_key = '_'.join(run_key)
+        if not run_key: run_key = 'default'
+
+        standard_run_dict = config_data['models_info']["standard_run"][run_key]
+        standard_run_dict_default = config_data['models_info']["standard_run"]['default']
+        for species_p in all_species:
+            if species_p in standard_run_dict:
+                valid_experiments[species_p][model] = f'{m0}_{standard_run_dict[species_p]}'
+            elif species_p in standard_run_dict_default:
+                valid_experiments[species_p][model] = f'{m0}_{standard_run_dict_default[species_p]}'
+                default_overwrite[model].append(species_p)
+            else:
+                raise ValueError(f"No standard run provided for {species_p}, neither for '{run_key}' nor in 'default'. Please update your config file.")
+
+    # Extract data by species, model and region
+    ds_all = {region : {model : list() for model in models} for region in regions}
+    for species_p in all_species: 
+        # read and slice dataset for each species and model separately
+        ds_in = dict()
+        for ik, (key, standard_run) in enumerate(valid_experiments[species_p].items()):
+            ds_in[key] = read_model_output(data_dir, "flux", species_p,
+                                           [standard_run], 
+                                           config_data, period[ik])[standard_run]
+            if not ds_in[key]:
+                raise ValueError("No file found for {standard_run} with period '{period}' and species '{species_p} in {data_dir}.")
+        ds_in = slice_flux(ds_in, config_data, start_date, end_date, species_p,
+                            country_flux_units_print = unit)
+        # extract regions
+        for region in regions:
+            ds_all_region = extract_region_flux(ds_in, region)
+            for model in models:
+                ds_all[region][model].append(ds_all_region[model])
+
+    # Sum species datasets by region and model to create output
+    ds_output = {}
+    for model in models :
+        ds_list = []
+        for region in regions:
+            ds_tmp = xr.concat(align_dataset(ds_all[region][model]), dim = 'species', combine_attrs = "drop_conflicts")
+            ds_list.append(ds_tmp.sum(dim='species', keep_attrs= True))
+
+        ds_tmp =  xr.concat(ds_list, dim = 'country', combine_attrs = "no_conflicts")
+        ds_tmp.attrs['species'] = species
+
+        ds_output[model] = ds_tmp
+    
+    # print messages about used config
+    for model in models:
+        if default_overwrite[model]:
+            logger.warning(f' {default_overwrite[model]} have been overwritten by default config for {model}.')
         else:
-            print(f'\nAll species succesfully read for {model}!')
-            
-    for m in missing:
-        print(f'\nWARNING: Model {m} is missing species: {missing_species[m]}')
+            logger.info(f' All species succesfully read for {model}!')
 
-    print('\nTo change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
+    logger.info(' To change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
 
-    return ds_all
+    return ds_output
 
 def load_countries_shape(
     region_bounds: tuple =None
@@ -488,6 +378,20 @@ def load_countries_shape(
 
     return gdf
 
+def edit_ds(
+        ds: xr.Dataset,
+        model : str,
+        period: str,
+        file_type: str,
+) -> xr.Dataset:
+    
+    if file_type == 'flux':
+        ds = adapt_ds_flux(ds,model)
+
+    ds = edit_ds_attributes(ds,period,file_type)
+
+    return ds
+
 def edit_ds_attributes(
         ds: xr.Dataset,
         frequency: str,
@@ -525,4 +429,62 @@ def edit_ds_attributes(
             if 'units' not in ds[var].attrs.keys() and 'unit' in ds[var].attrs.keys():
                 ds[var].attrs['units'] = ds[var].attrs['unit']
 
+    return ds
+
+def adapt_ds_flux(
+        ds: xr.Dataset,
+        model : str,
+) -> xr.Dataset:
+    m0 = model.split('_')[0].lower()
+        
+    if m0 == 'elris':
+        ds['country'] = ds['country'].astype('str')
+        ds = ds.set_index(countrynumber='country').rename({'countrynumber':'country'})
+
+    elif m0 == 'intem':            
+        ds = ds.rename({'countrynumber':'country'})
+
+        if 'BEL-LUX' in ds.country and ('BEL' not in ds.country and 'LUX'  not in ds.country):
+            logger.info(f" InTEM does not estimate separate BELGIUM emissions.\n A population ratio of {config.bel_pop_r} is being used to scale InTEM's total BELGIUM+LUXEMBOURG estimate.")
+
+            r = config.bel_pop_r
+
+            variables_with_country = [var for var in ds.data_vars if "country" in ds[var].dims]
+            numerical_vars = [var for var in variables_with_country 
+                                if np.issubdtype(ds[var].dtype, np.number) and var != "country_fraction"]
+
+            ds_bel = r * ds[numerical_vars].sel(country='BEL-LUX')
+            ds_lux = (1-r) * ds[numerical_vars].sel(country='BEL-LUX')
+
+            del ds_bel['country']
+            del ds_lux['country']
+
+            ds_bel['countryname'] = xr.DataArray(data = ['BELGIUM',] * ds_bel.time.size,
+                                                dims = ['time',],
+                                                coords = {'time': ds_bel.time},
+                                                attrs = ds.countryname.attrs)
+            
+            ds_lux['countryname'] = xr.DataArray(data = ['LUXEMBOURG',] * ds_lux.time.size,
+                                                dims = ['time',],
+                                                coords = {'time': ds_lux.time},
+                                                attrs = ds.countryname.attrs)
+            
+            ds_bellux = xr.concat([ds_bel, ds_lux], pd.Index(['BEL','LUX'], name='country'))
+            ds = xr.merge([ds, ds_bellux])
+
+    elif m0 == 'rhime':
+        ds['country'] = [config.countrycodes_dict.get(x, x) for x in ds['country'].values]
+
+    elif m0 == 'flexinvert':
+        ds['percentile_country_flux_total_posterior'] = xr.concat([ds['country_flux_total_posterior']
+                                                                - ds['country_flux_error_posterior'],
+                                                                ds['country_flux_total_posterior']
+                                                                + ds['country_flux_error_posterior']],
+                                                                pd.Index([0,1], name = 'percentile'))
+        
+        ds['percentile_country_flux_total_prior'] = xr.concat([ds['country_flux_total_prior']
+                                                            - ds['country_flux_error_prior'],
+                                                            ds['country_flux_total_prior']
+                                                            + ds['country_flux_error_prior']],
+                                                            pd.Index([0,1], name = 'percentile'))
     return ds
