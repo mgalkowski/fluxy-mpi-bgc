@@ -36,69 +36,19 @@ def extract_region_flux(
             - 'prior_upper'
     """
     ds_output = dict()
+    country_search = config.countrycodes_dict[country]
+    min_percentile_index = 0
+    max_percentile_index = 1
+
+    if all([('all' in ds.attrs.get('species', '')) for ds in ds_all.values()]):
+        ds_output = {m : ds.sel({"country": country_search}) for m, ds in ds_all.items()}
+        return ds_output
+
+    target_vars = ["posterior","posterior_lower","posterior_upper",
+                   "prior","prior_lower","prior_upper"]
 
     for m, ds in ds_all.items():
-        #########################################################################################
-        # To be move to read_flux
-        m0 = m.split("_")[0].lower()
-        min_percentile_index = 0
-        max_percentile_index = 1
-        
-        if m0 == 'elris':
-            ds['country'] = ds['country'].astype('str')
-            ds = ds.set_index(countrynumber='country').rename({'countrynumber':'country'})
-
-        elif m0 == 'intem':            
-            ds = ds.rename({'countrynumber':'country'})
-
-            if 'BEL' not in ds.country and 'LUX'  not in ds.country:
-                logger.warning(f"InTEM does not estimate separate BELGIUM emissions.\n A population ratio of {config.bel_pop_r} is being used to scale InTEM's total BELGIUM+LUXEMBOURG estimate.")
-
-                r = config.bel_pop_r
-
-                variables_with_country = [var for var in ds.data_vars if "country" in ds[var].dims]
-                numerical_vars = [var for var in variables_with_country 
-                                  if np.issubdtype(ds[var].dtype, np.number) and var != "country_fraction"]
-
-                ds_bel = r * ds[numerical_vars].sel(country='BEL-LUX')
-                ds_lux = (1-r) * ds[numerical_vars].sel(country='BEL-LUX')
-
-                del ds_bel['country']
-                del ds_lux['country']
-
-                ds_bel['countryname'] = xr.DataArray(data = ['BELGIUM',] * ds_bel.time.size,
-                                                    dims = ['time',],
-                                                    coords = {'time': ds_bel.time},
-                                                    attrs = ds.countryname.attrs)
-                
-                ds_lux['countryname'] = xr.DataArray(data = ['LUXEMBOURG',] * ds_lux.time.size,
-                                                    dims = ['time',],
-                                                    coords = {'time': ds_lux.time},
-                                                    attrs = ds.countryname.attrs)
-                
-                ds_bellux = xr.concat([ds_bel, ds_lux], pd.Index(['BEL','LUX'], name='country'))
-                ds = xr.merge([ds, ds_bellux])
-
-        elif m0 == 'rhime':
-            ds['country'] = [config.countrycodes_dict.get(x, x) for x in ds['country'].values]
-
-        elif m0 == 'flexinvert':
-            ds['percentile_country_flux_total_posterior'] = xr.concat([ds['country_flux_total_posterior']
-                                                                    - ds['country_flux_error_posterior'],
-                                                                    ds['country_flux_total_posterior']
-                                                                    + ds['country_flux_error_posterior']],
-                                                                    pd.Index([0,1], name = 'percentile'))
-            
-            ds['percentile_country_flux_total_prior'] = xr.concat([ds['country_flux_total_prior']
-                                                                - ds['country_flux_error_prior'],
-                                                                ds['country_flux_total_prior']
-                                                                + ds['country_flux_error_prior']],
-                                                                pd.Index([0,1], name = 'percentile'))
-        #########################################################################################
-
-        country_search = config.countrycodes_dict[country]
         # search for existing region names
-
         available_countries = ds["country"].values
         
         if country_search not in available_countries and country in config.regions_dict.keys() :
@@ -145,18 +95,20 @@ def extract_region_flux(
         for v in ["posterior", "prior"]:
             ds_region[f"{v}_lower"] = ds_region[f"{v}_lower"].clip(min=0)
 
-        ds_output[m] = ds_region[
-            ["posterior","posterior_lower","posterior_upper",
-             "prior","prior_lower","prior_upper",
-            ]
-        ]
+        ds_region = ds_region[target_vars]
+
+        if "country" not in ds_region.dims:
+            ds_region = ds_region.expand_dims(dim={"country": [country_search,]})
+        
+        ds_output[m] = ds_region
+
     return ds_output
 
 
 def extract_region_inventory_flux(
     data_dir: str,
     country: str,
-    specie: str,
+    species: str,
     unit: str,
     s_data: dict[str, dict],
     inventory_year: int | str | None = None,
@@ -182,11 +134,11 @@ def extract_region_inventory_flux(
         filepath = os.path.join(
             data_dir,
             "inventory",
-            f"UNFCCC_inventory_{specie}_{inventory_year}.nc",
+            f"UNFCCC_inventory_{species}_{inventory_year}.nc",
         )
     else:
         filelist = sorted(
-            glob.glob(os.path.join(data_dir, "inventory", f"UNFCCC_inventory_{specie}_*.nc"))
+            glob.glob(os.path.join(data_dir, "inventory", f"UNFCCC_inventory_{species}_*.nc"))
         )
         if filelist:
             filepath = filelist[-1]
@@ -195,18 +147,23 @@ def extract_region_inventory_flux(
             filepath = os.path.join(
                 data_dir,
                 "inventory",
-                f'UNFCCC_inventory_{s_data[specie]["model_species"]["intem"]}.nc',
+                f'UNFCCC_inventory_{s_data[species]["model_species"]["intem"]}.nc',
             )
             inventory_year = None
     inv_ds = xr.open_dataset(filepath)['inventory'] 
 
     gwp = 1
     target_unit = unit
-    if "CO2-eq" in target_unit:
-        gwp = s_data[specie]["gwp"]
+    origin_unit = inv_ds.units.replace('/yr',' yr-1').replace('/y',' yr-1')
+    molar_mass = s_data[species]["molar_mass"] if 'all' not in species else None
+    if "CO2-eq" in target_unit :
+        if "CO2eq" not in origin_unit.replace('-',''):
+            gwp = s_data[species]["gwp"]
+        else : 
+            origin_unit = origin_unit.replace("CO2-eq","").replace("CO2eq","")
         target_unit = unit.replace("CO2-eq","")
         logger.info(f'Converting to mass of CO2-eq using GWP = {gwp}.')
-    scaling_factor = get_units_conversion_factor(inv_ds.units.replace('/yr',' yr-1'), target_unit, s_data[specie]["molar_mass"])
+    scaling_factor = get_units_conversion_factor(origin_unit, target_unit, molar_mass )
 
     inv_ds = inv_ds * scaling_factor * gwp
     inv_ds.attrs['units'] = unit

@@ -114,9 +114,11 @@
         "molar_mass": 102.06
     },
     "all_hfc": {
+        "list_species": ["hfc125","hfc134a","hfc143a","hfc152a","hfc23","hfc227ea","hfc245fa","hfc32","hfc365mfc"],
         "species_print": "Total HFC"
     },
     "all_pfc": {
+        "list_species": ["cf4","pfc116","pfc218","pfc318"],
         "species_print": "Total PFC"
     }
 }
