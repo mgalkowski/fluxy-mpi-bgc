@@ -215,18 +215,18 @@ def read_flux_total_fgases(data_dir: str,
         raise ValueError(f'No list of species was found in the config_data for {species}. '+
                          f'If config_data was created with read_config_files from fluxy/io.py, update configs/species_info.json.')
     if 'CO2-eq' not in unit:
-        raise ValueError(' unit should be in CO2-eq.')
+        raise ValueError('Unit should be in CO2-eq.')
     
     # Update parameters
-    date_message = ('If this fails with an error message related to region_time dimensions, check the availablility\n'+
+    date_message = (' If this fails with an error message related to region_time dimensions, check the availablility\n'+
               'of data from all models for all timestamps.\n'+
               'To fix this error, set start_date and end_date as lists with the correct start and end times\nfor each model.')
     if type(start_date) is str:
-        logger.warning(' Using same start date for all models')
+        logger.info(' Using same start date for all models')
         logger.info(date_message)
         start_date = [start_date]*len(models)
     if type(end_date) is str:
-        logger.warning(' Using same end date for all models')
+        logger.info(' Using same end date for all models')
         logger.info(date_message)
         end_date = [end_date]*len(models)
 
@@ -236,38 +236,36 @@ def read_flux_total_fgases(data_dir: str,
         raise ValueError(f'period must be a string or a list of the same length as models.')
     
     # Assign key to find file for each species and model according to the config file
-    missing_species = {model : list() for model in models}
     default_overwrite = {model : list() for model in models}
     valid_experiments = {species_p: dict() for species_p in all_species}
 
     for model in models:
-        if len(model.split('_'))==2:
-            m0,run_key = model.split('_')
-        elif len(model.split('_'))==1:
-            m0,run_key = model, 'default'
-        else:
-            raise ValueError(f" Model input must be in the form <basic-model>_<config-key> (ex : 'RHIME_test') or <basic-model>. To many '_' detected in {model}")
+        m0, *run_key = model.split('_')
+        run_key = '_'.join(run_key)
+        if not run_key: run_key = 'default'
 
-        filename_dict = config_data['models_info']["standard_run"][run_key]
-        filename_dict_default = config_data['models_info']["standard_run"]['default']
+        standard_run_dict = config_data['models_info']["standard_run"][run_key]
+        standard_run_dict_default = config_data['models_info']["standard_run"]['default']
         for species_p in all_species:
-            if species_p in filename_dict:
-                valid_experiments[species_p][model] = f'{m0}_{filename_dict[species_p]}'
-            elif species_p in filename_dict_default:
-                valid_experiments[species_p][model] = f'{m0}_{filename_dict_default[species_p]}'
+            if species_p in standard_run_dict:
+                valid_experiments[species_p][model] = f'{m0}_{standard_run_dict[species_p]}'
+            elif species_p in standard_run_dict_default:
+                valid_experiments[species_p][model] = f'{m0}_{standard_run_dict_default[species_p]}'
                 default_overwrite[model].append(species_p)
             else:
-                missing_species[model].append(species_p)
+                raise ValueError(f"No standard run provided for {species_p}, neither for '{run_key}' nor in 'default'. Please update your config file.")
 
     # Extract data by species, model and region
     ds_all = {region : {model : list() for model in models} for region in regions}
     for species_p in all_species: 
         # read and slice dataset for each species and model separately
         ds_in = dict()
-        for ik, (key, filename) in enumerate(valid_experiments[species_p].items()):
+        for ik, (key, standard_run) in enumerate(valid_experiments[species_p].items()):
             ds_in[key] = read_model_output(data_dir, "flux", species_p,
-                                           [filename], 
-                                           config_data, period[ik])[filename]
+                                           [standard_run], 
+                                           config_data, period[ik])[standard_run]
+            if not ds_in[key]:
+                raise ValueError("No file found for {standard_run} with period '{period}' and species '{species_p} in {data_dir}.")
         ds_in = slice_flux(ds_in, config_data, start_date, end_date, species_p,
                             country_flux_units_print = unit)
         # extract regions
@@ -281,7 +279,7 @@ def read_flux_total_fgases(data_dir: str,
     for model in models :
         ds_list = []
         for region in regions:
-            ds_tmp = xr.concat(align_dataset(ds_all[region][model]), dim = 'species', combine_attrs = "no_conflicts")
+            ds_tmp = xr.concat(align_dataset(ds_all[region][model]), dim = 'species', combine_attrs = "drop_conflicts")
             ds_list.append(ds_tmp.sum(dim='species', keep_attrs= True))
 
         ds_tmp =  xr.concat(ds_list, dim = 'country', combine_attrs = "no_conflicts")
@@ -290,16 +288,11 @@ def read_flux_total_fgases(data_dir: str,
         ds_output[model] = ds_tmp
     
     # print messages about used config
-    messages_ordered_by_model = list()
     for model in models:
         if default_overwrite[model]:
-            messages_ordered_by_model.append([logger.warning, f' {default_overwrite[model]} have been overwritten by default config for {model}.'])
-        if missing_species[model]:
-            messages_ordered_by_model.append([logger.warning, f' Model {model} is missing species: {missing_species[model]}'])
+            logger.warning(f' {default_overwrite[model]} have been overwritten by default config for {model}.')
         else:
-            messages_ordered_by_model.append([logger.info, f' All species succesfully read for {model}!'])
-    for message in messages_ordered_by_model:
-        message[0](message[1])
+            logger.info(f' All species succesfully read for {model}!')
 
     logger.info(' To change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
 
@@ -405,7 +398,7 @@ def adapt_ds_flux(
         ds = ds.rename({'countrynumber':'country'})
 
         if 'BEL-LUX' in ds.country and ('BEL' not in ds.country and 'LUX'  not in ds.country):
-            logger.warning(f"InTEM does not estimate separate BELGIUM emissions.\n A population ratio of {config.bel_pop_r} is being used to scale InTEM's total BELGIUM+LUXEMBOURG estimate.")
+            logger.info(f" InTEM does not estimate separate BELGIUM emissions.\n A population ratio of {config.bel_pop_r} is being used to scale InTEM's total BELGIUM+LUXEMBOURG estimate.")
 
             r = config.bel_pop_r
 
