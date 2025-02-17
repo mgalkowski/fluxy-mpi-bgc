@@ -493,6 +493,11 @@ def adapt_ds_flux(
                     attrs = ds[var_to_change].attrs,
                     )
 
+    elif m0 == 'enkf':
+        period = np.median(ds.time.values[1:] - ds.time.values[:-1]).astype('timedelta64[D]')
+        if abs(period-np.timedelta64(30,'D')) < 3 :
+            ds['time'] = ds.time.values + np.timedelta64(15,'D')
+
     elif m0 == 'intem':            
         ds = ds.rename({'countrynumber':'country'})
 
