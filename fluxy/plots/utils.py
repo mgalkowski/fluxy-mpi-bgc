@@ -520,6 +520,7 @@ def set_flux_limits(
         
     return flux_lim
 
+
 def set_min_decimal_points(value: float, sig_fig: int = 2, dec_points: int = 2) -> str:
     """
     Converts float to string with a specified number of significant digits and
@@ -542,7 +543,7 @@ def set_min_decimal_points(value: float, sig_fig: int = 2, dec_points: int = 2) 
     """
 
     formatted_str = f"{value:.{dec_points}f}" if value >= 1 else f"{value:.{sig_fig}g}"
-    
+
     return formatted_str
 
 def define_map_figsize(

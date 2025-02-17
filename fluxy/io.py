@@ -3,7 +3,7 @@ import glob
 import xarray as xr
 import numpy as np
 import pandas as pd
-import json 
+import json
 import geopandas as gpd
 import logging
 
@@ -20,6 +20,7 @@ from fluxy.operators.flux_align_dataset import align_time
 
 logger = logging.getLogger(__name__)
 
+
 def read_json(filepath: os.PathLike) -> dict[str, dict]:
     """
     Reads json file.
@@ -35,12 +36,13 @@ def read_json(filepath: os.PathLike) -> dict[str, dict]:
     filepath = Path(filepath)
 
     if not filepath.is_file():
-        raise FileNotFoundError(f'Cannot find {filepath}.')
+        raise FileNotFoundError(f"Cannot find {filepath}.")
 
     with open(filepath, "r") as f:
         json_data = json.load(f)
 
     return json_data
+
 
 def read_config_files() -> dict[str, dict]:
     """
@@ -54,35 +56,36 @@ def read_config_files() -> dict[str, dict]:
 
     # Get location of json files
     parent_dir = Path(__file__).parent.parent
-    configs_dir = parent_dir / 'configs'
+    configs_dir = parent_dir / "configs"
 
     # List of json files to be read
-    json_files = configs_dir.glob('*.json')
+    json_files = configs_dir.glob("*.json")
 
     # Read json files
     data_dict = {}
     for file in json_files:
-        data =  read_json(file)
+        data = read_json(file)
         filename = file.stem
         data_dict[filename] = data
 
     return data_dict
 
+
 def get_filename(
-        model: str,
-        species: str,
-        period: str,
-        file_pattern: str,
-        config_data: dict[str, dict],
-        data_dir: os.PathLike,
+    model: str,
+    species: str,
+    period: str,
+    file_pattern: str,
+    config_data: dict[str, dict],
+    data_dir: os.PathLike,
 ) -> os.PathLike:
     """
     Get complete path to the output file.
 
     Args:
-        models (str): 
+        models (str):
             Keys specifying model name, e.g. 'elris'
-        species (str): 
+        species (str):
             Gas species, e.g. 'ch4'.
         period (str):
             Inversion period as specified in the model filename.
@@ -91,7 +94,7 @@ def get_filename(
         config_data (dict of dict):
             Dictionary with settings read from json file.
             Use json filenames as keys.
-        data_dir (str): 
+        data_dir (str):
             Path to top data directory.
 
     Returns:
@@ -100,20 +103,20 @@ def get_filename(
     """
 
     # Get file name tags
-    name_tags = model.split('_')
+    name_tags = model.split("_")
     model_name = name_tags[0]
     param_tags = name_tags[3:]
 
     # Replace parameter tags by dict values in config
     filename_tags = config_data["models_info"].get("filename_tags", None)
     if filename_tags is not None:
-        for i,param in enumerate(param_tags):
+        for i, param in enumerate(param_tags):
             string_in_file = filename_tags.get(param, None)
 
             if string_in_file is not None:
                 string_in_file = string_in_file.replace("<model>", model_name.lower())
-                name_tags[i+3] = string_in_file
-                
+                name_tags[i + 3] = string_in_file
+
     # Add domain to filename tags
     name_tags.insert(2, config_data["models_info"]["domain"])
 
@@ -122,34 +125,42 @@ def get_filename(
 
     # Get species name
     species_print = species
-    if (species_names := config_data["models_info"].get("species_name")) and \
-       (model_species := species_names.get(model_name)) and \
-       (species_tag   := model_species.get(species)):
+    if (
+        (species_names := config_data["models_info"].get("species_name"))
+        and (model_species := species_names.get(model_name))
+        and (species_tag := model_species.get(species))
+    ):
         species_print = species_tag
-            
+
     # Define filepath
     data_dir = Path(data_dir)
-    filepath = data_dir / model_name / species / f'{model_filename}_{species_print}_{period}{file_pattern}'
-    
+    filepath = (
+        data_dir
+        / model_name
+        / species
+        / f"{model_filename}_{species_print}_{period}{file_pattern}"
+    )
+
     return filepath
+
 
 def read_model_output(
     data_dir: os.PathLike,
-    file_type: Literal["concentration","flux"],
+    file_type: Literal["concentration", "flux"],
     species: str,
     models: list[str],
     config_data: dict[str, dict],
-    period: str | list[str] = 'yearly',
+    period: str | list[str] = "yearly",
 ) -> dict[str, xr.Dataset]:
     """
     Extracts mole fraction or flux timeseries data from each model.
 
     Args:
-        data_dir (str): 
+        data_dir (str):
             Path to top data directory.
-        species (str): 
+        species (str):
             Gas species, e.g. 'ch4'.
-        models (list of str): 
+        models (list of str):
             Keys specifying model names, e.g. ['intem','elris']
         config_data (dict of dict):
             Dictionary with settings read from json file.
@@ -159,42 +170,47 @@ def read_model_output(
             If it is a string, the same period is considered for all models.
             If it is a list, one value per model must be specified, e.g. ['monthly','yearly']
     Returns:
-        ds_all (dictionary of datasets): 
+        ds_all (dictionary of datasets):
             xarray dataset read directly from each model's mole fraction netCDF.
     """
-    
+
     if isinstance(period, str):
-        period = [period]*len(models)
-    
+        period = [period] * len(models)
+
     if len(period) != len(models):
-        raise ValueError(f'period must be a string or a list of the same length as models.')
+        raise ValueError(
+            f"period must be a string or a list of the same length as models."
+        )
 
     # Define file pattern
-    if file_type == 'flux':
-        file_pattern = '.nc'
-    elif file_type == 'concentration':
-        file_pattern = '_concentrations.nc'
+    if file_type == "flux":
+        file_pattern = ".nc"
+    elif file_type == "concentration":
+        file_pattern = "_concentrations.nc"
     else:
         raise ValueError(f'file_pattern must be equal to "concentration" or "flux".')
 
     ds_all = {}
 
-    for i,m in enumerate(models):
-        filepath = get_filename(m, species, period[i], file_pattern, config_data, data_dir)
+    for i, m in enumerate(models):
+        filepath = get_filename(
+            m, species, period[i], file_pattern, config_data, data_dir
+        )
 
         # Check if files exists
         if not filepath.is_file():
-            logger.warning(f'Cannot find {file_type} file: {filepath}.')
+            logger.warning(f"Cannot find {file_type} file: {filepath}.")
             continue
- 
+
         # Read file
-        logger.info(f'Reading {file_type} file: {filepath}')
+        logger.info(f"Reading {file_type} file: {filepath}")
         ds_all[m] = xr.open_dataset(filepath)
 
         # Add/correct attributes
-        ds_all[m] = edit_ds(ds_all[m],m,period[i],file_type)
+        ds_all[m] = edit_ds(ds_all[m], m, period[i], file_type)
 
     return ds_all
+
 
 def read_flux_total_fgases(data_dir: str, 
     species: str, 
@@ -311,7 +327,7 @@ def read_flux_total_fgases(data_dir: str,
     for model in models :
         ds_list = []
         for region in regions:
-            ds_tmp = xr.concat(align_dataset(ds_all[region][model]), dim = 'species', combine_attrs = "drop_conflicts")
+            ds_tmp = xr.concat(align_time(ds_all[region][model]), dim = 'species', combine_attrs = "drop_conflicts")
             ds_mean = ds_tmp[['prior','posterior']].sum(dim='species', keep_attrs= True)
             ds_unc = np.sqrt((ds_tmp[['prior_lower','prior_upper','posterior_lower','posterior_upper']
                                      ]**2).sum(dim='species', keep_attrs= True))
@@ -410,10 +426,11 @@ def edit_ds(
 
     return ds
 
+
 def edit_ds_attributes(
-        ds: xr.Dataset,
-        frequency: str,
-        file_type: str,
+    ds: xr.Dataset,
+    frequency: str,
+    file_type: str,
 ) -> xr.Dataset:
     """
     Add missing attributes to the datasets.
@@ -433,21 +450,26 @@ def edit_ds_attributes(
         ds (xarray dataset):
             xarray dataset with updated attributes.
     """
-    
+
     # Add inversion frequency to global attributes
     if "frequency" not in ds.attrs:
         ds.attrs["frequency"] = frequency
-    
+
     # Easy fix for InTEM ("units" attribute is wrongly set to "unit")
-    vars_to_check = ['country_flux_total_prior', 'country_flux_total_posterior',
-                        'percentile_country_flux_total_prior','percentile_country_flux_total_posterior']
-    
-    if file_type == 'flux':
+    vars_to_check = [
+        "country_flux_total_prior",
+        "country_flux_total_posterior",
+        "percentile_country_flux_total_prior",
+        "percentile_country_flux_total_posterior",
+    ]
+
+    if file_type == "flux":
         for var in vars_to_check:
-            if 'units' not in ds[var].attrs.keys() and 'unit' in ds[var].attrs.keys():
-                ds[var].attrs['units'] = ds[var].attrs['unit']
+            if "units" not in ds[var].attrs.keys() and "unit" in ds[var].attrs.keys():
+                ds[var].attrs["units"] = ds[var].attrs["unit"]
 
     return ds
+
 
 def adapt_ds_flux(
         ds: xr.Dataset,
