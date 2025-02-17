@@ -44,11 +44,14 @@ def compute_mf_difference(
 
     ds_diff = {}
     key_name = f"{models_to_subtract[0]}-{models_to_subtract[1]}"
-    ds_diff[key_name] = ds0
+    ds_diff[key_name] = xr.Dataset()
 
     # Compute difference between the two datasets (mole fraction variables only)
-    var_names, x = get_variables(ds0, "mf")
-    for v in var_names:
+    var_names0, x = get_variables(ds0, "mf")
+    var_names1, x = get_variables(ds1, "mf")
+    common_mf_vars = list(set(var_names0) & set(var_names1))
+
+    for v in common_mf_vars:
         units_0 = ds0[v].attrs["units"]
         units_1 = ds1[v].attrs["units"]
         if units_0 != units_1:
