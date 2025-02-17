@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def extract_region_flux(
-    ds_all: dict[str, xr.Dataset], country: str
+    ds_all: dict[str, xr.Dataset], country: str, keep_country_dim: bool = False
 ) -> dict[str, xr.Dataset]:
     """
     Finds the index of a chosen region name and extracts the country flux
@@ -25,6 +25,7 @@ def extract_region_flux(
         ds_all: xarray datasets of fluxes, scaled and sliced between 
             chosen dates.
         country: name of the country to extract.
+        keep_country_dim: if True, re-put country dimension on the output datasets.
 
     Returns:
         ds_output: dictionnary of datasets. The dataset variables are :
@@ -49,7 +50,7 @@ def extract_region_flux(
 
     for m, ds in ds_all.items():
         # search for existing region names
-        available_countries = ds["country"].values
+        available_countries = ds["country"].values.astype(str)
         
         if country_search not in available_countries and country in config.regions_dict.keys() :
             region_search = config.regions_dict[country]
@@ -68,7 +69,7 @@ def extract_region_flux(
                                                 ).sum(dim="country"))
             
             if 'covariance_country_flux_total_posterior' in ds.variables:
-                ds_region['sigma_posterior'] = np.sqrt(ds_region['covariance_country_flux_total_posterior'].sum(dim='country').sum(dim='country'))
+                ds_region['sigma_posterior'] = np.sqrt(ds_region['covariance_country_flux_total_posterior'].sum(dim='country').sum(dim='country_2'))
                 
             else:
                 logger.warning(f'Covariance matrix is not available for {m}. A posteriori uncertainty of {country} emissions will not be plotted.')
@@ -97,7 +98,7 @@ def extract_region_flux(
 
         ds_region = ds_region[target_vars]
 
-        if "country" not in ds_region.dims:
+        if keep_country_dim and "country" not in ds_region.dims:
             ds_region = ds_region.expand_dims(dim={"country": [country_search,]})
         
         ds_output[m] = ds_region

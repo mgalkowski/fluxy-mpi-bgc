@@ -222,7 +222,8 @@ def plot_country_flux(
         figsize=(n_cols * 6, n_rows * 4),
     )
     for i, country in enumerate(plot_regions):
-        ax = axes.flatten()[i]
+        
+        ax = axes if (n_rows, n_cols) == (1,1) else axes.flatten()[i]
 
         if plot_inventory :
             inventories_to_plot = retrieve_inventories(data_dir,country,species,start_date,end_date,unit,s_data,inventory_years)
