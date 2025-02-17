@@ -7,6 +7,7 @@ from typing import Literal
 import re
 from collections import Counter
 from fluxy import config
+from fluxy.operators.flux_align_dataset import align_time, align_latitude, align_longitude
 
 logger = logging.getLogger(__name__)
 
@@ -553,3 +554,26 @@ def get_units_conversion_factor(from_unit: str, to_unit: str, molar_mass: float 
         raise ValueError(f'Units {from_unit} ({unit_dim_type}) and {to_unit} ({target_dim_type}) are not consistent.')
 
     return unit_to_base / target_to_base * M_scaling
+
+def prepare_flux_map_data(ds_all: dict[xr.Dataset], plot_combined: bool = False) -> dict[xr.Dataset]:
+
+    for key, ds in ds_all.items():
+        # Step 1: Remove variables without 'time', 'latitude' and 'longitude'
+        ds = ds.drop_vars([var for var in ds.data_vars if not {'time', 'latitude', 'longitude'}.issubset(ds[var].dims)])
+        # Step 2: Remove unused coordinates (dimensions that are no longer used)
+        unused_dims = set(ds.dims) - set(dim for var_i in ds.data_vars for dim in ds[var_i].dims)
+        ds_all[key] = ds.drop_dims(unused_dims)
+
+    # Align dataset coordinates
+    models = list(ds_all.keys())
+    ds_list = list(ds_all.values())
+    ds_list = align_time(ds_list)
+    ds_list = align_latitude(ds_list)
+    ds_list = align_longitude(ds_list)
+
+    if plot_combined:
+        ds_dict = {'combined': xr.concat(ds_list, dim='models', combine_attrs='override').mean(dim='models', keep_attrs=True)}
+    else:
+        ds_dict = dict(zip(models, ds_list))
+
+    return ds_dict

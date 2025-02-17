@@ -9,7 +9,7 @@ from fluxy.operators.select import slice_flux, slice_mf
 from fluxy.plots.flux_map import (
     plot_flux_map,
     plot_flux_map_model_comparison,
-    plot_spatial_flux_per_timestamp,
+    plot_flux_map_over_time,
 )
 from fluxy.plots.flux_timeseries import plot_country_flux
 from fluxy.plots.mf_timeseries import (
@@ -88,12 +88,12 @@ model_colors = set_model_colors(models)
 model_labels = set_model_labels(models,config_data,get_labels_from_file)
 
 
-plot_area = "UK"
+region = "UK"
 cmap = "viridis"
 cmap_diff = "coolwarm"
 c_border = "floralwhite"
-plot_site_locations = True
-plot_point_markers = ["paris", "london"]
+add_sites = True
+add_markers = ["paris", "london"]
 season = None
 set_fluxlim = "auto"
 set_fluxlim_percentile = None
@@ -234,19 +234,19 @@ def test_plot_stats():
     )
 
 
-def deactivate_test_plot_flux_map():
+def test_plot_flux_map():
 
     fig = plot_flux_map(
-        ds_all_flux_scaled,
-        species,
-        plot_area,
-        config_data,
+        ds_all=ds_all_flux_scaled,
+        species=species,
+        region=region,
+        config_data=config_data,
+        model_labels=model_labels,
         cmap=cmap,
         cmap_diff=cmap_diff,
         c_border=c_border,
-        period_override=period_override,
-        add_sites=plot_site_locations,
-        add_markers=plot_point_markers,
+        add_sites=add_sites,
+        add_markers=add_markers,
         season=season,
         set_fluxlim=set_fluxlim,
         set_fluxlim_percentile=set_fluxlim_percentile,
@@ -254,58 +254,52 @@ def deactivate_test_plot_flux_map():
     )
 
 
-def deactivate_test_plot_flux_map_model_comparison():
+def test_plot_flux_map_model_comparison():
 
     var = 'flux_total_posterior'
-    model_1 = 'intem_name_edgar'
-    model_2 = 'elris_name_edgar'
+    models_comparison = [models[0], models[2]]
 
     fig = plot_flux_map_model_comparison(
-        ds_all_flux_scaled,
-        var,
-        model_1,
-        model_2,
-        species,
-        plot_area,
-        config_data,
-        presentation_mode=True,
+        ds_all=ds_all_flux_scaled,
+        var=var,
+        models=models_comparison,
+        species=species,
+        region=region,
+        config_data=config_data,
+        model_labels=model_labels,
         cmap=cmap,
         cmap_diff=cmap_diff,
         c_border=c_border,
-        period_override=period_override,
-        add_sites=plot_site_locations,
-        add_markers=plot_point_markers,
+        add_sites=add_sites,
+        add_markers=add_markers,
         season=season,
         set_fluxlim=set_fluxlim,
         set_fluxlim_percentile=set_fluxlim_percentile,
     )
 
 
-def deactivate_test_spatial_flux_per_timestamp():
+def test_plot_flux_map_over_time():
 
     var = "flux_total_posterior"
-    plot_combined = False
-    annex_mode = False
+    plot_combined = True
     chop_by = "year"
-    dt = 1
-    fig = plot_spatial_flux_per_timestamp(
-        ds_all_flux_scaled,
-        species,
-        plot_area,
-        end_date,
-        config_data["species_info"],
-        config_data["models_info"],
-        cmap=cmap,
-        c_border=c_border,
+    dt = 2
+
+    fig = plot_flux_map_over_time(
+        ds_all=ds_all_flux_scaled,
         var=var,
-        plot_combined=plot_combined,
-        annex_mode=annex_mode,
+        species=species,
+        region=region,
+        config_data=config_data,
+        model_labels=model_labels,
         chop_by=chop_by,
         dt=dt,
-        period_override=period_override,
-        plot_site_locations=plot_site_locations,
-        plot_point_markers=plot_point_markers,
+        plot_combined=plot_combined,
+        cmap=cmap,
+        cmap_diff=cmap_diff,
+        c_border=c_border,
+        add_sites=add_sites,
+        add_markers=add_markers,
         set_fluxlim=set_fluxlim,
         set_fluxlim_percentile=set_fluxlim_percentile,
-        plot_inversion_grid_flux=plot_inversion_grid_flux,
     )

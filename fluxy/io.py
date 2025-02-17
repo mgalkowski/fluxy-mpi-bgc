@@ -16,7 +16,7 @@ from typing import Literal
 from fluxy import config
 from fluxy.operators.regions import extract_region_flux
 from fluxy.operators.select import slice_flux
-from fluxy.operators.flux_align_dataset import align_dataset
+from fluxy.operators.flux_align_dataset import align_time
 
 logger = logging.getLogger(__name__)
 
@@ -308,7 +308,7 @@ def read_flux_total_fgases(data_dir: str,
     for model in models :
         ds_list = []
         for region in regions:
-            ds_tmp = xr.concat(align_dataset(ds_all[region][model]), dim = 'species', combine_attrs = "drop_conflicts")
+            ds_tmp = xr.concat(align_time(ds_all[region][model]), dim = 'species', combine_attrs = "drop_conflicts")
             ds_list.append(ds_tmp.sum(dim='species', keep_attrs= True))
 
         ds_tmp =  xr.concat(ds_list, dim = 'country', combine_attrs = "no_conflicts")

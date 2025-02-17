@@ -138,6 +138,10 @@ mf_color_index = {'Yapriori':1,
 flux_labels = {'flux_total_prior':'Prior',
                'flux_total_posterior_inversion_grid':'Posterior',
                'flux_total_posterior':'Posterior',
+               'posterior_prior_diff':'Posterior - Prior',
+               'posterior_prior_diff_inversion_grid':'Posterior - Prior',
+               'posterior_mean_diff':'Posterior Anomaly',
+               'posterior_mean_diff_inversion_grid':'Posterior Anomaly',
               }
 
 stat_labels = {'pearson': 'Pearson correlation coefficient',

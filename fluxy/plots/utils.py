@@ -6,12 +6,12 @@ import re
 
 from shapely.geometry import MultiPolygon, Polygon
 from typing import Literal
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 from fluxy import config
 from fluxy.io import load_countries_shape
 
 logger = logging.getLogger(__name__)
-
 
 def update_list_params(params_to_check: list, expected_size: int) -> list:
     """
@@ -35,21 +35,34 @@ def update_list_params(params_to_check: list, expected_size: int) -> list:
             updated_params.append([param] * expected_size)
     return updated_params
 
-def add_colorbar(fig, ax, mappable, cmap, extend, label, presentation_mode=False, orientation="vertical"):
+def add_colorbar(fig, ax, im, extend, label, n_cbar, idx_cbar, colorbar_type='row'):
     """Add a colorbar to the plot."""
-    labelpad_v = 20 if presentation_mode else 5
 
-    color_bar = fig.colorbar(
-        mappable, orientation=orientation, extend=extend, ax=ax, shrink=1, pad=0.01
-    )
-    color_bar.set_label(label, labelpad=labelpad_v)
+    if colorbar_type == 'row':
+        cax = inset_axes(ax, width="5%", height="100%", loc='lower left', bbox_to_anchor=(1.05, 0., 1, 1), bbox_transform=ax.transAxes, borderpad=0)
+        cbar = fig.colorbar(im, cax=cax, orientation="vertical", extend=extend)
+
+    elif colorbar_type == 'column':
+        cax = inset_axes(ax, width="100%", height="5%", loc='lower left', bbox_to_anchor=(0, -0.17, 1, 1), bbox_transform=ax.transAxes, borderpad=0)
+        cbar = fig.colorbar(im, cax=cax, orientation="horizontal", extend=extend)
+
+    elif colorbar_type == 'figure':
+        cbar_ax = fig.add_axes([0.92, 0.11, 0.015, 0.77]) # [left, bottom, width, height]
+        cbar = fig.colorbar(
+            im, cax=cbar_ax, orientation="vertical", extend=extend, shrink=1, pad=0.01
+        )
+    
+    else:
+        raise ValueError(f"The colorbar option {colorbar_type} is not available. Options are column, row, or figure.")
+
+    cbar.set_label(label)
 
 def print_cbar_label(
     ds: xr.Dataset, 
     species_info: dict, 
-    var: str, 
-    season: str, 
-    period_override: str = None,
+    var: str = None, 
+    season: str = None, 
+    format: list[str] = ['variable', 'species', 'units', 'time'],
     ) -> str:
     """
     Generate a colorbar label for a dataset variable.
@@ -59,26 +72,41 @@ def print_cbar_label(
             The dataset containing the variable.
         species_info (dict): 
             A dictionary with metadata for species, including display names.
-        var (str): 
+        var (str, optional): 
             The variable name in the dataset.
-        season (str): 
+        season (str, optional): 
             The season to include in the label (e.g., 'DJF', 'MAM').
-        period_override (str, optional): 
-            Overrides the default period calculation. 
+        format (list[str], optional): 
+            Specifies the components to include in the label. 
+            Options: ['variable', 'species', 'units', 'time']. Default includes all.
 
     Returns:
         cbar_label(str): 
-            A formatted colorbar label including species, units, and period.
+            A formatted colorbar label including variable, species, units, and period.
     """
-    species_print = species_info.get("species_print")
 
-    var_units = get_units(ds[var])
+    var_label = f"{config.flux_labels[var]}" if 'variable' in format else ""
 
-    freq = get_frequency(ds, species_info, period_override) #TODO  Remove 'period_override' once 'coarser_frequency' attribute is implemented
-    period = print_period(ds, freq, season) #TODO Here, based on the last iteration. Check if consistent for all models?
-    
-    cbar_label = f"{species_print} ({var_units})\n{period}"
+    species_label = f"{species_info.get('species_print')}" if 'species' in format else ""
 
+    units_label = ""
+    if 'units' in format:
+        if "diff" in var:
+            units_label = f"({get_units(ds['flux_total_posterior'])})"
+        else:
+            units_label = f"({get_units(ds[var])})"
+
+    middle_label = " ".join(filter(None, [species_label, units_label]))
+
+    time_label = ""  
+    if 'time' in format:
+        freq = get_frequency(ds)
+        period = print_period(ds, freq, season) #TODO Here, based on the last iteration. Check if consistent for all models?
+        time_label = f"{period}"
+
+    # Construct the final label with proper line breaks
+    label_parts = [var_label, middle_label, time_label]
+    cbar_label = "\n".join(filter(None, label_parts))  # Remove empty lines
     return cbar_label
 
 def get_units(
@@ -125,8 +153,6 @@ def format_units(units: str) -> str:
 
 def get_frequency(
     ds: xr.Dataset, 
-    species_info: dict, 
-    period_override: str = None,
     ) -> Literal['Y', 'M']:
     """
     Determine the temporal frequency of a dataset for a given species ('Y' for yearly, 'M' for monthly).
@@ -134,15 +160,10 @@ def get_frequency(
     Args:
         ds (xr.Dataset): 
             The dataset containing metadata attributes related to frequency.
-        species_info (dict): 
-            A dictionary containing additional information about species and their associated periods.
-        period_override (str, optional): 
-            A user-provided override for the frequency. Default is None.
 
     Returns:
         Literal['Y', 'M']: 
             A shorthand representation of the temporal frequency ('Y' for yearly, 'M' for monthly). 
-            Returns None if no valid frequency is found.
     """
 
     frequency_map = {
@@ -151,19 +172,11 @@ def get_frequency(
         # Add more mappings as needed
     }
 
-    frequency_sources = [
-        # First, check for coarser frequency
-        ds.get('coarser_frequency', None),  # TODO: Add 'coarser_frequency' attribute in slice_flux function
-        period_override,                    # TODO: Remove once 'coarser_frequency' attribute is implemented
-        # Then, check for the original frequency
-        ds.get('frequency', None),          # TODO: Add 'frequency' attribute in flux netCDF file
-        species_info.get('period', {})  # TODO: Remove from species_info.json when no longer needed
-    ]
-
-    # Get the first valid frequency from the sources list
-    frequency = next((freq for freq in frequency_sources if freq is not None), None)
-
+    frequency = ds.attrs.get('frequency')
     frequency = frequency_map.get(frequency, None)
+
+    if frequency is None:
+        raise ValueError('The only valid inversion frequencies are yearly and monthly. If a new frequency is needed, update get_frequency.')
 
     return frequency
 
@@ -348,7 +361,7 @@ def get_region_coordinates(
 
     Returns:
         region_coordinates (tuple): 
-            The bounding coordinates of the region (min_lon, max_lon, min_lat, and max_lat), after zooming.
+            The bounding coordinates of the region (lon_min, lon_max, lat_min, lat_max), after zooming.
     """
     world = load_countries_shape()
     region_code = config.countrycodes_dict
@@ -394,12 +407,12 @@ def get_region_coordinates(
     region_boundaries = region.total_bounds  # [minx, miny, maxx, maxy]
 
     # Apply zoom adjustment
-    min_lon = region_boundaries[0] - zoom_degree
-    min_lat = region_boundaries[1] - zoom_degree
-    max_lon = region_boundaries[2] + zoom_degree
-    max_lat = region_boundaries[3] + zoom_degree
+    lon_min = region_boundaries[0] - zoom_degree
+    lat_min = region_boundaries[1] - zoom_degree
+    lon_max = region_boundaries[2] + zoom_degree
+    lat_max = region_boundaries[3] + zoom_degree
 
-    region_coordinates = (min_lon, max_lon, min_lat, max_lat)
+    region_coordinates = (lon_min, lon_max, lat_min, lat_max)
     return region_coordinates
 
 def extract_largest_polygon(
@@ -431,15 +444,14 @@ def set_flux_limits(
     var: str, 
     region_plot: tuple[float, float, float, float], 
     species_info: dict, 
-    option: Literal['default', 'auto'] | list[float] | tuple[float, float] = 'default', 
+    option: Literal['auto'] | list[float] | tuple[float, float] = 'auto', 
     custom_percentile: float = None,
 ) -> tuple[float, float]:
     """
     Set flux limits based on the option provided:
-    
-    1. `default` - use default values from species_info. #TODO Remove this option when restructuring the json file.
-    2. List or tuple with two values (e.g., [0, 1]) - use specified limits.
-    3. 'auto' - auto-calculate limits based on data percentiles.
+
+    1. List or tuple with two values (e.g., [0, 1]) - use specified limits.
+    2. 'auto' - auto-calculate limits based on data percentiles.
     
     Args:
         ds_all (dict[xr.Dataset]): 
@@ -450,9 +462,8 @@ def set_flux_limits(
             Coordinates [lon_min, lon_max, lat_min, lat_max].
         species_info (dict): 
             Contains default limit values.
-        option ('default', 'auto', [lower_lim, upper_lim]): 
+        option ('auto', [lower_lim, upper_lim]): 
             The option for setting limits.
-                - `default` for default values.
                 - A list or tuple with two elements (lower_lim, upper_lim) for specified limits.
                 - 'auto' for auto-calculated values using the 99th percentile (if custom_percentile is None).
         custom_percentile (float, optional): 
@@ -461,33 +472,24 @@ def set_flux_limits(
     Returns:
         flux_lim (tuple): 
             A tuple containing the flux limits (lower_lim, upper_lim).
-    """
-    
-    # Case 1: Use default values from species_info
-    if option == 'default':
-        if var in ['posterior_prior_diff', 'posterior_mean_diff']:
-            if 'difflim' in species_info:
-                flux_lim = tuple(species_info['difflim'])
-            else:
-                raise KeyError("Key 'difflim' not found in species_info.")
-        else:
-            if 'fluxlim' in species_info:
-                flux_lim = tuple(species_info['fluxlim'])
-            else:
-                raise KeyError("Key 'fluxlim' not found in species_info.")    
+    """   
 
-    # Case 2: Use specified values [lower_lim, upper_lim]          
-    elif isinstance(option, (list, tuple)) and len(option) == 2:
+    # Case 1: Use specified values [lower_lim, upper_lim]          
+    if isinstance(option, (list, tuple)) and len(option) == 2:
         flux_lim = tuple(option)
 
-    # Case 3: Auto-calculate limits based on percentiles    
+    # Case 2: Auto-calculate limits based on percentiles    
     elif option == 'auto':
         models_var = []
         for model, ds in ds_all.items():
             if var == 'posterior_prior_diff':
                 var_i = ds['flux_total_posterior'] - ds['flux_total_prior']
             elif var == 'posterior_mean_diff':
-                var_i = ds['flux_total_posterior'] - ds['flux_total_posterior'].mean(dim='time')            
+                var_i = ds['flux_total_posterior'] - ds['flux_total_posterior'].mean(dim='time')  
+            elif var == 'posterior_prior_diff_inversion_grid':
+                var_i = ds['flux_total_posterior_inversion_grid'] - ds['flux_total_prior_inversion_grid']
+            elif var == 'posterior_mean_diff_inversion_grid':
+                var_i = ds['flux_total_posterior_inversion_grid'] - ds['flux_total_posterior_inversion_grid'].mean(dim='time')  
             else:
                 var_i = ds[var]
                 
@@ -504,13 +506,13 @@ def set_flux_limits(
         # Calculate upper limit based on custom_percentile or default to 99th percentile
         upper_lim = models_var.quantile(custom_percentile if custom_percentile else 0.99).item()
         
-        if var in ['posterior_prior_diff', 'posterior_mean_diff']:
+        if "diff" in var:
             flux_lim = (-upper_lim, upper_lim)
         else:
             flux_lim = (0, upper_lim)
             
     else:
-        raise ValueError(f"Invalid option '{option}'. Use 'default', a (lower_lim, upper_lim) tuple, or 'auto'.")
+        raise ValueError(f"Invalid option '{option}'. Use a (lower_lim, upper_lim) tuple, or 'auto'.")
         
     # Validation: Check that flux_lim[0] is smaller than flux_lim[1]
     if flux_lim[0] >= flux_lim[1]:
@@ -542,3 +544,42 @@ def set_min_decimal_points(value: float, sig_fig: int = 2, dec_points: int = 2) 
     formatted_str = f"{value:.{dec_points}f}" if value >= 1 else f"{value:.{sig_fig}g}"
     
     return formatted_str
+
+def define_map_figsize(
+    map_bounds: tuple[float, float, float, float], 
+    n_rows: int, 
+    n_cols: int, 
+    fixed_value: float = 5, 
+    fixed_dimension: str = "width",
+    ) -> tuple[float, float]:
+    """
+    Dynamically computes figsize for map subplots, allowing to fix either 'height' or 'width'.
+    
+    Args:
+    - map_bounds: (lon_min, lon_max, lat_min, lat_max)
+    - n_rows: Number of subplot rows
+    - n_cols: Number of subplot columns
+    - fixed_value: Fixed height (if fixed_dimension="height") or fixed width (if fixed_dimension="width")
+    - fixed_dimension: "height" to fix height and adjust width, or "width" to fix width and adjust height.
+
+    Returns:
+    - figsize tuple (width, height)
+    """
+    if fixed_dimension not in ["height", "width"]:
+        raise ValueError("fixed_dimension must be either 'height' or 'width'")
+
+    lon_min, lon_max, lat_min, lat_max = map_bounds
+    aspect_ratio = (lat_max - lat_min) / (lon_max - lon_min) 
+
+    if fixed_dimension == "height":
+        subplot_height = fixed_value / n_rows
+        subplot_width = subplot_height / aspect_ratio
+        fig_width = n_cols * subplot_width
+        fig_height = fixed_value
+    else:
+        subplot_width = fixed_value / n_cols
+        subplot_height = subplot_width * aspect_ratio
+        fig_width = fixed_value
+        fig_height = n_rows * subplot_height
+
+    return (fig_width, fig_height)
