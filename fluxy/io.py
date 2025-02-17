@@ -265,6 +265,7 @@ def read_flux_total_fgases(data_dir: str,
         raise ValueError(f'period must be a string or a list of the same length as models.')
     
     # Assign key to find file for each species and model according to the config file
+    missing_species = {model : list() for model in models}
     default_overwrite = {model : list() for model in models}
     valid_experiments = {species_p: dict() for species_p in all_species}
 
@@ -282,25 +283,27 @@ def read_flux_total_fgases(data_dir: str,
                 valid_experiments[species_p][model] = f'{m0}_{standard_run_dict_default[species_p]}'
                 default_overwrite[model].append(species_p)
             else:
-                raise ValueError(f"No standard run provided for {species_p}, neither for '{run_key}' nor in 'default'. Please update your config file.")
+                raise ValueError(f"No standard run provided for {species_p}, neither for '{run_key}' nor in 'default'. Please update your config file.")          
 
     # Extract data by species, model and region
     ds_all = {region : {model : list() for model in models} for region in regions}
     for species_p in all_species: 
         # read and slice dataset for each species and model separately
         ds_in = dict()
-        for ik, (key, standard_run) in enumerate(valid_experiments[species_p].items()):
-            ds_in[key] = read_model_output(data_dir, "flux", species_p,
-                                           [standard_run], 
-                                           config_data, period[ik])[standard_run]
-            if not ds_in[key]:
-                raise ValueError("No file found for {standard_run} with period '{period}' and species '{species_p} in {data_dir}.")
+        for ik, (model, standard_run) in enumerate(valid_experiments[species_p].items()):
+            model_output = read_model_output(data_dir, "flux", species_p,
+                                             [standard_run], config_data, period[ik])
+            if standard_run in model_output:
+                ds_in[model] = model_output[standard_run]
+            else:
+                missing_species[model].append(f"{species_p} ({standard_run})")
+
         ds_in = slice_flux(ds_in, config_data, start_date, end_date, species_p,
                             country_flux_units_print = unit)
         # extract regions
         for region in regions:
-            ds_all_region = extract_region_flux(ds_in, region)
-            for model in models:
+            ds_all_region = extract_region_flux(ds_in, region, keep_country_dim = True)
+            for model in ds_all_region.keys():
                 ds_all[region][model].append(ds_all_region[model])
 
     # Sum species datasets by region and model to create output
@@ -308,8 +311,18 @@ def read_flux_total_fgases(data_dir: str,
     for model in models :
         ds_list = []
         for region in regions:
-            ds_tmp = xr.concat(align_time(ds_all[region][model]), dim = 'species', combine_attrs = "drop_conflicts")
-            ds_list.append(ds_tmp.sum(dim='species', keep_attrs= True))
+            ds_tmp = xr.concat(align_dataset(ds_all[region][model]), dim = 'species', combine_attrs = "drop_conflicts")
+            ds_mean = ds_tmp[['prior','posterior']].sum(dim='species', keep_attrs= True)
+            ds_unc = np.sqrt((ds_tmp[['prior_lower','prior_upper','posterior_lower','posterior_upper']
+                                     ]**2).sum(dim='species', keep_attrs= True))
+            ds_summed = [ds_tmp[['prior','posterior']].sum(dim='species', keep_attrs= True),]
+            for var  in ['prior','posterior']:
+                ds_unc = np.sqrt(((ds_tmp[[f'{var}_lower',f'{var}_upper']]-ds_tmp[var])**2
+                                ).sum(dim='species', keep_attrs= True))
+                ds_unc[f'{var}_lower'] = ds_summed[0][var] - ds_unc[f'{var}_lower']
+                ds_unc[f'{var}_upper'] = ds_summed[0][var] + ds_unc[f'{var}_upper']
+                ds_summed.append(ds_unc)
+            ds_list.append(xr.merge([ds_mean,ds_unc], combine_attrs = "no_conflicts"))
 
         ds_tmp =  xr.concat(ds_list, dim = 'country', combine_attrs = "no_conflicts")
         ds_tmp.attrs['species'] = species
@@ -317,11 +330,16 @@ def read_flux_total_fgases(data_dir: str,
         ds_output[model] = ds_tmp
     
     # print messages about used config
+    messages_ordered_by_model = list()
     for model in models:
         if default_overwrite[model]:
-            logger.warning(f' {default_overwrite[model]} have been overwritten by default config for {model}.')
+            messages_ordered_by_model.append([logger.warning, f' {default_overwrite[model]} have been overwritten by default config for {model}.'])
+        if missing_species[model]:
+            messages_ordered_by_model.append([logger.warning, f' Model {model} is missing species: {missing_species[model]}'])
         else:
-            logger.info(f' All species succesfully read for {model}!')
+            messages_ordered_by_model.append([logger.info, f' All species succesfully read for {model}!'])
+    for message in messages_ordered_by_model:
+        message[0](message[1])
 
     logger.info(' To change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
 
@@ -440,6 +458,18 @@ def adapt_ds_flux(
     if m0 == 'elris':
         ds['country'] = ds['country'].astype('str')
         ds = ds.set_index(countrynumber='country').rename({'countrynumber':'country'})
+        var_to_change = "covariance_country_flux_total_posterior"
+        if var_to_change in ds and ds[var_to_change].dims == ("time","country","country"): 
+            ds[var_to_change] = xr.DataArray(
+                data = ds[var_to_change].data,
+                dims = ['time','country','country_2'],
+                coords = dict(
+                    time = (["time"], ds[var_to_change].time.data),
+                    country = (["country"], ds[var_to_change].country.data),
+                    country_2 = (["country_2"], ds[var_to_change].country.data)
+                    ),
+                    attrs = ds[var_to_change].attrs,
+                    )
 
     elif m0 == 'intem':            
         ds = ds.rename({'countrynumber':'country'})
@@ -487,4 +517,8 @@ def adapt_ds_flux(
                                                             ds['country_flux_total_prior']
                                                             + ds['country_flux_error_prior']],
                                                             pd.Index([0,1], name = 'percentile'))
+        ds['countrynumber'] = ds['country'].astype(str)
+        del ds['country']
+        ds = ds.rename({'countrynumber':'country'})
+        
     return ds
