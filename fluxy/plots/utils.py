@@ -217,14 +217,15 @@ def print_period(
 
     return period
 
-def add_custom_markers(ax, markers, color):
+def add_custom_markers(ax, markers, color, regions_info):
     """Add custom markers to the plot."""
     for marker in markers:
-        lon, lat = get_marker_coordinates(marker)
+        lon, lat = get_marker_coordinates(marker, regions_info)
         ax.scatter(lon, lat, facecolor="none", edgecolor=color, marker="^", s=30, zorder=2)
 
 def get_marker_coordinates(
     marker: str | tuple[float, float], 
+    regions_info: dict[str, str],
     ) -> tuple[float, float]:
     """
     Retrieve latitude and longitude coordinates for a specified marker.
@@ -232,8 +233,10 @@ def get_marker_coordinates(
     Args:
         marker (str | tuple): 
             The location identifier. 
-            - If a string, it must match a key in `config.point_source_dict`.
+            - If a string, it must match a key in `point_source` in regions_info.json.
             - If a tuple, it must contain exactly two numeric values representing (latitude, longitude).
+        regions_info (dict of str):
+            Dictionary with country and region names (read from json file).
 
     Returns:
         tuple: 
@@ -241,8 +244,8 @@ def get_marker_coordinates(
     """
 
     if isinstance(marker, str):
-        if marker in config.point_source_dict:
-            lon_marker, lat_marker = config.point_source_dict[marker]
+        if marker in regions_info["point_source"]:
+            lon_marker, lat_marker = regions_info["point_source"][marker]
         else:
             raise ValueError(f"Location '{marker}' not found in point source dictionary.")
 
@@ -348,6 +351,7 @@ def extract_site_info(
 
 def get_region_coordinates(
     region_name: str, 
+    regions_info: dict[str, str],
     zoom_degree: float = 1,
     ) -> tuple[float, float, float, float]:
     """
@@ -356,6 +360,8 @@ def get_region_coordinates(
     Args:
         region_name (str): 
             The name of the country or continent or region to get the coordinates for.
+        regions_info (dict of str):
+            Dictionary with country and region names (read from json file).
         zoom_degree (float): 
             The number of degrees to zoom in/out from the bounding box. Default is 1.
 
@@ -364,7 +370,7 @@ def get_region_coordinates(
             The bounding coordinates of the region (lon_min, lon_max, lat_min, lat_max), after zooming.
     """
     world = load_countries_shape()
-    region_code = config.countrycodes_dict
+    region_code = regions_info["country_codes"]
 
     region_name_title = region_name.title()
 
@@ -393,8 +399,8 @@ def get_region_coordinates(
                 region = world[world['ISO_A3'] == iso_codes].copy()
         else:
             raise ValueError(f"Region '{region_name}' not found. Please ensure the region is correctly specified as a country, continent, subregion, or ISO_A3 code.\n"
-                             f"You can also try using a predefined region from the list: {list(config.regions_dict.keys())}.\n"
-                             "If you're still having trouble, check and update the config.countrycodes_dict if necessary.")
+                             f"You can also try using a predefined region from regions dictionary in regions_info.json.\n"
+                             "If you're still having trouble, check and update the country_codes in regions_info.json if necessary.")
 
     # Handle empty region case
     if region.empty:

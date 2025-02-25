@@ -121,7 +121,7 @@ def test_flux_timeseries():
         ds_all_flux_scaled,
         species,
         regions,
-        config_data["species_info"],
+        config_data,
         model_colors,
         model_labels,
         start_date,

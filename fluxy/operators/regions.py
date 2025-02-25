@@ -5,14 +5,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 
-from fluxy import config
 from fluxy.operators.select import get_units_conversion_factor
 
 logger = logging.getLogger(__name__)
 
 
 def extract_region_flux(
-    ds_all: dict[str, xr.Dataset], country: str, keep_country_dim: bool = False
+    ds_all: dict[str, xr.Dataset], country: str, regions_info: dict[str, str], keep_country_dim: bool = False
 ) -> dict[str, xr.Dataset]:
     """
     Finds the index of a chosen region name and extracts the country flux
@@ -25,6 +24,7 @@ def extract_region_flux(
         ds_all: xarray datasets of fluxes, scaled and sliced between 
             chosen dates.
         country: name of the country to extract.
+        regions_info: dictionary with country and region names (read from json file).
         keep_country_dim: if True, re-put country dimension on the output datasets.
 
     Returns:
@@ -37,7 +37,7 @@ def extract_region_flux(
             - 'prior_upper'
     """
     ds_output = dict()
-    country_search = config.countrycodes_dict[country]
+    country_search = regions_info["country_codes"][country]
     min_percentile_index = 0
     max_percentile_index = 1
 
@@ -52,8 +52,8 @@ def extract_region_flux(
         # search for existing region names
         available_countries = ds["country"].values.astype(str)
         
-        if country_search not in available_countries and country in config.regions_dict.keys() :
-            region_search = config.regions_dict[country]
+        if country_search not in available_countries and country in regions_info["regions"].keys() :
+            region_search = regions_info["regions"][country]
 
             logger.info(f'{country} emissions are not present in {m}. Considering covariance matrix and sum of individual countries: {region_search}.')
 
@@ -112,6 +112,7 @@ def extract_region_inventory_flux(
     species: str,
     unit: str,
     s_data: dict[str, dict],
+    r_data: dict[str, str],
     inventory_year: int | str | None = None,
 ) -> xr.Dataset:
     """
@@ -123,6 +124,7 @@ def extract_region_inventory_flux(
         specie: Gas species, e.g. 'ch4'.
         unit: unit in which the inventory should be converted.
         s_data: Dictionary of species with information for plotting (read from json file).
+        r_data: Dictionary with country and region names (read from json file).
         inventory_year: year of inventory to get.
 
     Returns:
@@ -173,11 +175,11 @@ def extract_region_inventory_flux(
     if country in inv_ds['country']:
         return inv_ds.sel(country=country)
 
-    region_search = config.regions_dict[country]
+    region_search = r_data["regions"][country]
     country_list = region_search.split('-')
     logger.info(f'No inventory data available for {country}. Considering sum of individual countries: {region_search}')
 
     country_list_update = [country if country in inv_ds['country'] 
-                            else dict(map(reversed, config.countrycodes_dict.items()))[country] # type: ignore
+                            else dict(map(reversed, r_data["country_codes"].items()))[country] # type: ignore
                             for country in country_list]
     return inv_ds.sel(country=country_list_update).sum(dim='country', keep_attrs=True)

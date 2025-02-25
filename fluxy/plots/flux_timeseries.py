@@ -134,7 +134,7 @@ def plot_country_flux(
     ds_all: dict[str, xr.Dataset],
     species: str,
     plot_regions: list[str],
-    s_data: dict[str, str],
+    config_data: dict[str, dict],
     model_colors: dict[str, str],
     model_labels: list[str] | None,
     start_date: str,
@@ -165,7 +165,7 @@ def plot_country_flux(
             chosen dates.
         species: Gas species, e.g. 'ch4'.
         plot_regions: Country or regions to plot, e.g. ['UNITED KINGDOM','SWITZERLAND']
-        s_data: Dictionary of species with information for plotting (read from json file).
+        config_data: Dictionary with settings read from json file. Use json filenames as keys.
         model_colors: Models and corresponding colours used to plot the model.
         start_date: Start dates of the data to plot (used to slice inventory data).
         end_date: Start dates of the data to plot (used to slice inventory data).
@@ -197,6 +197,9 @@ def plot_country_flux(
         res_dict : If return_res, return also a dictionnary containaing the plotted results
 
     """
+    s_data = config_data["species_info"]
+    r_data = config_data["regions_info"]
+
     if return_res:
         res_dict: dict[str, dict] = {country: dict() for country in plot_regions}
     
@@ -226,7 +229,7 @@ def plot_country_flux(
         ax = axes if (n_rows, n_cols) == (1,1) else axes.flatten()[i]
 
         if plot_inventory :
-            inventories_to_plot = retrieve_inventories(data_dir,country,species,start_date,end_date,unit,s_data,inventory_years)
+            inventories_to_plot = retrieve_inventories(data_dir,country,species,start_date,end_date,unit,s_data,r_data,inventory_years)
             for i_inv, inventory in enumerate(inventories_to_plot) :
                 ax.bar(inventory.time,inventory,
                        np.timedelta64(340-i_inv*20, 'D'),
@@ -238,7 +241,7 @@ def plot_country_flux(
                     res_dict[country][f'inventory_{inventory.year}']= {'time':inventory.time.values,
                                                                        'value':inventory.values}
 
-        ds_all_region = extract_region_flux(ds_all, country)
+        ds_all_region = extract_region_flux(ds_all, country, r_data)
         ds_to_plot = prepare_data_to_plot(
             ds_all_region,
             model_labels,
@@ -309,8 +312,8 @@ def plot_country_flux(
                               'NW_EU_CONTINENT':'NW CONTINENTAL EUROPE'}
         print_country = country_equivalent.get(country, country)
 
-        if country_codes_as_titles and country in config.regions_dict.keys():
-            ax.set_title(f'{print_country}\n{config.regions_dict[country]}')
+        if country_codes_as_titles and country in r_data["regions"].keys():
+            ax.set_title(f'{print_country}\n{r_data["regions"][country]}')
         else:
             ax.set_title(f'{print_country}')
         
