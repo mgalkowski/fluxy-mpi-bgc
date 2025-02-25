@@ -68,6 +68,12 @@ def read_config_files() -> dict[str, dict]:
         filename = file.stem
         data_dict[filename] = data
 
+    # Join dictionaries from regions_info.json
+    if "regions" in data_dict["regions_info"].keys():
+        data_dict["regions_info"]["country_codes"].update(
+            data_dict["regions_info"]["regions"]
+        )
+
     return data_dict
 
 
@@ -118,7 +124,7 @@ def get_filename(
                 name_tags[i + 3] = string_in_file
 
     # Add domain to filename tags
-    name_tags.insert(2, config_data["models_info"]["domain"])
+    name_tags.insert(2, config_data["regions_info"]["domain"])
 
     # Build filename
     model_filename = "_".join(name_tags)
@@ -206,8 +212,10 @@ def read_model_output(
         logger.info(f"Reading {file_type} file: {filepath}")
         ds_all[m] = xr.open_dataset(filepath)
 
-        # Add/correct attributes
-        ds_all[m] = edit_ds(ds_all[m], m, period[i], file_type)
+        # Fix variables and attributes
+        ds_all[m] = edit_vars_and_attributes(
+            ds_all[m], m, period[i], file_type, config_data["regions_info"]
+        )
 
     return ds_all
 
@@ -318,7 +326,7 @@ def read_flux_total_fgases(data_dir: str,
                             country_flux_units_print = unit)
         # extract regions
         for region in regions:
-            ds_all_region = extract_region_flux(ds_in, region, keep_country_dim = True)
+            ds_all_region = extract_region_flux(ds_in, region, config_data["regions_info"], keep_country_dim = True)
             for model in ds_all_region.keys():
                 ds_all[region][model].append(ds_all_region[model])
 
@@ -412,140 +420,127 @@ def load_countries_shape(
 
     return gdf
 
-def edit_ds(
+def edit_vars_and_attributes(
         ds: xr.Dataset,
         model : str,
-        period: str,
+        frequency: str,
         file_type: str,
-) -> xr.Dataset:
-    
-    if file_type == 'flux':
-        ds = adapt_ds_flux(ds,model)
-
-    ds = edit_ds_attributes(ds,period,file_type)
-
-    return ds
-
-
-def edit_ds_attributes(
-    ds: xr.Dataset,
-    frequency: str,
-    file_type: str,
+        regions_info: dict[str, str],
 ) -> xr.Dataset:
     """
-    Add missing attributes to the datasets.
+    Edit dataset variables and attributes.
     This function would not be needed if all files complied with the data format.
 
     Args:
         ds (xarray dataset):
-            xarray dataset which attributes should be changed.
+            xarray dataset with model data.
+        model (str):
+            Model name tag corresponding to ds.
         frequency (str):
             Frequency of the inversion results present in the dataset.
             Options for "monthly" and "yearly".
         file_type (str):
             Output file type.
             Options for "flux" and "concentration".
+        regions_info (dict of str):
+            Dictionary with country and region names (read from json file).
 
     Returns:
         ds (xarray dataset):
-            xarray dataset with updated attributes.
+            xarray dataset with updated variables and attributes.
     """
 
     # Add inversion frequency to global attributes
     if "frequency" not in ds.attrs:
         ds.attrs["frequency"] = frequency
 
-    # Easy fix for InTEM ("units" attribute is wrongly set to "unit")
-    vars_to_check = [
-        "country_flux_total_prior",
-        "country_flux_total_posterior",
-        "percentile_country_flux_total_prior",
-        "percentile_country_flux_total_posterior",
-    ]
-
+    # Fix flux dataset
     if file_type == "flux":
+
+        # Easy fix for InTEM ("units" attribute is wrongly set to "unit")
+        vars_to_check = [
+            "country_flux_total_prior",
+            "country_flux_total_posterior",
+            "percentile_country_flux_total_prior",
+            "percentile_country_flux_total_posterior",
+        ]
+
         for var in vars_to_check:
             if "units" not in ds[var].attrs.keys() and "unit" in ds[var].attrs.keys():
                 ds[var].attrs["units"] = ds[var].attrs["unit"]
 
-    return ds
-
-
-def adapt_ds_flux(
-        ds: xr.Dataset,
-        model : str,
-) -> xr.Dataset:
-    m0 = model.split('_')[0].lower()
-        
-    if m0 == 'elris':
-        ds['country'] = ds['country'].astype('str')
-        ds = ds.set_index(countrynumber='country').rename({'countrynumber':'country'})
-        var_to_change = "covariance_country_flux_total_posterior"
-        if var_to_change in ds and ds[var_to_change].dims == ("time","country","country"): 
-            ds[var_to_change] = xr.DataArray(
-                data = ds[var_to_change].data,
-                dims = ['time','country','country_2'],
-                coords = dict(
-                    time = (["time"], ds[var_to_change].time.data),
-                    country = (["country"], ds[var_to_change].country.data),
-                    country_2 = (["country_2"], ds[var_to_change].country.data)
-                    ),
-                    attrs = ds[var_to_change].attrs,
-                    )
-
-    elif m0 == 'enkf':
-        period = np.median(ds.time.values[1:] - ds.time.values[:-1]).astype('timedelta64[D]')
-        if abs(period-np.timedelta64(30,'D')) < 3 :
-            ds['time'] = ds.time.values + np.timedelta64(15,'D')
-
-    elif m0 == 'intem':            
-        ds = ds.rename({'countrynumber':'country'})
-
-        if 'BEL-LUX' in ds.country and ('BEL' not in ds.country and 'LUX'  not in ds.country):
-            logger.info(f" InTEM does not estimate separate BELGIUM emissions.\n A population ratio of {config.bel_pop_r} is being used to scale InTEM's total BELGIUM+LUXEMBOURG estimate.")
-
-            r = config.bel_pop_r
-
-            variables_with_country = [var for var in ds.data_vars if "country" in ds[var].dims]
-            numerical_vars = [var for var in variables_with_country 
-                                if np.issubdtype(ds[var].dtype, np.number) and var != "country_fraction"]
-
-            ds_bel = r * ds[numerical_vars].sel(country='BEL-LUX')
-            ds_lux = (1-r) * ds[numerical_vars].sel(country='BEL-LUX')
-
-            del ds_bel['country']
-            del ds_lux['country']
-
-            ds_bel['countryname'] = xr.DataArray(data = ['BELGIUM',] * ds_bel.time.size,
-                                                dims = ['time',],
-                                                coords = {'time': ds_bel.time},
-                                                attrs = ds.countryname.attrs)
+        # Aply model specific corrections
+        m0 = model.split('_')[0].lower()
             
-            ds_lux['countryname'] = xr.DataArray(data = ['LUXEMBOURG',] * ds_lux.time.size,
-                                                dims = ['time',],
-                                                coords = {'time': ds_lux.time},
-                                                attrs = ds.countryname.attrs)
+        if m0 == 'elris':
+            ds['country'] = ds['country'].astype('str')
+            ds = ds.set_index(countrynumber='country').rename({'countrynumber':'country'})
+            var_to_change = "covariance_country_flux_total_posterior"
+            if var_to_change in ds and ds[var_to_change].dims == ("time","country","country"): 
+                ds[var_to_change] = xr.DataArray(
+                    data = ds[var_to_change].data,
+                    dims = ['time','country','country_2'],
+                    coords = dict(
+                        time = (["time"], ds[var_to_change].time.data),
+                        country = (["country"], ds[var_to_change].country.data),
+                        country_2 = (["country_2"], ds[var_to_change].country.data)
+                        ),
+                        attrs = ds[var_to_change].attrs,
+                        )
+
+        elif m0 == 'enkf':
+            period = np.median(ds.time.values[1:] - ds.time.values[:-1]).astype('timedelta64[D]')
+            if abs(period-np.timedelta64(30,'D')) < 3 :
+                ds['time'] = ds.time.values + np.timedelta64(15,'D')
+
+        elif m0 == 'intem':            
+            ds = ds.rename({'countrynumber':'country'})
+
+            if 'BEL-LUX' in ds.country and ('BEL' not in ds.country and 'LUX'  not in ds.country):
+                logger.info(f" InTEM does not estimate separate BELGIUM emissions.\n A population ratio of {config.bel_pop_r} is being used to scale InTEM's total BELGIUM+LUXEMBOURG estimate.")
+
+                r = config.bel_pop_r
+
+                variables_with_country = [var for var in ds.data_vars if "country" in ds[var].dims]
+                numerical_vars = [var for var in variables_with_country 
+                                    if np.issubdtype(ds[var].dtype, np.number) and var != "country_fraction"]
+
+                ds_bel = r * ds[numerical_vars].sel(country='BEL-LUX')
+                ds_lux = (1-r) * ds[numerical_vars].sel(country='BEL-LUX')
+
+                del ds_bel['country']
+                del ds_lux['country']
+
+                ds_bel['countryname'] = xr.DataArray(data = ['BELGIUM',] * ds_bel.time.size,
+                                                    dims = ['time',],
+                                                    coords = {'time': ds_bel.time},
+                                                    attrs = ds.countryname.attrs)
+                
+                ds_lux['countryname'] = xr.DataArray(data = ['LUXEMBOURG',] * ds_lux.time.size,
+                                                    dims = ['time',],
+                                                    coords = {'time': ds_lux.time},
+                                                    attrs = ds.countryname.attrs)
+                
+                ds_bellux = xr.concat([ds_bel, ds_lux], pd.Index(['BEL','LUX'], name='country'))
+                ds = xr.merge([ds, ds_bellux])
+
+        elif m0 == 'rhime':
+            ds['country'] = [regions_info["country_codes"].get(x, x) for x in ds['country'].values]
+
+        elif m0 == 'flexinvert':
+            ds['percentile_country_flux_total_posterior'] = xr.concat([ds['country_flux_total_posterior']
+                                                                    - ds['country_flux_error_posterior'],
+                                                                    ds['country_flux_total_posterior']
+                                                                    + ds['country_flux_error_posterior']],
+                                                                    pd.Index([0,1], name = 'percentile'))
             
-            ds_bellux = xr.concat([ds_bel, ds_lux], pd.Index(['BEL','LUX'], name='country'))
-            ds = xr.merge([ds, ds_bellux])
-
-    elif m0 == 'rhime':
-        ds['country'] = [config.countrycodes_dict.get(x, x) for x in ds['country'].values]
-
-    elif m0 == 'flexinvert':
-        ds['percentile_country_flux_total_posterior'] = xr.concat([ds['country_flux_total_posterior']
-                                                                - ds['country_flux_error_posterior'],
-                                                                ds['country_flux_total_posterior']
-                                                                + ds['country_flux_error_posterior']],
+            ds['percentile_country_flux_total_prior'] = xr.concat([ds['country_flux_total_prior']
+                                                                - ds['country_flux_error_prior'],
+                                                                ds['country_flux_total_prior']
+                                                                + ds['country_flux_error_prior']],
                                                                 pd.Index([0,1], name = 'percentile'))
-        
-        ds['percentile_country_flux_total_prior'] = xr.concat([ds['country_flux_total_prior']
-                                                            - ds['country_flux_error_prior'],
-                                                            ds['country_flux_total_prior']
-                                                            + ds['country_flux_error_prior']],
-                                                            pd.Index([0,1], name = 'percentile'))
-        ds['countrynumber'] = ds['country'].astype(str)
-        del ds['country']
-        ds = ds.rename({'countrynumber':'country'})
+            ds['countrynumber'] = ds['country'].astype(str)
+            del ds['country']
+            ds = ds.rename({'countrynumber':'country'})
         
     return ds

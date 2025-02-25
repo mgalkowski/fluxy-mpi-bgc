@@ -1,6 +1,4 @@
 {
-    "domain": "EUROPE",
-
     "filename_tags":{
         "std": "<model>_obs_<model>_baseline_optimized",
         "ibaseline": "<model>_obs_intem_baseline_fixed",

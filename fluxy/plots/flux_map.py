@@ -81,7 +81,7 @@ def plot_flux_map(
 
     # Determine geographical boundaries
     if isinstance(region, str):
-        map_bounds = get_region_coordinates(region, zoom_degree=zoom_degree)
+        map_bounds = get_region_coordinates(region, config_data["regions_info"], zoom_degree=zoom_degree)
     elif isinstance(region, list) and all(isinstance(coord, (int, float)) for coord in region):
         map_bounds = tuple(region)
     else:
@@ -138,7 +138,7 @@ def plot_flux_map(
             if add_sites and model in sites_info:
                 add_site_markers(ax_i, sites_info[model], marker_color)
             if add_markers:
-                add_custom_markers(ax_i, add_markers, marker_color)
+                add_custom_markers(ax_i, add_markers, marker_color, config_data["regions_info"])
 
             # Add colorbar (only for the last column)
             if col == n_cols - 1:
@@ -229,7 +229,7 @@ def plot_flux_map_model_comparison(
 
     # Determine geographical boundaries
     if isinstance(region, str):
-        map_bounds = get_region_coordinates(region, zoom_degree=zoom_degree)
+        map_bounds = get_region_coordinates(region, config_data["regions_info"], zoom_degree=zoom_degree)
     elif isinstance(region, list) and all(isinstance(coord, (int, float)) for coord in region):
         map_bounds = tuple(region)
     else:
@@ -284,7 +284,7 @@ def plot_flux_map_model_comparison(
 
         # Add sites and markers if specified
         if add_sites: add_site_markers(ax_i, sites_info[model], marker_color)   
-        if add_markers: add_custom_markers(ax_i, add_markers, marker_color)
+        if add_markers: add_custom_markers(ax_i, add_markers, marker_color, config_data["regions_info"])
 
         # Add colorbar
         cbar_label = print_cbar_label(ds, species_info, var, season, format=['variable', 'species', 'units', 'time'])
@@ -369,7 +369,7 @@ def plot_flux_map_over_time(
     """
     # Determine geographical boundaries
     if isinstance(region, str):
-        map_bounds = get_region_coordinates(region, zoom_degree=zoom_degree)
+        map_bounds = get_region_coordinates(region, config_data["regions_info"], zoom_degree=zoom_degree)
     elif isinstance(region, list) and all(isinstance(coord, (int, float)) for coord in region):
         map_bounds = tuple(region)
     else:
@@ -444,7 +444,7 @@ def plot_flux_map_over_time(
                     add_site_markers(ax_i, merged_sites_info, marker_color)
 
             if add_markers:
-                add_custom_markers(ax_i, add_markers, marker_color)
+                add_custom_markers(ax_i, add_markers, marker_color, config_data["regions_info"])
 
     # Add colorbar
     cbar_label = print_cbar_label(ds, species_info, var, format=['variable', 'species', 'units'])
