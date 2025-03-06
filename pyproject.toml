@@ -13,28 +13,31 @@ dependencies = [
 ]
 requires-python = ">=3.8"
 authors = [
-  {name = "Pradyun Gedam", email = "pradyun@example.com"},
-  {name = "Tzu-Ping Chung", email = "tzu-ping@example.com"},
-  {name = "Another person"},
-  {email = "different.person@example.com"},
+  {name = "Alexandre Danjou", email = "alexandre.danjou@bristol.ac.uk"},
+  {name = "Alice Ramsden", email = "alice.ramsden@metoffice.gov.uk"},
+  {name = "Daniela Brito Melo", email = "daniela.britomelo@empa.ch"},
+  {name = "Hélène De Longueville", email = "helene.delongueville@bristol.ac.uk"},
+  {name = "Lionel Constantin", email = "lionel.constantin@empa.ch"},
 ]
 maintainers = [
-  {name = "Brett Cannon", email = "brett@example.com"}
+  {name = "Alexandre Danjou", email = "alexandre.danjou@bristol.ac.uk"},
+  {name = "Alice Ramsden", email = "alice.ramsden@metoffice.gov.uk"},
+  {name = "Daniela Brito Melo", email = "daniela.britomelo@empa.ch"},
+  {name = "Hélène De Longueville", email = "helene.delongueville@bristol.ac.uk"},
 ]
-description = "Lovely Spam! Wonderful Spam!"
+description = "PARIS inverse modelling intercomparison tool"
 readme = "README.md"
 license = {file = "LICENSE.txt"}
-keywords = ["egg", "bacon", "sausage", "tomatoes", "Lobster Thermidor"]
+keywords = ["inverse modelling", "greenhouse gases", "emission fluxes", "mole fractions"]
 classifiers = [
-  "Development Status :: 4 - Beta",
-  "Programming Language :: Python"
+  "Development Status :: 5 - Production/Stable",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Atmospheric Science",
 ]
 
 
 [project.urls]
-Homepage = "https://example.com"
-Documentation = "https://readthedocs.org"
-Repository = "https://github.com/me/spam.git"
-"Bug Tracker" = "https://github.com/me/spam/issues"
-Changelog = "https://github.com/me/spam/blob/master/CHANGELOG.md"
-
+Homepage = "https://horizoneurope-paris.eu/"
+Documentation = "https://github.com/ACRG-Bristol/PARIS_intercomparison/blob/devel/README.md"
+Repository = "https://github.com/ACRG-Bristol/PARIS_intercomparison"
+"Bug Tracker" = "https://github.com/ACRG-Bristol/PARIS_intercomparison/issues"
