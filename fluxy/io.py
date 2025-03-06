@@ -1,5 +1,4 @@
 import os
-import glob
 import xarray as xr
 import numpy as np
 import pandas as pd
@@ -83,8 +82,8 @@ def get_filename(
     period: str,
     file_pattern: str,
     config_data: dict[str, dict],
-    data_dir: os.PathLike,
-) -> os.PathLike:
+    data_dir: os.PathLike | str,
+) -> Path:
     """
     Get complete path to the output file.
 

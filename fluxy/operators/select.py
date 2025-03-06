@@ -3,179 +3,128 @@ import numpy as np
 import os
 from pathlib import Path
 import logging
-from typing import Literal
 import re
 from collections import Counter
+from typing import Literal
 from fluxy import config
-from fluxy.operators.flux_align_dataset import align_time, align_latitude, align_longitude
+from fluxy.operators.flux_align_dataset import (
+    align_time,
+    align_latitude,
+    align_longitude,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def scale_mf(
+def scale_variables(
     model: str,
     ds_model: xr.Dataset,
-    mf_target_units: str,
+    species_info: dict[str, str | float] = None,
+    **print_units: dict[Literal["mf_unit", "country_flux_unit", "flux_unit"], str],
 ) -> xr.Dataset:
     """
-    Scales mole fractions according to print units defined in species_info.json.
+    Scales mole fractions, country fluxes and fluxes according to print units.
 
     Args:
         model (str):
             Name tag of the model being scaled.
         ds_model (xarray dataset):
             Sliced dataset with mf data from model.
-        mf_target_units (dictionary of str):
-            Units to which mole fractions should be converted to.
-    Returns:
-        ds_model (xarray dataset):
-            Sliced and scaled dataset.
-    """
-
-    # Get list of variables with mf units
-    var_names, var_unit = get_variables(ds_model, unit_type="mf")
-
-    if not var_names:
-        raise ValueError(
-            f"There are no variables in {model} with mole fraction units in the attributes. Scaling to {mf_target_units} cannot be applied."
-        )
-
-    if var_unit is None:
-        raise ValueError(
-            f"{model} dataset considers different mole fraction units. Uniform scaling to {mf_target_units} cannot be applied."
-        )
-
-    # Get scaling factor
-    scaling_factor = get_units_conversion_factor(var_unit, mf_target_units)
-
-    # Scale mole fractions
-    for v in var_names:
-        ds_model[v] = ds_model[v] * scaling_factor
-        ds_model[v].attrs["units"] = mf_target_units
-
-    logger.info(f"Scaling {model} mole fractions by {scaling_factor}.")
-
-    return ds_model
-
-
-def scale_country_flux(
-    model: str,
-    ds_model: xr.Dataset,
-    species_info: dict[str, str | float],
-    country_flux_units_print: str,
-) -> xr.Dataset:
-    """
-    Scales country fluxes according to print units defined in species_info.json.
-
-    Args:
-        model (str):
-            Name tag of the model being scaled.
-        ds_model (xarray dataset):
-            Sliced dataset with country fluxes data from model.
         species_info (dictionary of str):
             Dictionary with species-specific settings.
-        country_flux_units_print (str):
-            Units to which country fluxes should be converted to.
+        print_units (dictionary of str):
+            Option for keys are: 'mf_unit', 'country_flux_unit', 'flux_unit'
+            Keys point to units to which mole fractions/country fluxes/fluxes should be converted to.
+            If None, no scaling is applied.
     Returns:
         ds_model (xarray dataset):
             Sliced and scaled dataset.
     """
 
-    # Get list of variables with country flux unit
+    # Dictionaries with scaling settings (variable and unit type)
+    var_type_name = {
+        "mf_unit": "mole fraction",
+        "country_flux_unit": "country flux",
+        "flux_unit": "flux",
+    }
+
+    unit_type = {
+        "mf_unit": "mf",
+        "country_flux_unit": "mass1 time-1",
+        "flux_unit": "amount1 length-2 time-1",
+    }
     # NOTE: country fluxes must be in mass units so that conversion to CO2-eq works
-    var_names, var_unit = get_variables(ds_model, unit_type="mass1 time-1")
 
-    if not var_names:
-        raise ValueError(
-            f"There are no variables in {model} with country flux units in the attributes. Scaling to {country_flux_units_print} cannot be applied."
-        )
+    optional_unit_type = {
+        "flux_unit": "mass1 length-2 time-1",
+    }
 
-    if var_unit is None:
-        raise ValueError(
-            f"{model} dataset considers different country flux units. Uniform scaling to {country_flux_units_print} cannot be applied."
-        )
+    # Create copy to prevent scanning for variables in scaled dataset
+    # NOTE: Scaled dataset may contain CO2-eq, which is an acceptable target unit but not
+    # an acceptable entry unit (see issue #36)
+    ds_scaled = ds_model.copy()
 
-    # Get scaling factor
-    gwp = 1
-    target_unit = country_flux_units_print
-    if "CO2-eq" in target_unit:
-        gwp = species_info["gwp"]
-        target_unit = country_flux_units_print.replace("CO2-eq", "")
-        logger.info(f"Converting to mass of CO2-eq using GWP = {gwp}.")
+    # Loop over variable types
+    for scale_var, print_unit in print_units.items():
+        if print_unit is not None:
 
-    scaling_factor = get_units_conversion_factor(var_unit, target_unit)
+            if var_type_name.get(scale_var) is None:
+                raise ValueError(
+                    f"{scale_var} is not implemented. Acceptable keys are: {var_type_name.keys()}."
+                )
 
-    # Scale country flux
-    for v in var_names:
-        ds_model[v] = ds_model[v] * scaling_factor * gwp
-        ds_model[v].attrs["units"] = country_flux_units_print
+            # Get list of variables to scale
+            var_names, var_unit = get_variables(
+                ds_model, unit_type=unit_type[scale_var]
+            )
 
-    logger.info(f"Scaling {model} country fluxes by {scaling_factor*gwp}.")
+            if (not var_names) and (opt_unit_type := optional_unit_type.get(scale_var)):
+                var_names, var_unit = get_variables(ds_model, unit_type=opt_unit_type)
 
-    # Scale covariance matrix
-    cov_var = "covariance_country_flux_total_posterior"
-    if cov_var in ds_model.keys():
-        ds_model[cov_var] = ds_model[cov_var] * scaling_factor**2 * gwp**2
-        logger.info(f"Scaling covariance in {model} by {scaling_factor**2 * gwp**2}")
+            if not var_names:
+                raise ValueError(
+                    f"There are no variables in {model} with {var_type_name[scale_var]} units in the attributes. Scaling to {print_unit} cannot be applied."
+                )
 
-    return ds_model
+            if var_unit is None:
+                raise ValueError(
+                    f"{model} dataset considers different {var_type_name[scale_var]} units. Uniform scaling to {print_unit} cannot be applied."
+                )
 
+            # Get scaling factor
+            gwp = 1
+            target_unit = print_unit
+            if (scale_var == "country_flux_unit") and ("CO2-eq" in target_unit):
+                gwp = species_info["gwp"]
+                target_unit = target_unit.replace("CO2-eq", "")
+                logger.info(f"Converting to mass of CO2-eq using GWP = {gwp}.")
 
-def scale_flux(
-    model: str,
-    ds_model: xr.Dataset,
-    species_info: dict[str, str | float],
-    flux_units_print: str,
-) -> xr.Dataset:
-    """
-    Scales fluxes according to print units defined in species_info.json.
+            molar_mass = None
+            if species_info is not None:
+                molar_mass = species_info["molar_mass"]
 
-    Args:
-        model (str):
-            Name tag of the model being scaled.
-        ds_model (xarray dataset):
-            Sliced dataset with flux data from model.
-        species_info (dictionary of str):
-            Dictionary with species-specific settings.
-        flux_units_print (str):
-            Units to which fluxes should be converted to.
-    Returns:
-        ds_model (xarray dataset):
-            Sliced and scaled dataset.
-    """
+            scaling_factor = get_units_conversion_factor(
+                var_unit, target_unit, molar_mass
+            )
 
-    # Get list of variables with flux units
-    unit_type = "amount1 length-2 time-1"
-    var_names, var_unit = get_variables(ds_model, unit_type)
+            # Apply scaling
+            for v in var_names:
+                ds_scaled[v] = ds_model[v] * scaling_factor * gwp
+                ds_scaled[v].attrs["units"] = print_unit
 
-    if not var_names:
-        # Alternatively look for flux variables with mass units
-        unit_type = "mass1 length-2 time-1"
-        var_names, var_unit = get_variables(ds_model, unit_type)
+            logger.info(
+                f"Scaling {model} {var_type_name[scale_var]} by {scaling_factor*gwp}."
+            )
 
-    if not var_names:
-        raise ValueError(
-            f"There are no variables in {model} with flux units in the attributes. Scaling to {flux_units_print} cannot be applied."
-        )
+            # Apply scaling to covariance matrix
+            # NOTE: covariance units are assumed consistent with country flux units (see issue #35)
+            cov_var = "covariance_country_flux_total_posterior"
+            if (scale_var == "country_flux_unit") and (cov_var in ds_model.keys()):
+                cov_scaling_factor = scaling_factor**2 * gwp**2
+                ds_scaled[cov_var] = ds_model[cov_var] * cov_scaling_factor
+                logger.info(f"Scaling covariance in {model} by {cov_scaling_factor}")
 
-    if var_unit is None:
-        raise ValueError(
-            f"{model} dataset considers different flux units. Uniform scaling to {flux_units_print} cannot be applied."
-        )
-
-    # Get scaling factor
-    scaling_factor = get_units_conversion_factor(
-        var_unit, flux_units_print, species_info["molar_mass"]
-    )
-
-    # Scale mole fractions
-    for v in var_names:
-        ds_model[v] = ds_model[v] * scaling_factor
-        ds_model[v].attrs["units"] = flux_units_print
-
-    logger.info(f"Scaling {model} fluxes by {scaling_factor}.")
-
-    return ds_model
+    return ds_scaled
 
 
 def slice_flux(
@@ -240,13 +189,13 @@ def slice_flux(
 
         # Scale fluxes
         if species is not None:
-            if flux_units_print is not None:
-                ds_all[m] = scale_flux(m, ds_all[m], species_info, flux_units_print)
-
-            if country_flux_units_print is not None:
-                ds_all[m] = scale_country_flux(
-                    m, ds_all[m], species_info, country_flux_units_print
-                )
+            ds_all[m] = scale_variables(
+                m,
+                ds_all[m],
+                species_info,
+                flux_unit=flux_units_print,
+                country_flux_unit=country_flux_units_print,
+            )
 
     return ds_all
 
@@ -353,8 +302,7 @@ def slice_mf(
                 continue
 
         # Scale mole fractions
-        if mf_units_print is not None:
-            ds_all[m] = scale_mf(m, ds_all[m], mf_units_print)
+        ds_all[m] = scale_variables(m, ds_all[m], mf_unit=mf_units_print)
 
         # Mask mole fractions according to baseline timestamps
         if baseline_site is not None:
@@ -602,6 +550,7 @@ def get_units_conversion_factor(
         )
 
     return unit_to_base / target_to_base * M_scaling
+
 
 def prepare_flux_map_data(ds_all: dict[xr.Dataset], plot_combined: bool = False) -> dict[xr.Dataset]:
 
