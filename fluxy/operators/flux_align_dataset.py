@@ -1,5 +1,6 @@
 import numpy as np
 import xarray as xr
+from typing import Literal
 
 def align_time(ds_list: list[xr.Dataset])->list[xr.Dataset]: 
     """
@@ -41,64 +42,34 @@ def align_time(ds_list: list[xr.Dataset])->list[xr.Dataset]:
 
     return aligned_ds_list
 
-def align_latitude(ds_list: list[xr.Dataset])->list[xr.Dataset]: 
+def align_lat_lon(ds_list: list[xr.Dataset], coord: Literal["latitude", "longitude"])->list[xr.Dataset]: 
     """
-    Check the latitude coordinate of a list of xarray datasets and, if they differ, align them with the latitudes of the first dataset in the list.
+    Check the latitude/longitude coordinate of a list of xarray datasets and, if they differ, align them with the latitudes/longitudes of the first dataset in the list.
 
     Args:
-        ds_list: list of xarray datasets to be latitude-aligned
+        ds_list: list of xarray datasets to be latitude/longitude-aligned
     Returns:
-        aligned_ds_list: list of xarray datasets latitude-aligned
+        aligned_ds_list: list of xarray datasets latitude/longitude-aligned
     """
-    lat_dim_equal = [ds_list[0].latitude.equals(x.latitude) for x in ds_list[1:]]
 
-    if all(lat_dim_equal):
+    dim_equal = [ds_list[0][coord].equals(x[coord]) for x in ds_list[1:]]
+
+    if all(dim_equal):
         return ds_list
 
-    lat_dim_close = [np.allclose(ds_list[0].latitude.values, x.latitude.values) for x in ds_list[1:]] # Small tolerance
-    if all(lat_dim_close):
+    dim_close = [np.allclose(ds_list[0][coord].values, x[coord].values) for x in ds_list[1:]] # Small tolerance
+    if all(dim_close):
         aligned_ds_list = [ds_list[0]]
 
         for ds_p in ds_list[1:]:
-            if ds_list[0].latitude.equals(ds_p.latitude):
+            if ds_list[0][coord].equals(ds_p[coord]):
                 aligned_ds_list.append(ds_p)
                 continue
             
             ds_aligned = ds_p  
-            ds_aligned["latitude"] = ds_list[0].latitude
+            ds_aligned[coord] = ds_list[0][coord]
             aligned_ds_list.append(ds_p)
     else:
-        raise ValueError("Latitude dimensions seem to be too different between the datasets for them to be combined.")
-            
-    return aligned_ds_list
-
-def align_longitude(ds_list: list[xr.Dataset])->list[xr.Dataset]: 
-    """
-    Check the longitude coordinate of a list of xarray datasets and, if they differ, align them with the longitudes of the first dataset in the list.
-
-    Args:
-        ds_list: list of xarray datasets to be longitude-aligned
-    Returns:
-        aligned_ds_list: list of xarray datasets longitude-aligned
-    """
-    lat_dim_equal = [ds_list[0].longitude.equals(x.longitude) for x in ds_list[1:]]
-
-    if all(lat_dim_equal):
-        return ds_list
-
-    lat_dim_close = [np.allclose(ds_list[0].longitude.values, x.longitude.values) for x in ds_list[1:]] # Small tolerance
-    if all(lat_dim_close):
-        aligned_ds_list = [ds_list[0]]
-
-        for ds_p in ds_list[1:]:
-            if ds_list[0].longitude.equals(ds_p.longitude):
-                aligned_ds_list.append(ds_p)
-                continue
-            
-            ds_aligned = ds_p  
-            ds_aligned["longitude"] = ds_list[0].longitude
-            aligned_ds_list.append(ds_p)
-    else:
-        raise ValueError("Longitude dimensions seem to be too different between the datasets for them to be combined.")
+        raise ValueError(f"{coord} dimensions seem to be too different between the datasets for them to be combined.")
             
     return aligned_ds_list

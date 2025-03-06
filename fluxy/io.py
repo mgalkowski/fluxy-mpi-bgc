@@ -369,8 +369,8 @@ def read_flux_total_fgases(data_dir: str,
     return ds_output
 
 def load_countries_shape(
-    region_bounds: tuple =None
-    ) -> gpd:
+    region_bounds: tuple = ()
+    ) -> gpd.geodataframe:
     """
     Load Natural Earth vector map data and optionally filters for a specific region.
 
