@@ -273,11 +273,11 @@ def read_flux_total_fgases(data_dir: str,
     date_message = (' If this fails with an error message related to region_time dimensions, check the availablility\n'+
               'of data from all models for all timestamps.\n'+
               'To fix this error, set start_date and end_date as lists with the correct start and end times\nfor each model.')
-    if type(start_date) is str:
+    if isinstance(start_date, str):
         logger.info(' Using same start date for all models')
         logger.info(date_message)
         start_date = [start_date]*len(models)
-    if type(end_date) is str:
+    if isinstance(end_date, str):
         logger.info(' Using same end date for all models')
         logger.info(date_message)
         end_date = [end_date]*len(models)
@@ -330,6 +330,42 @@ def read_flux_total_fgases(data_dir: str,
                 ds_all[region][model].append(ds_all_region[model])
 
     # Sum species datasets by region and model to create output
+    ds_output = create_flux_total_fgases(ds_all,species,regions,models)
+    
+    # print messages about used config
+    messages_ordered_by_model = list()
+    for model in models:
+        if default_overwrite[model]:
+            messages_ordered_by_model.append([logger.warning, f' {default_overwrite[model]} have been overwritten by default config for {model}.'])
+        if missing_species[model]:
+            messages_ordered_by_model.append([logger.warning, f' Model {model} is missing species: {missing_species[model]}'])
+        else:
+            messages_ordered_by_model.append([logger.info, f' All species succesfully read for {model}!'])
+    for message in messages_ordered_by_model:
+        message[0](message[1])
+
+    logger.info(' To change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
+
+    return ds_output
+
+def create_flux_total_fgases(ds_all,species,regions,models):
+    """
+    Sum species datasets by region and model to create output.
+
+    Args:
+        ds_all (dictionnary of dictionnary of list of xarray datasets): 
+            First keys are the regions, second the model, the list contains all the data for the species to be summed.
+        species (str): 
+            'all_hfc' or 'all_pfc'
+        models (list of str): 
+            Keys specifying model names, e.g. ['intem','elris']
+        regions (list of str):
+            Region names used to extract fluxes. Only these regions can then be plotted.
+    
+    Returns:
+        ds_output (dictionary of datasets): 
+            dictionnary of xarray datasets ready to be used with fluxy plot methods.
+    """
     ds_output = {}
     for model in models :
         ds_list = []
@@ -351,21 +387,6 @@ def read_flux_total_fgases(data_dir: str,
         ds_tmp.attrs['species'] = species
 
         ds_output[model] = ds_tmp
-    
-    # print messages about used config
-    messages_ordered_by_model = list()
-    for model in models:
-        if default_overwrite[model]:
-            messages_ordered_by_model.append([logger.warning, f' {default_overwrite[model]} have been overwritten by default config for {model}.'])
-        if missing_species[model]:
-            messages_ordered_by_model.append([logger.warning, f' Model {model} is missing species: {missing_species[model]}'])
-        else:
-            messages_ordered_by_model.append([logger.info, f' All species succesfully read for {model}!'])
-    for message in messages_ordered_by_model:
-        message[0](message[1])
-
-    logger.info(' To change the files used as the standard for each HFC/PFC, edit variable std_run in species_info.json')
-
     return ds_output
 
 def load_countries_shape(
