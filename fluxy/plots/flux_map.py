@@ -5,37 +5,50 @@ import geopandas as gpd
 
 from pandas import to_datetime
 
-from fluxy.io import load_countries_shape
 from fluxy import config
-from fluxy.plots.utils import extract_site_info, set_flux_limits, print_cbar_label, get_marker_coordinates, get_sites_coordinates, get_region_coordinates, add_site_markers, add_custom_markers, add_colorbar, define_map_figsize
+from fluxy.plots.utils import (
+    extract_site_info,
+    set_flux_limits,
+    print_cbar_label,
+    get_marker_coordinates,
+    get_sites_coordinates,
+    get_region_coordinates,
+    add_site_markers,
+    add_custom_markers,
+    add_colorbar,
+    define_map_figsize,
+    compute_boundary_geometry,
+    plot_country_borders,
+)
 from fluxy.operators.flux import get_flux_mean, average_over_period, define_var_plot
 from fluxy.operators.select import prepare_flux_map_data
 
+
 def plot_flux_map(
-    ds_all: dict[xr.Dataset], 
-    species: str, 
-    region: str | list[float], 
-    config_data: dict, 
+    ds_all: dict[xr.Dataset],
+    species: str,
+    region: str | list[float],
+    config_data: dict,
     model_labels: list[str],
-    cmap: str = 'viridis',
-    cmap_diff: str = 'coolwarm', 
-    c_border: str = 'floralwhite', 
-    c_border_diff: str = 'dimgrey',
-    add_sites: bool = False, 
+    cmap: str = "viridis",
+    cmap_diff: str = "coolwarm",
+    c_border: str = "floralwhite",
+    c_border_diff: str = "dimgrey",
+    add_sites: bool = False,
     add_markers: list[str] | list[list[float]] = None,
-    season: str = None, 
-    set_fluxlim: str | tuple = 'auto', 
+    season: str = None,
+    set_fluxlim: str | tuple = "auto",
     set_fluxlim_percentile: float = None,
-    plot_inversion_grid_flux: bool = False, 
+    plot_inversion_grid_flux: bool = False,
     zoom_degree: float = 1,
-    ) -> plt.Figure:
+) -> plt.Figure:
     """
     Plot posterior and prior fluxes and the difference between them for all models, time averaged.
-    
+
     Args:
         ds_all (dictionary of datasets):
             Dictionary of fluxes xarray datasets.
-        species (str): 
+        species (str):
             Gas species, e.g. 'ch4'.
         region (str or list):
             Region to plot, e.g. 'FRANCE', 'EUROPE', [lon_min, lon_max, lat_min, lat_max].
@@ -58,53 +71,78 @@ def plot_flux_map(
             See point_markers_dict for a list of options.
             e.g. ['paris', 'london', [50.,5.]]
         season (string, optional):
-            If specified, plot the seasonal mean (only valable for monthly data). 
+            If specified, plot the seasonal mean (only valable for monthly data).
             Options are 'DJF', 'MAM', 'JJA', 'SON'.
-        set_fluxlim (str or list/tuple, optional): 
+        set_fluxlim (str or list/tuple, optional):
             If provided, set the colorbar limits based on the selected options.
             Options are 'auto', a list or tuple with two elements (min, max).
         set_fluxlim_percentile (float, optional):
             If provided, set the percentile to use when setting the colorbar limits with 'auto' option.
         plot_inversion_grid_flux (bool, optional):
-            If True, plots fluxes at the spatial resolution of the inversion (using the 
+            If True, plots fluxes at the spatial resolution of the inversion (using the
             inversion_grid variable). If False, plots fluxes at the spatial resolution
             of the prior.
         zoom_degree (float, optional):
-            Value added to the latitude and longitude bounds of the plot.  
-            Positive values expand the plot area, while negative values zoom in by reducing the bounds.  
+            Value added to the latitude and longitude bounds of the plot.
+            Positive values expand the plot area, while negative values zoom in by reducing the bounds.
             Example: `zoom_degree=1` adds 1 degree to the bounds, while `zoom_degree=-1` subtracts 1 degree.
-            
+
     Returns:
-        fig (figure): 
+        fig (figure):
             Three maps, for each model, of the flux prior, the flux posterior and the difference between both.
     """
 
     # Determine geographical boundaries
     if isinstance(region, str):
-        map_bounds = get_region_coordinates(region, config_data["regions_info"], zoom_degree=zoom_degree)
-    elif isinstance(region, list) and all(isinstance(coord, (int, float)) for coord in region):
+        map_bounds = get_region_coordinates(
+            region, config_data["regions_info"], zoom_degree=zoom_degree
+        )
+    elif isinstance(region, list) and all(
+        isinstance(coord, (int, float)) for coord in region
+    ):
         map_bounds = tuple(region)
     else:
-        raise ValueError("Invalid input: 'region' must be a string or a list of numbers.")
+        raise ValueError(
+            "Invalid input: 'region' must be a string or a list of numbers."
+        )
 
     # Define variables
     var_prior = "flux_total_prior"
-    var_posterior = "flux_total_posterior_inversion_grid" if plot_inversion_grid_flux else "flux_total_posterior"
-    var_diff = "posterior_prior_diff_inversion_grid" if plot_inversion_grid_flux else "posterior_prior_diff"
+    var_posterior = (
+        "flux_total_posterior_inversion_grid"
+        if plot_inversion_grid_flux
+        else "flux_total_posterior"
+    )
+    var_diff = (
+        "posterior_prior_diff_inversion_grid"
+        if plot_inversion_grid_flux
+        else "posterior_prior_diff"
+    )
     vars_list = [var_prior, var_posterior, var_diff]
 
-    # Load geographical data and species, sites information
-    gdf = load_countries_shape(map_bounds)
-    species_info = config_data['species_info'][species]
-    sites_info = get_sites_coordinates(ds_all, config_data) if add_sites else "" #TODO move in the for loop once the info comes from the concentration files
+    # Load country lines, species and sites information
+    country_lines = compute_boundary_geometry(map_bounds)
+    species_info = config_data["species_info"][species]
+    sites_info = (
+        get_sites_coordinates(ds_all, config_data) if add_sites else ""
+    )  # TODO move in the for loop once the info comes from the concentration files
 
     # Set flux limits #TODO Based on posterior, is this the right way to do?
-    fluxlim = set_flux_limits(ds_all, var_posterior, map_bounds, species_info, option=set_fluxlim, custom_percentile=set_fluxlim_percentile)
+    fluxlim = set_flux_limits(
+        ds_all,
+        var_posterior,
+        map_bounds,
+        species_info,
+        option=set_fluxlim,
+        custom_percentile=set_fluxlim_percentile,
+    )
 
     # Initialize figure
     n_rows = 3
     n_cols = len(ds_all)
-    figsize = define_map_figsize(map_bounds, n_rows, n_cols, fixed_value = 9, fixed_dimension = 'height')
+    figsize = define_map_figsize(
+        map_bounds, n_rows, n_cols, fixed_value=9, fixed_dimension="height"
+    )
     fig, ax = plt.subplots(n_rows, n_cols, figsize=figsize, constrained_layout=True)
 
     for col, (model, ds) in enumerate(ds_all.items()):
@@ -117,7 +155,7 @@ def plot_flux_map(
             var_plot = get_flux_mean(var_plot, season)
 
             # Determine plot settings
-            is_diff = ('diff' in var)
+            is_diff = "diff" in var
             cmap_i = cmap_diff if is_diff else cmap
             border_color = c_border_diff if is_diff else c_border
             vlim_i = (-fluxlim[1], fluxlim[1]) if is_diff else fluxlim
@@ -125,10 +163,21 @@ def plot_flux_map(
             extend_i = "both" if is_diff else "max"
 
             # Plot the data
-            im = ax_i.pcolormesh(lon, lat, var_plot, cmap=cmap_i, vmin=vlim_i[0], vmax=vlim_i[1], shading="nearest")
-            gdf.boundary.plot(ax=ax_i, facecolor="none", edgecolor=border_color, linewidth=1)
+            im = ax_i.pcolormesh(
+                lon,
+                lat,
+                var_plot,
+                cmap=cmap_i,
+                vmin=vlim_i[0],
+                vmax=vlim_i[1],
+                shading="nearest",
+            )
+            plot_country_borders(
+                ax=ax_i, lines=country_lines, border_color=border_color
+            )
             ax_i.set_xlim(map_bounds[:2])  # Longitude limits
-            ax_i.set_ylim(map_bounds[2:])  # Latitude limits 
+            ax_i.set_ylim(map_bounds[2:])  # Latitude limits
+            ax_i.set_aspect(1)
 
             # Add titles
             ax_i.set_title(model_labels[model], fontsize=12) if row==0 else "" # Column titles
@@ -138,36 +187,54 @@ def plot_flux_map(
             if add_sites and model in sites_info:
                 add_site_markers(ax_i, sites_info[model], marker_color)
             if add_markers:
-                add_custom_markers(ax_i, add_markers, marker_color, config_data["regions_info"])
+                add_custom_markers(
+                    ax_i, add_markers, marker_color, config_data["regions_info"]
+                )
 
             # Add colorbar (only for the last column)
             if col == n_cols - 1:
-                cbar_label = print_cbar_label(ds, species_info, var, season, format=['variable', 'species', 'units', 'time'])
-                add_colorbar(fig, ax_i, im, extend_i, cbar_label, n_cbar=n_rows, idx_cbar=row, colorbar_type='row')
+                cbar_label = print_cbar_label(
+                    ds,
+                    species_info,
+                    var,
+                    season,
+                    format=["variable", "species", "units", "time"],
+                )
+                add_colorbar(
+                    fig,
+                    ax_i,
+                    im,
+                    extend_i,
+                    cbar_label,
+                    n_cbar=n_rows,
+                    idx_cbar=row,
+                    colorbar_type="row",
+                )
     return fig
 
+
 def plot_flux_map_model_comparison(
-    ds_all: dict[xr.Dataset], 
+    ds_all: dict[xr.Dataset],
     var: str,
     models: list[str],
-    species: str, 
-    region: str | list[float], 
-    config_data: dict, 
+    species: str,
+    region: str | list[float],
+    config_data: dict,
     model_labels: list[str],
-    cmap: str = 'viridis',
-    cmap_diff: str = 'coolwarm', 
-    c_border: str = 'floralwhite', 
+    cmap: str = "viridis",
+    cmap_diff: str = "coolwarm",
+    c_border: str = "floralwhite",
     c_border_diff: str = "dimgrey",
-    add_sites: bool = False, 
+    add_sites: bool = False,
     add_markers: list[str] | list[list[float]] = None,
-    season: str = None, 
-    set_fluxlim: str | tuple = 'auto', 
+    season: str = None,
+    set_fluxlim: str | tuple = "auto",
     set_fluxlim_percentile: float = None,
     zoom_degree: float = 1,
-    ) -> plt.Figure:
+) -> plt.Figure:
     """
     Plot a given flux variable for two models and the difference between them.
-    
+
     Args:
         ds_all (dictionary of datasets):
             Dictionary of fluxes xarray datasets.
@@ -177,7 +244,7 @@ def plot_flux_map_model_comparison(
         models (list[str]):
             The name of the 2 models to be compared. This should correspond to 2 keys in `ds_all`.
             Example: ['intem_name_edgar', 'elris_name_edgar']
-        species (str): 
+        species (str):
             Gas species, e.g. 'ch4'.
         region (str or list):
             Lat/lon region to plot, options for 'UK', 'FRANCE', 'GERMANY',
@@ -202,19 +269,19 @@ def plot_flux_map_model_comparison(
             See point_markers_dict for a list of options.
             e.g. ['paris', 'london', [50.,5.]]
         season (string, optional):
-            If specified, plot the seasonal mean (only valable for monthly data). 
+            If specified, plot the seasonal mean (only valable for monthly data).
             Options are 'DJF', 'MAM', 'JJA', 'SON'.
-        set_fluxlim (str or list/tuple, optional): 
+        set_fluxlim (str or list/tuple, optional):
             If provided, set the colorbar limits based on the selected options.
             Options are 'auto', a list or tuple with two elements (min, max).
         set_fluxlim_percentile (float, optional):
             If provided, set the percentile to use when setting the colorbar limits with 'auto' option.
         zoom_degree (float, optional):
-            Value added to the latitude and longitude bounds of the plot.  
-            Positive values expand the plot area, while negative values zoom in by reducing the bounds.  
+            Value added to the latitude and longitude bounds of the plot.
+            Positive values expand the plot area, while negative values zoom in by reducing the bounds.
             Example: `zoom_degree=1` adds 1 degree to the bounds, while `zoom_degree=-1` subtracts 1 degree.
     Returns:
-        fig (figure): 
+        fig (figure):
             Three maps of a target flux variable of the first and second models and the diffence between both.
     """
 
@@ -222,39 +289,58 @@ def plot_flux_map_model_comparison(
     model_names = list(ds_all.keys())
     missing_models = [m for m in models if m not in model_names]
     if missing_models:
-        raise ValueError(f"Model(s) {', '.join(missing_models)} not found in the dataset.")
+        raise ValueError(
+            f"Model(s) {', '.join(missing_models)} not found in the dataset."
+        )
 
     if not isinstance(models, list) or len(models) != 2:
         raise ValueError("Models must be a list of exactly two strings.")
 
     # Determine geographical boundaries
     if isinstance(region, str):
-        map_bounds = get_region_coordinates(region, config_data["regions_info"], zoom_degree=zoom_degree)
-    elif isinstance(region, list) and all(isinstance(coord, (int, float)) for coord in region):
+        map_bounds = get_region_coordinates(
+            region, config_data["regions_info"], zoom_degree=zoom_degree
+        )
+    elif isinstance(region, list) and all(
+        isinstance(coord, (int, float)) for coord in region
+    ):
         map_bounds = tuple(region)
     else:
-        raise ValueError("Invalid input: 'region' must be a string or a list of numbers.")
+        raise ValueError(
+            "Invalid input: 'region' must be a string or a list of numbers."
+        )
 
     # Prepare datasets
     ds_dict = {k: v for k, v in ds_all.items() if k in models}
     ds_dict = prepare_flux_map_data(ds_dict)
-    ds_dict['diff'] = ds_dict[models[1]] - ds_dict[models[0]]
-    ds_dict['diff'].attrs['frequency'] = ds_dict[models[0]].attrs['frequency'] # Copy attributes from models[0]
-    for v in ds_dict['diff'].data_vars:
-        ds_dict['diff'][v].attrs = ds_dict[models[0]][v].attrs
-    
-    # Load geographical data and species, sites information
-    gdf = load_countries_shape(map_bounds)
-    species_info = config_data['species_info'][species]
-    sites_info = get_sites_coordinates(ds_dict, config_data) if add_sites else "" #TODO move in the for loop once the info comes from the concentration files
+    ds_dict["diff"] = ds_dict[models[1]] - ds_dict[models[0]]
+    ds_dict["diff"].attrs["frequency"] = ds_dict[models[0]].attrs["frequency"]  # Copy attributes from models[0]
+    for v in ds_dict["diff"].data_vars:
+        ds_dict["diff"][v].attrs = ds_dict[models[0]][v].attrs
+
+    # Load country lines, species and sites information
+    country_lines = compute_boundary_geometry(map_bounds)
+    species_info = config_data["species_info"][species]
+    sites_info = (
+        get_sites_coordinates(ds_dict, config_data) if add_sites else ""
+    )  # TODO move in the for loop once the info comes from the concentration files
 
     # Set flux limits
-    fluxlim = set_flux_limits(ds_dict, var, map_bounds, species_info, option=set_fluxlim, custom_percentile=set_fluxlim_percentile)
+    fluxlim = set_flux_limits(
+        ds_dict,
+        var,
+        map_bounds,
+        species_info,
+        option=set_fluxlim,
+        custom_percentile=set_fluxlim_percentile,
+    )
 
     # Initialize figure
     n_rows = 1
     n_cols = 3
-    fig, ax = plt.subplots(n_rows, n_cols, constrained_layout=True, figsize=(n_cols*5, 9))
+    fig, ax = plt.subplots(
+        n_rows, n_cols, constrained_layout=True, figsize=(n_cols * 5, 9)
+    )
     for col, (model, ds) in enumerate(ds_dict.items()):
         ax_i = ax[col]
         lon, lat = ds.longitude, ds.latitude
@@ -263,58 +349,87 @@ def plot_flux_map_model_comparison(
         var_plot = get_flux_mean(var_plot, season)
 
         # Determine plot settings
-        is_diff = ("diff" in var)
+        is_diff = "diff" in var
         cmap_i = cmap_diff if is_diff else cmap
         border_color = c_border_diff if is_diff else c_border
-        vlim_i = (-fluxlim[1],fluxlim[1]) if is_diff else fluxlim
+        vlim_i = (-fluxlim[1], fluxlim[1]) if is_diff else fluxlim
         marker_color = "black" if is_diff else "red"
         extend_i = "both" if is_diff else "max"
 
         # Plot the data
-        im = ax_i.pcolormesh(lon, lat, var_plot, cmap=cmap_i, vmin=vlim_i[0], vmax=vlim_i[1], shading="nearest")
-        gdf.boundary.plot(ax=ax_i, facecolor="none", edgecolor=border_color, linewidth=1)
+        im = ax_i.pcolormesh(
+            lon,
+            lat,
+            var_plot,
+            cmap=cmap_i,
+            vmin=vlim_i[0],
+            vmax=vlim_i[1],
+            shading="nearest",
+        )
+        plot_country_borders(ax=ax_i, lines=country_lines, border_color=border_color)
         ax_i.set_xlim(map_bounds[:2])  # Longitude limits
-        ax_i.set_ylim(map_bounds[2:])  # Latitude limits 
+        ax_i.set_ylim(map_bounds[2:])  # Latitude limits
+        ax_i.set_aspect(1)
 
         # Add titles
-        if model=='diff':
+        if model == "diff":
             ax_i.set_title(f"{model_labels[models[1]]} - {model_labels[models[0]]}")
         else:
             ax_i.set_title(model_labels[model])
 
         # Add sites and markers if specified
-        if add_sites: add_site_markers(ax_i, sites_info[model], marker_color)   
-        if add_markers: add_custom_markers(ax_i, add_markers, marker_color, config_data["regions_info"])
+        if add_sites:
+            add_site_markers(ax_i, sites_info[model], marker_color)
+        if add_markers:
+            add_custom_markers(
+                ax_i, add_markers, marker_color, config_data["regions_info"]
+            )
 
         # Add colorbar
-        cbar_label = print_cbar_label(ds, species_info, var, season, format=['variable', 'species', 'units', 'time'])
-        if model=='diff':
+        cbar_label = print_cbar_label(
+            ds,
+            species_info,
+            var,
+            season,
+            format=["variable", "species", "units", "time"],
+        )
+        if model == "diff":
             cbar_lines = cbar_label.split("\n")
             cbar_lines[0] += " difference"
             cbar_label = "\n".join(cbar_lines)
-        add_colorbar(fig, ax_i, im, extend_i, cbar_label, n_cbar=3, idx_cbar=col, colorbar_type='column')
+        add_colorbar(
+            fig,
+            ax_i,
+            im,
+            extend_i,
+            cbar_label,
+            n_cbar=3,
+            idx_cbar=col,
+            colorbar_type="column",
+        )
     return fig
 
+
 def plot_flux_map_over_time(
-    ds_all: dict[xr.Dataset], 
+    ds_all: dict[xr.Dataset],
     var: str,
-    species: str, 
-    region: str | list[float], 
-    config_data: dict, 
+    species: str,
+    region: str | list[float],
+    config_data: dict,
     model_labels: list[str],
-    chop_by: str | list[str] | list[float] | list[list[float]] = 'year',
+    chop_by: str | list[str] | list[float] | list[list[float]] = "year",
     dt: float = 1,
     plot_combined: bool = False,
-    cmap: str = 'viridis',
-    cmap_diff: str = 'coolwarm',
-    c_border: str = 'floralwhite', 
-    c_border_diff: str = 'dimgrey',
-    add_sites: bool = False, 
+    cmap: str = "viridis",
+    cmap_diff: str = "coolwarm",
+    c_border: str = "floralwhite",
+    c_border_diff: str = "dimgrey",
+    add_sites: bool = False,
     add_markers: list[str] | list[list[float]] = None,
-    set_fluxlim: str | tuple = 'auto', 
+    set_fluxlim: str | tuple = "auto",
     set_fluxlim_percentile: float = None,
     zoom_degree: float = 1,
-    ) -> plt.Figure:
+) -> plt.Figure:
     """
     Plot a given flux variable averaged over specific time intervals, for all models or the model mean.
 
@@ -324,7 +439,7 @@ def plot_flux_map_over_time(
         var (str):
             The name of the flux variable to be plotted and compared across models.
             Example: 'flux_total_posterior'.
-        species (str): 
+        species (str):
             Gas species, e.g. 'ch4'.
         region (str or list):
             Region to plot, e.g. 'FRANCE', 'EUROPE', [lon_min, lon_max, lat_min, lat_max].
@@ -334,7 +449,7 @@ def plot_flux_map_over_time(
             List of model_labels from fluxy.config.
         chop_by (str or list):
             Time units to perform the average, options for 'year', 'month' and 'season'.
-            Alternatively, a list of starting dates or months number can be provided. 
+            Alternatively, a list of starting dates or months number can be provided.
         dt (int):
             If chop_by = 'year' or 'month': dt is the number of time steps (in chop_by units) to use in the averaging.
         plot_combined (bool):
@@ -353,14 +468,14 @@ def plot_flux_map_over_time(
             List of names of points to plot over larger point sources or lat/lon locations.
             See point_markers_dict for a list of options.
             e.g. ['paris', 'london', [50.,5.]]
-        set_fluxlim (str or list/tuple, optional): 
+        set_fluxlim (str or list/tuple, optional):
             If provided, set the colorbar limits based on the selected options.
             Options are 'auto', a list or tuple with two elements (min, max).
         set_fluxlim_percentile (float, optional):
             If provided, set the percentile to use when setting the colorbar limits with 'auto' option.
         zoom_degree (float, optional):
-            Value added to the latitude and longitude bounds of the plot.  
-            Positive values expand the plot area, while negative values zoom in by reducing the bounds.  
+            Value added to the latitude and longitude bounds of the plot.
+            Positive values expand the plot area, while negative values zoom in by reducing the bounds.
             Example: `zoom_degree=1` adds 1 degree to the bounds, while `zoom_degree=-1` subtracts 1 degree.
     Returns:
         fig (figure):
@@ -369,28 +484,41 @@ def plot_flux_map_over_time(
     """
     # Determine geographical boundaries
     if isinstance(region, str):
-        map_bounds = get_region_coordinates(region, config_data["regions_info"], zoom_degree=zoom_degree)
-    elif isinstance(region, list) and all(isinstance(coord, (int, float)) for coord in region):
+        map_bounds = get_region_coordinates(
+            region, config_data["regions_info"], zoom_degree=zoom_degree
+        )
+    elif isinstance(region, list) and all(
+        isinstance(coord, (int, float)) for coord in region
+    ):
         map_bounds = tuple(region)
     else:
-        raise ValueError("Invalid input: 'region' must be a string or a list of numbers.")
+        raise ValueError(
+            "Invalid input: 'region' must be a string or a list of numbers."
+        )
 
     # Prepare datasets and average over given periods
     ds_dict = prepare_flux_map_data(ds_all, plot_combined)
     ds_chopby = {}
-    for (key, ds) in ds_dict.items():
-        ds_chopby[key], time_labels = average_over_period(ds, dt, chop_by) 
+    for key, ds in ds_dict.items():
+        ds_chopby[key], time_labels = average_over_period(ds, dt, chop_by)
 
-    # Load geographical data and species, sites information
-    gdf = load_countries_shape(map_bounds)
-    species_info = config_data['species_info'][species]
-    sites_info = get_sites_coordinates(ds_all, config_data) if add_sites else "" #TODO move in the for loop once the info comes from the concentration files
+    # Load country lines, species and sites information
+    country_lines = compute_boundary_geometry(map_bounds)
+    species_info = config_data["species_info"][species]
+    sites_info = (get_sites_coordinates(ds_all, config_data) if add_sites else "")  # TODO move in the for loop once the info comes from the concentration files
 
     # Set flux limits
-    lim = set_flux_limits(ds_chopby, var, map_bounds, species_info, option=set_fluxlim, custom_percentile=set_fluxlim_percentile)
+    lim = set_flux_limits(
+        ds_chopby,
+        var,
+        map_bounds,
+        species_info,
+        option=set_fluxlim,
+        custom_percentile=set_fluxlim_percentile,
+    )
 
     # Determine plot settings
-    is_diff = ("diff" in var)
+    is_diff = "diff" in var
     cmap = cmap_diff if is_diff else cmap
     border_color = c_border_diff if is_diff else c_border
     marker_color = "black" if is_diff else "red"
@@ -400,12 +528,12 @@ def plot_flux_map_over_time(
     n_rows = len(ds_chopby.keys())
     n_cols = len(time_labels)
 
-    if n_rows*n_cols == 4:
+    if n_rows * n_cols == 4:
         # Re-organize the data for a nicer display
-        fig, ax = plt.subplots(2, 2, figsize= (2*4.2, 2*3))
+        fig, ax = plt.subplots(2, 2, figsize=(2 * 4.2, 2 * 3))
         ax = ax.flatten()
     else:
-        fig, ax = plt.subplots(n_rows, n_cols, figsize=(n_cols*4, n_rows*3))
+        fig, ax = plt.subplots(n_rows, n_cols, figsize=(n_cols * 4, n_rows * 3))
 
     for row, (model, ds) in enumerate(ds_chopby.items()):
 
@@ -416,7 +544,7 @@ def plot_flux_map_over_time(
             if n_rows == 1 and n_cols == 1:
                 ax_i = ax
             elif n_rows == 1:
-                ax_i = ax[col] 
+                ax_i = ax[col]
             elif n_cols == 1:
                 ax_i = ax[row]
             else:
@@ -425,29 +553,51 @@ def plot_flux_map_over_time(
             var_i = var_plot.isel(time=col)
 
             # Plot the data
-            im = ax_i.pcolormesh(lon, lat, var_i, cmap=cmap, vmin=lim[0], vmax=lim[1], shading="nearest")
-            gdf.boundary.plot(ax=ax_i, facecolor="none", edgecolor=border_color, linewidth=1)
+            im = ax_i.pcolormesh(
+                lon, lat, var_i, cmap=cmap, vmin=lim[0], vmax=lim[1], shading="nearest"
+            )
+            plot_country_borders(
+                ax=ax_i, lines=country_lines, border_color=border_color
+            )
             ax_i.set_xlim(map_bounds[:2])  # Longitude limits
-            ax_i.set_ylim(map_bounds[2:])  # Latitude limits 
+            ax_i.set_ylim(map_bounds[2:])  # Latitude limits
+            ax_i.set_aspect(1)
 
             # Add titles
-            ax_i.set_title(time_label) if row==0 else "" # Column titles
+            ax_i.set_title(time_label) if row == 0 else ""  # Column titles
             if not plot_combined:
-                ax_i.set_ylabel(model_labels[model]) if col==0 else "" # Row titles
+                ax_i.set_ylabel(model_labels[model]) if col == 0 else ""  # Row titles
 
             # Add sites and markers if specified
             if add_sites:
                 if model in sites_info:
-                    add_site_markers(ax_i, sites_info[model], marker_color) #TODO Manage combined
-                elif model=='combined':
-                    merged_sites_info = {k: v for d in sites_info.values() for k, v in d.items()}
+                    add_site_markers(
+                        ax_i, sites_info[model], marker_color
+                    )  # TODO Manage combined
+                elif model == "combined":
+                    merged_sites_info = {
+                        k: v for d in sites_info.values() for k, v in d.items()
+                    }
                     add_site_markers(ax_i, merged_sites_info, marker_color)
 
             if add_markers:
-                add_custom_markers(ax_i, add_markers, marker_color, config_data["regions_info"])
+                add_custom_markers(
+                    ax_i, add_markers, marker_color, config_data["regions_info"]
+                )
 
     # Add colorbar
-    cbar_label = print_cbar_label(ds, species_info, var, format=['variable', 'species', 'units'])
-    add_colorbar(fig, ax, im, extend=extend, label=cbar_label, n_cbar=1, idx_cbar=1, colorbar_type='figure')
+    cbar_label = print_cbar_label(
+        ds, species_info, var, format=["variable", "species", "units"]
+    )
+    add_colorbar(
+        fig,
+        ax,
+        im,
+        extend=extend,
+        label=cbar_label,
+        n_cbar=1,
+        idx_cbar=1,
+        colorbar_type="figure",
+    )
 
     return fig
