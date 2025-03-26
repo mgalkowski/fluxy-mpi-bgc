@@ -11,7 +11,7 @@ from matplotlib.dates import YearLocator, MonthLocator
 from fluxy import config
 from fluxy.operators.regions import extract_region_flux
 from fluxy.operators.rolling_mean import calc_rolling_mean
-from fluxy.operators.flux_resample import resample_flux
+from fluxy.operators.flux_timeseries_resample import resample_flux
 from fluxy.operators.flux_combine import combine_dataset
 from fluxy.operators.flux_prepare_inventory import retrieve_inventories
 from fluxy.plots.utils import update_list_params

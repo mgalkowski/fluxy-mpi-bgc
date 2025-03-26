@@ -7,10 +7,6 @@ import re
 from collections import Counter
 from typing import Literal
 from fluxy import config
-from fluxy.operators.flux_align_dataset import (
-    align_time,
-    align_lat_lon,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -549,54 +545,3 @@ def get_units_conversion_factor(
         )
 
     return unit_to_base / target_to_base * M_scaling
-
-
-def prepare_flux_map_data(
-    ds_all: dict[xr.Dataset], plot_combined: bool = False
-) -> dict[xr.Dataset]:
-    """
-    Prepare flux datasets for flux maps by filtering variables, removing unused dimensions, and aligning time and spatial coordinates.
-
-    Args:
-        ds_all (dict[xr.Dataset]):
-            Dictionary of model names and corresponding xarray datasets.
-        plot_combined (bool, optional):
-            If True, returns a single averaged dataset.
-
-    Returns:
-        ds_dict (dict[xr.Dataset]):
-            Processed datasets, either individually or as a combined average.
-    """
-
-    for key, ds in ds_all.items():
-        # Step 1: Remove variables without 'time', 'latitude' and 'longitude'
-        ds = ds.drop_vars(
-            [
-                var
-                for var in ds.data_vars
-                if not {"time", "latitude", "longitude"}.issubset(ds[var].dims)
-            ]
-        )
-        # Step 2: Remove unused coordinates (dimensions that are no longer used)
-        unused_dims = set(ds.dims) - set(
-            dim for var_i in ds.data_vars for dim in ds[var_i].dims
-        )
-        ds_all[key] = ds.drop_dims(unused_dims)
-
-    # Align dataset coordinates
-    models = list(ds_all.keys())
-    ds_list = list(ds_all.values())
-    ds_list = align_time(ds_list)
-    ds_list = align_lat_lon(ds_list, coord="latitude")
-    ds_list = align_lat_lon(ds_list, coord="longitude")
-
-    if plot_combined:
-        ds_dict = {
-            "combined": xr.concat(ds_list, dim="models", combine_attrs="override").mean(
-                dim="models", keep_attrs=True
-            )
-        }
-    else:
-        ds_dict = dict(zip(models, ds_list))
-
-    return ds_dict
