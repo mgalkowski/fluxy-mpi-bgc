@@ -3,7 +3,7 @@ import pytest
 import fluxy
 from fluxy.io import read_config_files
 from fluxy.io import read_model_output
-from fluxy.operators.select import scale_variables
+from fluxy.operators.convert import scale_variables
 
 data_dir = Path(fluxy.__path__[0]).parent / "data" / "tests"
 
