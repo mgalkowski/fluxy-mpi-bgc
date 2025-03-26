@@ -32,12 +32,12 @@ def determine_subplots_arrangement(subplot_number: int) -> tuple[int, int]:
     elif subplot_number == 4:
         n_cols = 2
         n_rows = 2
-    elif subplot_number > 4:
-        n_cols = 4
-        n_rows = math.ceil(subplot_number) / 4
-    elif subplot_number == 6:
+    elif subplot_number in [5, 6]:
         n_cols = 3
         n_rows = 2
+    elif subplot_number > 6:
+        n_cols = 4
+        n_rows = math.ceil(subplot_number / 4)
     return n_cols,n_rows
 
 def prepare_data_to_plot(

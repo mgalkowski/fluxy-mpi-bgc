@@ -136,10 +136,10 @@ def extract_region_inventory_flux(
     if inventory_year is not None:
         filepath = Path(data_dir)/"inventory"f"UNFCCC_inventory_{species}_{inventory_year}.nc"
     else:
-        filelist = sorted(glob.glob(data_dir, "inventory", f"UNFCCC_inventory_{species}_*.nc"))
+        filelist = sorted((Path(data_dir)/"inventory").glob(f"UNFCCC_inventory_{species}_*.nc")) 
         if filelist:
-            filepath = Path(filelist[-1])
-            inventory_year = int(filepath.split("_")[-1].split(".")[0])
+            filepath = filelist[-1]
+            inventory_year = int(str(filepath).split("_")[-1].split(".")[0])
         else:
             filepath = Path(data_dir)/"inventory"/f'UNFCCC_inventory_{s_data[species]["model_species"]["intem"]}.nc'
             inventory_year = None
