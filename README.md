@@ -8,8 +8,8 @@ Follow the steps below to run the notebook and plot model results.
 
 Clone the repository and install fluxy:
 ```
-git clone https://github.com/ACRG-Bristol/PARIS_intercomparison_restructure.git
-cd PARIS_intercomparison_restructure
+git clone https://github.com/ACRG-Bristol/PARIS_intercomparison.git
+cd PARIS_intercomparison
 pip install -e .
 ```
 Note: in the ICOS Jupyter Hub, you might need to restart the kernel so that package fluxy is found.
