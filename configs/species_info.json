@@ -1,0 +1,124 @@
+{
+    "ch4": {
+        "species_print": "CH$_4$",
+        "gwp": 28,
+        "molar_mass": 16.04
+    },
+    "hfc134a": {
+        "species_print": "HFC-134a",
+        "gwp": 1300,
+        "molar_mass": 102.03
+    },
+    "hfo1234yf": {
+        "species_print":"HFO-1234yf",
+        "gwp":1,
+        "molar_mass": 114.04
+    },
+    "hfo1234zee": {
+        "species_print":"HFO-1234ze(E)",
+        "gwp":1,
+        "molar_mass": 114.04
+    },
+    "hcfo1233zde": {
+        "species_print":"HCFO-1233zd(E)",
+        "gwp":4,
+        "molar_mass": 130.49
+    },
+    "clch2ch2cl":{
+        "species_print":"DCA",
+        "mf_units_scaling": 1e-12,
+        "gwp":1,
+        "molar_mass": 98.959
+    },
+    "hfc143a": {
+        "species_print": "HFC-143a",
+        "gwp": 4800,
+        "molar_mass": 84.04
+    },
+    "hfc125": {
+        "species_print": "HFC-125",
+        "gwp": 3170,
+        "molar_mass": 120.02
+    },
+    "hfc152a": {
+        "species_print": "HFC-152a",
+        "gwp": 138,
+        "molar_mass": 66.05
+    },
+    "hfc32": {
+        "species_print": "HFC-32",
+        "gwp": 677,
+        "molar_mass": 52.02
+    },
+    "hfc227ea": {
+        "species_print": "HFC-227ea",
+        "gwp": 3350,
+        "molar_mass": 170.03
+    },
+    "hfc23": {
+        "species_print": "HFC-23",
+        "gwp": 12400,
+        "molar_mass": 70.01
+    },
+    "hfc245fa": {
+        "species_print": "HFC-245fa",
+        "gwp": 858,
+        "molar_mass": 134.05
+    },
+    "hfc365mfc": {
+        "species_print": "HFC-365mfc",
+        "gwp": 804,
+        "molar_mass": 148.07
+    },
+    "hfc4310mee": {
+        "species_print": "HFC-4310mee",
+        "gwp": 1650,
+        "molar_mass": 252.04
+    },
+    "pfc218": {
+        "species_print": "PFC-218",
+        "gwp": 8900,
+        "molar_mass": 188.02
+    },
+    "pfc318": {
+        "species_print": "PFC-318",
+        "gwp": 9540,
+        "molar_mass": 200.03
+    },
+    "pfc116": {
+        "species_print": "PFC-116",
+        "gwp": 11100,
+        "molar_mass": 138.01
+    },
+    "cf4": {
+        "species_print": "PFC-14",
+        "gwp": 6630,
+        "molar_mass": 88.0
+    },
+    "sf6": {
+        "species_print": "SF$_6$",
+        "gwp": 23500,
+        "molar_mass": 146.06
+    },
+    "n2o": {
+        "species_print": "N$_2$O",
+        "gwp": 265,
+        "molar_mass": 44.01
+    },
+    "ch3br": {
+        "species_print": "CH$_3$Br",
+        "molar_mass": 94.94
+    },
+    "so2f2": {
+        "species_print": "SO$_2$F$_2$",
+        "molar_mass": 102.06
+    },
+    "all_hfc": {
+        "list_species": ["hfc125","hfc134a","hfc143a","hfc152a","hfc23","hfc227ea","hfc245fa","hfc32","hfc365mfc"],
+        "species_print": "Total HFC"
+    },
+    "all_pfc": {
+        "list_species": ["cf4","pfc116","pfc218","pfc318"],
+        "species_print": "Total PFC"
+    }
+}
