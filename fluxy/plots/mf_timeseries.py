@@ -281,6 +281,7 @@ def plot_sites_timeseries(
     dt_start_date = np.datetime64(start_date)
     dt_end_date = np.datetime64(end_date)
     siteList = get_unique_sites(ds_all)
+    model_labels_copy = model_labels.copy()
 
     # Create figure
     fig, ax = plt.subplots(1, 1, figsize=(0.7 * len(siteList), 8))
@@ -297,15 +298,13 @@ def plot_sites_timeseries(
             )
 
         for i, m in enumerate(models):
-            # Define label
-            if iSite == 0:
-                label = model_labels[m]
-            else:
-                label = None
 
             site_index = get_site_index(ds_all[m], site)
 
             if site_index is not None:
+                # Define label
+                label = model_labels_copy[m]
+                
                 # Make scatter plot
                 data = ds_all[m].isel(nsite=site_index)[var].dropna(dim="time").time
                 ax.scatter(
@@ -315,6 +314,7 @@ def plot_sites_timeseries(
                     s=2,
                     label=label,
                 )
+                model_labels_copy[m] = None
 
             else:
                 continue
