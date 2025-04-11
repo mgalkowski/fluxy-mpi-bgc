@@ -1,6 +1,6 @@
-# PARIS inverse modelling intercomparison tool
+# Inverse Modelling Intercomparison Tool
 
-This repository contains functions to compare inverse models used during the PARIS project, and a notebook to allow for easy use of these functions.
+This repository contains functions to compare inverse models developed under the PARIS project, and a notebook to allow for easy use of these functions.
 
 Follow the steps below to run the notebook and plot model results.
 
