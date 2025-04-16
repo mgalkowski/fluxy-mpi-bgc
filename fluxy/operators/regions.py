@@ -73,6 +73,8 @@ def extract_region_flux(
 
             country_list = region_search.split("-")
             ds_region = ds.sel({"country": country_list})
+            if "country_2" in ds_region.dims:
+                ds_region = ds_region.sel({"country_2": country_list})
 
             for v in ["posterior", "prior"]:
                 ds_region[v] = ds_region[f"country_flux_total_{v}"].sum(dim="country")
@@ -91,7 +93,7 @@ def extract_region_flux(
 
             if "covariance_country_flux_total_posterior" in ds.variables:
                 ds_region["sigma_posterior"] = np.sqrt(
-                    abs(ds_region["covariance_country_flux_total_posterior"])
+                    ds_region["covariance_country_flux_total_posterior"]
                     .sum(dim="country")
                     .sum(dim="country_2")
                 )
