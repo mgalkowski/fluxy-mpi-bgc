@@ -358,7 +358,7 @@ def plot_country_flux(
                 )
 
         ax.set_ylabel(
-            f"{s_data.get(species, {}).get('species_print', species)}"
+            f"{s_data.get(species, {}).get('species_print', species)} "
             f"({unit.replace('-1','$^{{-1}}$')})"
         )
 
