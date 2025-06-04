@@ -1,3 +1,4 @@
+import pandas as pd
 import xarray as xr
 import numpy as np
 import os
@@ -11,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 def slice_flux(
     ds_all: dict[str, xr.Dataset],
-    config_data: dict[str, str | float],
+    config_data: dict[str, str | float] = {},
     start_date: str | list[str] = None,
     end_date: str | list[str] = None,
     species: str = None,
@@ -88,8 +89,9 @@ def slice_mf(
     end_date: str = None,
     site: str = None,
     baseline_site: str = None,
-    data_dir: os.PathLike = None,
+    data_dir: os.PathLike | None = None,
     mf_units_print: str = None,
+    keep_unassimilated: bool = False,
 ) -> dict[str, xr.Dataset]:
     """
     Slices down the mole fraction timeseries data, to within the
@@ -113,17 +115,28 @@ def slice_mf(
         mf_units_print (str):
             Units to which mole fractions should be converted to.
             Expected format: "<letters><(-)integer>" separated by spaces (e.g. "mol mol-1")
+        keep_unassimilated (bool):
+            If True, keeps unassimilated data (assimilation_flag != 1).
+            If False, only keeps assimilated data (assimilation_flag == 1).
     Returns:
         ds_all (dictionary of datasets):
             xarray datasets, scaled and sliced between chosen dates and for
             chosen site.
     """
 
-    data_dir = Path(data_dir)
     models = list(ds_all.keys())
+
+    start_date = pd.to_datetime(start_date)
+    end_date = pd.to_datetime(end_date)
 
     # Get logical array with baseline timestamps
     if baseline_site is not None:
+        if data_dir is None:
+            raise ValueError(
+                "Baseline site is set, but no data_dir provided. "
+                "Please provide a data_dir to read baseline timestamps."
+            )
+        data_dir = Path(data_dir)
         baseline_file = (
             data_dir
             / "intem_baseline_timestamps"
@@ -148,40 +161,39 @@ def slice_mf(
             offset = int(np.mean(ds_all[m]["Yav"]))
         else:
             offset = (
-                ds_all[m].time.values[1].astype("datetime64[h]")
-                - ds_all[m].time.values[0].astype("datetime64[h]")
+                ds_all[m]["time"].values[1].astype("datetime64[h]")
+                - ds_all[m]["time"].values[0].astype("datetime64[h]")
             ).astype(int)
 
         # Round time to seconds (for consistency between models)
         ds_all[m]["time"] = ds_all[m]["time"].dt.round("s")
 
-        # Slice data according to site and time window
+        # Slice data according to time window
+        mask = (ds_all[m]["time"] >= start_date) & (ds_all[m]["time"] <= end_date)
+        if not keep_unassimilated:
+            # Mask assimilated data only
+            mask &= ds_all[m]["assimilation_flag"] == 1
+        ds_all[m] = ds_all[m].where(mask, drop=True)
+
+        # Slice data according to site
         if site is not None:
             site_index = get_site_index(ds_all[m], site)
 
-            if site_index is not None:
-                ds_all[m] = ds_all[m].sel(
-                    time=slice(start_date, end_date), nsite=site_index
-                )
-
-                if len(ds_all[m]["time"]) == 0:
-                    logger.warning(
-                        f"No {m} obs found for {site} between {start_date} and {end_date}."
-                    )
-                    ds_all.pop(m)
-                    continue
-
-            else:
+            if site_index is None:
                 logger.warning(f"No {m} obs found for {site}.")
                 ds_all.pop(m)
                 continue
-        else:
-            ds_all[m] = ds_all[m].sel(time=slice(start_date, end_date))
 
-            if len(ds_all[m]["time"]) == 0:
-                logger.warning(f"No {m} obs found between {start_date} and {end_date}.")
-                ds_all.pop(m)
-                continue
+            mask_site = ds_all[m]["number_of_identifier"] == site_index
+            ds_all[m] = ds_all[m].where(mask_site, drop=True)
+
+        if len(ds_all[m]["time"]) == 0:
+            # Remove model if no data left after time slicing
+            logger.warning(
+                f"No {m} obs found for {site=} between {start_date} and {end_date}."
+            )
+            ds_all.pop(m)
+            continue
 
         # Scale mole fractions
         ds_all[m] = scale_variables(m, ds_all[m], mf_unit=mf_units_print)
@@ -220,12 +232,8 @@ def get_site_index(ds: xr.Dataset, site: str) -> int | None:
             Returns None if site does not exist.
     """
 
-    # Get all sites
-    sites = ds["sitenames"].astype(str)
-
-    # Get site index
-    if site in sites:
-        index = np.where(ds["sitenames"].astype(str) == site)[0][0]
+    if site in ds["platform"]:
+        index = np.where(ds["platform"] == site)[0][0]
         return index
 
     return None
@@ -245,7 +253,7 @@ def get_unique_sites(ds_all: dict[str, xr.Dataset]) -> list[str]:
 
     sites = []
     for ds in ds_all.values():
-        sites = np.concatenate([sites, ds["sitenames"].astype(str).values])
+        sites = np.concatenate([sites, ds["platform"].values])
 
     sites = np.sort(np.unique(sites))
 

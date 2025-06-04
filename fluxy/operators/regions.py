@@ -60,6 +60,9 @@ def extract_region_flux(
 
     dict_regions: dict[str, str] = regions_info.get("regions", {})
 
+    flag_percentile = False
+    flag_stdev = False
+
     for m, ds in ds_all.items():
         # search for existing region names
         available_countries = ds["country"].values.astype(str)
@@ -80,13 +83,13 @@ def extract_region_flux(
                 ds_region = ds_region.sel({"country_2": country_list})
 
             for v in ["posterior", "prior"]:
-                ds_region[v] = ds_region[f"country_flux_total_{v}"].sum(dim="country")
+                ds_region[v] = ds_region[f"flux_total_{v}_country"].sum(dim="country")
 
             ds_region["sigma_prior"] = np.sqrt(
                 (
                     (
-                        ds.country_flux_total_prior
-                        - ds.percentile_country_flux_total_prior.isel(
+                        ds["flux_total_prior_country"]
+                        - ds["percentile_flux_total_prior_country"].isel(
                             percentile=min_percentile_index
                         )
                     )
@@ -94,9 +97,9 @@ def extract_region_flux(
                 ).sum(dim="country")
             )
 
-            if "covariance_country_flux_total_posterior" in ds.variables:
+            if "covariance_flux_total_posterior_country" in ds.variables:
                 ds_region["sigma_posterior"] = np.sqrt(
-                    ds_region["covariance_country_flux_total_posterior"]
+                    ds_region["covariance_flux_total_posterior_country"]
                     .sum(dim="country")
                     .sum(dim="country_2")
                 )
@@ -115,15 +118,35 @@ def extract_region_flux(
             ds_region = ds.sel({"country": country_search})
 
             for v in ["posterior", "prior"]:
-                ds_region[v] = ds_region[f"country_flux_total_{v}"]
+                ds_region[v] = ds_region[f"flux_total_{v}_country"]
+                var_percentile = f"percentile_flux_total_{v}_country"
+                var_stdev = f"stdev_flux_total_{v}_country"
 
-                var_percentile = f"percentile_country_flux_total_{v}"
                 if var_percentile in ds_region.variables:
                     da = ds_region[var_percentile]
                     ds_region[f"{v}_lower"] = da.isel(percentile=min_percentile_index)
                     ds_region[f"{v}_upper"] = da.isel(percentile=max_percentile_index)
+
+                    # Print info
+                    flag_percentile = True
+                    confidence_interval = (
+                        ds_region["percentile"][max_percentile_index].values
+                        - ds_region["percentile"][min_percentile_index].values
+                    ) * 100
+                    logger.info(
+                        f"Using {var_percentile} to plot {m} {v} country flux {confidence_interval:.1f}% confidence interval."
+                    )
+                elif var_stdev in ds_region.variables:
+                    ds_region[f"{v}_lower"] = ds_region[v] - ds_region[var_stdev]
+                    ds_region[f"{v}_upper"] = ds_region[v] + ds_region[var_stdev]
+
+                    # Print info
+                    flag_stdev = True
+                    logger.info(
+                        f"Using {var_stdev} to plot {m} {v} country flux 68.2% confidence interval."
+                    )
                 else:
-                    da = ds_region[f"country_flux_total_{v}"]
+                    da = ds_region[f"flux_total_{v}_country"]
                     ds_region[f"{v}_lower"] = da
                     ds_region[f"{v}_upper"] = da
 
@@ -145,6 +168,11 @@ def extract_region_flux(
             )
 
         ds_output[m] = ds_region
+
+    if flag_percentile and flag_stdev:
+        logger.warning(
+            f"Confidence intervals in {country} are being computed from percentile or stdev depending on the dataset. Set logging level to INFO to check for consistency."
+        )
 
     return ds_output
 
