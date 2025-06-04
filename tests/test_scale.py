@@ -12,9 +12,9 @@ period = "yearly"
 
 # NOTE: if you change the models list, update the decorator
 models = [
-    "InTEM_NAME_EUROPE_EDGAR_std",
-    "ELRIS_NAME_EUROPE_EDGAR_std",
-    "RHIME_NAME_EUROPE_EDGAR_std",
+    "InTEM_NAME_EUROPE_EDGAR_old_format",
+    "ELRIS_NAME_EUROPE_EDGAR_old_format",
+    "RHIME_NAME_EUROPE_EDGAR_old_format",
 ]
 
 # NOTE: if you change the target units, update the HARD-CODED scaling
@@ -35,14 +35,14 @@ ds_all_mf = read_model_output(
 @pytest.mark.parametrize(
     "m, original_country_flux_unit, original_flux_unit",
     [
-        ("InTEM_NAME_EUROPE_EDGAR_std", "kg a-1", "mol m-2 s-1"),
-        ("ELRIS_NAME_EUROPE_EDGAR_std", "kg yr-1", "mol m-2 s-1"),
-        ("RHIME_NAME_EUROPE_EDGAR_std", "kg a-1", "mol m-2 s-1"),
+        ("InTEM_NAME_EUROPE_EDGAR_old_format", "kg a-1", "mol m-2 s-1"),
+        ("ELRIS_NAME_EUROPE_EDGAR_old_format", "kg yr-1", "mol m-2 s-1"),
+        ("RHIME_NAME_EUROPE_EDGAR_old_format", "kg a-1", "mol m-2 s-1"),
     ],
 )
 def test_scale_flux(m, original_country_flux_unit, original_flux_unit):
     # Define test variables and indexes
-    test_country_flux_var = "country_flux_total_posterior"
+    test_country_flux_var = "flux_total_posterior_country"
     itime_country_flux = 0
     icountry = 0
     test_flux_var = "flux_total_posterior"
@@ -65,7 +65,8 @@ def test_scale_flux(m, original_country_flux_unit, original_flux_unit):
         raise ValueError("Please select an index with non-zero fluxes.")
 
     # Apply scaling
-    ds_all_flux[m] = scale_variables(
+    dss_scaled = {}
+    dss_scaled[m] = scale_variables(
         m,
         ds_all_flux[m],
         config_data["species_info"][species],
@@ -74,10 +75,10 @@ def test_scale_flux(m, original_country_flux_unit, original_flux_unit):
     )
 
     # Save scaled values
-    ds_scaled_country_flux = ds_all_flux[m][test_country_flux_var].isel(
+    ds_scaled_country_flux = dss_scaled[m][test_country_flux_var].isel(
         time=itime_country_flux, country=icountry
     )
-    ds_scaled_flux = ds_all_flux[m][test_flux_var].isel(
+    ds_scaled_flux = dss_scaled[m][test_flux_var].isel(
         time=itime_flux, latitude=ilat, longitude=ilon
     )
 
@@ -115,32 +116,32 @@ def test_scale_flux(m, original_country_flux_unit, original_flux_unit):
 @pytest.mark.parametrize(
     "m, original_mf_unit",
     [
-        ("InTEM_NAME_EUROPE_EDGAR_std", "mol mol-1"),
-        ("ELRIS_NAME_EUROPE_EDGAR_std", "mol mol-1"),
-        ("RHIME_NAME_EUROPE_EDGAR_std", "mol mol-1"),
+        ("InTEM_NAME_EUROPE_EDGAR_old_format", "mol mol-1"),
+        ("ELRIS_NAME_EUROPE_EDGAR_old_format", "mol mol-1"),
+        ("RHIME_NAME_EUROPE_EDGAR_old_format", "mol mol-1"),
     ],
 )
 def test_scale_mf(m, original_mf_unit):
     # Define test variable and indexes
-    test_var = "Yapost"
-    itime = 0
-    isite = 0
+    test_var = "mf_posterior"
+    index = 0
 
     # Save old value
-    ds = ds_all_mf[m][test_var].isel(time=itime, nsite=isite)
+    ds = ds_all_mf[m][test_var].isel(index=index)
 
     if ds.values == 0:
         raise ValueError("Please select an index with non-zero mole fractions.")
 
     # Apply scaling
-    ds_all_mf[m] = scale_variables(
+    dss_scaled = {}
+    dss_scaled[m] = scale_variables(
         m,
         ds_all_mf[m],
         mf_unit=mf_units_print,
     )
 
     # Save scaled value
-    ds_scaled = ds_all_mf[m][test_var].isel(time=itime, nsite=isite)
+    ds_scaled = dss_scaled[m][test_var].isel(index=index)
 
     # Check conversion
     assert ds_scaled.units == mf_units_print

@@ -36,34 +36,72 @@ def compute_mf_difference(
     if len(models_to_subtract) != 2:
         raise ValueError("List of models to subtract must be of size 2.")
 
+    model_left, model_right = models_to_subtract
+
     for m in models_to_subtract:
         if m not in models:
             raise KeyError(f"{m} not found in the dataset.")
 
     # Reduce datasets to timestamps/sites common to both models
-    ds0, ds1 = xr.align(
-        ds_all[models_to_subtract[0]], ds_all[models_to_subtract[1]], join="inner"
+    ds_left = ds_all[model_left]
+    ds_right = ds_all[model_right]
+    # Get the common time and site indices
+    make_index = lambda ds: pd.MultiIndex.from_arrays(
+        [ds["time"].values, ds["platform"].values[ds["number_of_identifier"].values]],
+        names=["time", "platform"],
     )
+    ds_left_index = make_index(ds_left)
+    ds_right_index = make_index(ds_right)
+    # Get the common index
+    common_index: pd.MultiIndex = ds_left_index.intersection(ds_right_index)
+
+    # Get the common time and site indices
+    get_common_index = lambda ds, indices: ds.assign_coords(
+        xr.Coordinates.from_pandas_multiindex(
+            indices,
+            "index",
+        )
+    ).sel(index=common_index)
+    ds_left = get_common_index(ds_left, ds_left_index)
+    ds_right = get_common_index(ds_right, ds_right_index)
 
     ds_diff = {}
-    key_name = f"{models_to_subtract[0]}-{models_to_subtract[1]}"
-    ds_diff[key_name] = xr.Dataset()
+    key_name = f"{model_left}-{model_right}"
+
+    common_platforms = common_index.get_level_values("platform").values
+    unique_platforms, platform_indices = np.unique(
+        common_platforms, return_inverse=True
+    )
+    ds_diff[key_name] = xr.Dataset(
+        coords={
+            "time": ("index", common_index.get_level_values("time").values),
+            "platform": ("platform", unique_platforms),
+            "number_of_identifier": ("index", platform_indices),
+        },
+        attrs={
+            "description": f"Difference between {model_left} and {model_right}",
+        },
+    )
 
     # Compute difference between the two datasets (mole fraction variables only)
-    var_names0, x = get_variables(ds0, "mf")
-    var_names1, x = get_variables(ds1, "mf")
+    var_names0, x = get_variables(ds_left, "mf")
+    var_names1, x = get_variables(ds_right, "mf")
     common_mf_vars = list(set(var_names0) & set(var_names1))
 
     for v in common_mf_vars:
-        units_0 = ds0[v].attrs["units"]
-        units_1 = ds1[v].attrs["units"]
+        units_0 = ds_left[v].attrs["units"]
+        units_1 = ds_right[v].attrs["units"]
         if units_0 != units_1:
             logger.warning(
-                f"{v} in {models_to_subtract[0]} and {models_to_subtract[1]} have different units. {v} will not be included in the diff dataset."
+                f"{v} in {model_left} and {model_right} have different units. "
+                f"{v} will not be included in the diff dataset."
             )
             continue
+        if 'percentile' in ds_left[v].dims:
+            # Ignore variables with percentile dimension
+            continue
 
-        ds_diff[key_name][v] = ds0[v] - ds1[v]
+        ds_diff[key_name][v] = ds_left[v] - ds_right[v]
         ds_diff[key_name][v].attrs["units"] = units_0
 
     return ds_diff
@@ -116,51 +154,56 @@ def stats_mf(
     # Compute stats for all sites and all models
     for site in sites_all:
         for model, ds in ds_all.items():
+            # Remove the NaNs
+            ds = ds.dropna('index')
             site_index = get_site_index(ds, site)
-            if (site_index is not None) and (
-                ds["Yobs"].isel(nsite=site_index).count() != 0
-            ):
-                # xarray for single site
-                ds_site = ds.isel(nsite=site_index).dropna(dim="time")
+            if site_index is None:
+                continue
+            mask_site = ds["number_of_identifier"] == site_index
+            if not mask_site.any():
+                continue
+            ds_site = ds.where(mask_site, drop=True)
 
-                # select what to compare
-                if stats_type == "prior":
-                    obs = ds_site["Yobs"].values
-                    sim = ds_site["Yapriori"].values
-                elif stats_type == "posterior":
-                    obs = ds_site["Yobs"].values
-                    sim = ds_site["Yapost"].values
-                elif stats_type == "prior_above_BC":
-                    obs = ds_site["Yobs"].values - ds_site["YaprioriBC"].values
-                    sim = ds_site["Yapriori"].values - ds_site["YaprioriBC"].values
-                elif stats_type == "posterior_above_BC":
-                    obs = ds_site["Yobs"].values - ds_site["YapostBC"].values
-                    sim = ds_site["Yapost"].values - ds_site["YapostBC"].values
-                else:
-                    raise ValueError()
+            # select what to compare
+            if stats_type == "prior":
+                obs = ds_site["mf_observed"]
+                sim = ds_site["mf_prior"]
+            elif stats_type == "posterior":
+                obs = ds_site["mf_observed"]
+                sim = ds_site["mf_posterior"]
+            elif stats_type == "prior_above_BC":
+                obs = ds_site["mf_observed"] - ds_site["mf_bc_prior"]
+                sim = ds_site["mf_prior"] - ds_site["mf_bc_prior"]
+            elif stats_type == "posterior_above_BC":
+                obs = ds_site["mf_observed"] - ds_site["mf_bc_posterior"]
+                sim = ds_site["mf_posterior"] - ds_site["mf_bc_posterior"]
+            else:
+                raise ValueError()
+            
+            obs, sim = obs.values, sim.values
 
-                # calculate stats
-                stats_site = {
-                    "model": model,
-                    "site": site,
-                    "pearson": np.corrcoef(obs, sim)[0, 1],
-                    "rmse": np.sqrt(np.mean((sim - obs) ** 2)),
-                    "crmse": np.sqrt(np.mean((sim - obs - np.mean(sim - obs)) ** 2)),
-                    "bias": np.mean(sim - obs),
-                    "sd_sim": np.std(sim),
-                    "sd_obs": np.std(obs),
-                    "sd_res": np.std(sim - obs),
-                    "nn": np.size(sim),
-                }
+            # calculate stats
+            stats_site = {
+                "model": model,
+                "site": site,
+                "pearson": np.corrcoef(obs, sim)[0, 1],
+                "rmse": np.sqrt(np.mean((sim - obs) ** 2)),
+                "crmse": np.sqrt(np.mean((sim - obs - np.mean(sim - obs)) ** 2)),
+                "bias": np.mean(sim - obs),
+                "sd_sim": np.std(sim),
+                "sd_obs": np.std(obs),
+                "sd_res": np.std(sim - obs),
+                "nn": np.size(sim),
+            }
 
-                # change to DataFrame
-                stats_site = pd.DataFrame(data=stats_site, index=[0])
+            # change to DataFrame
+            stats_site = pd.DataFrame(data=stats_site, index=[0])
 
-                # additional derived stats
-                stats_site["nrmse"] = stats_site["rmse"].values / np.mean(obs)
+            # additional derived stats
+            stats_site["nrmse"] = stats_site["rmse"].values / np.mean(obs)
 
-                # append to list of all stats
-                stats.append(stats_site)
+            # append to list of all stats
+            stats.append(stats_site)
 
     # fold list of DataFrames into a single DataFrame
     stats = pd.concat(stats, ignore_index=True)
