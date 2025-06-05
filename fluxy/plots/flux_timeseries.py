@@ -286,6 +286,9 @@ def plot_country_flux(
                         "time": inventory.time.values,
                         "value": inventory.values,
                     }
+                min_x = min(inventory.time.min(skipna=True), min_x)
+                max_x = max(inventory.time.max(skipna=True), max_x)
+                max_cf[i] = np.nanmax((max_cf[i], inventory.max(skipna=True)))
 
         ds_all_region = extract_region_flux(ds_all, country, r_data)
         ds_to_plot = prepare_data_to_plot(
@@ -359,7 +362,7 @@ def plot_country_flux(
 
         ax.set_ylabel(
             f"{s_data.get(species, {}).get('species_print', species)}"
-            f"({unit.replace('-1','$^{{-1}}$')})"
+            f" ({unit.replace('-1','$^{{-1}}$')})"
         )
 
         # set legend if needed
