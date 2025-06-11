@@ -464,17 +464,20 @@ def get_map_bounds(
     ds_all = list(ds_all)
     if isinstance(region, str):
         # Use the non-zero country_fraction to define the clipping region, for coherence in the country definition
-        da_mask = ds_all[0].country_fraction.sum(dim="country")
-        clipped = da_mask.where(da_mask!=0).dropna(dim = "longitude", how = "all").dropna(dim = "latitude", how = "all")
-        clip_region = [clipped.longitude.values.min(),
-                       clipped.latitude.values.min(),
-                       clipped.longitude.values.max(),
-                       clipped.latitude.values.max(),
-                       ]
-        
+        if len(ds_all) > 0 and "country_fraction" in ds_all[0]:
+            da_mask = ds_all[0].country_fraction.sum(dim="country")
+            clipped = da_mask.where(da_mask!=0).dropna(dim = "longitude", how = "all").dropna(dim = "latitude", how = "all")
+            clip_region = [clipped.longitude.values.min(),
+                        clipped.latitude.values.min(),
+                        clipped.longitude.values.max(),
+                        clipped.latitude.values.max(),
+                        ]
+        else:
+            clip_region = None
+
         map_bounds = get_region_coordinates(
             region, config_data.get("regions_info",{}), 
-            zoom_degree=zoom_degree,
+            zoom_degree = zoom_degree,
             clip_region = clip_region
         )
     elif isinstance(region, (list, tuple)) and all(
