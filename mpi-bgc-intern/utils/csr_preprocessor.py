@@ -8,17 +8,17 @@ rename_candidates = {
     'area' : ['cell_area']
 }
 
-def preprocessor(prior_path, posterior_path, output_path):
+def preprocess(prior_path, posterior_path, output_path):
 
     ds = xr.open_dataset(prior_path)
-    ds = rename(ds)
-    ds = combine_flux_total(ds, xr.open_dataset(posterior_path))
-    output_path = "work/me/processed/flux_data_2021.nc"
+    ds = _rename(ds)
+    ds = _combine_flux_total(ds, xr.open_dataset(posterior_path))
     ds.to_netcdf(output_path)
 
 
 
-def rename(ds):
+def _rename(ds):
+    #rename dimensions
     # Dynamically build rename map
     rename_dict = {}
 
@@ -34,7 +34,7 @@ def rename(ds):
     else: return ds
 
 
-def combine_flux_total(ds_prior, ds_posterior):
+def _combine_flux_total(ds_prior, ds_posterior):
     # Sum up flux totals for land and ocean and merge prior and posterior fluxes into one file
     
     ds = ds_prior
