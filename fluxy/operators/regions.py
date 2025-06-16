@@ -232,7 +232,16 @@ def extract_region_inventory_flux(
                 / f'UNFCCC_inventory_{s_data[species]["model_species"]["intem"]}.nc'
             )
             inventory_year = None
-    inv_ds = xr.open_dataset(filepath)["inventory"]
+
+    inv_ds_all = xr.open_dataset(filepath)
+        
+    if inv_ds_all.attrs['missing_data'] != '[]':
+        logger.warning(f"Inventory is missing data: {inv_ds_all.attrs['missing_data']}")
+    
+    if 'inventory' in inv_ds_all.keys():        #for compatability with older inventory netcdfs, can be removed later
+        inv_ds = inv_ds_all['inventory']    
+    else:
+        inv_ds = inv_ds_all["flux_total_inventory_country"] #could add in sector-level read in here
 
     gwp = 1
     target_unit = unit
@@ -245,27 +254,32 @@ def extract_region_inventory_flux(
             origin_unit = origin_unit.replace("CO2-eq", "").replace("CO2eq", "")
         target_unit = unit.replace("CO2-eq", "")
         logger.info(f"Converting to mass of CO2-eq using GWP = {gwp}.")
+        
     scaling_factor = get_units_conversion_factor(origin_unit, target_unit, molar_mass)
 
     inv_ds = inv_ds * scaling_factor * gwp
     inv_ds.attrs["units"] = unit
     inv_ds.attrs["year"] = inventory_year
 
-    if country in inv_ds["country"]:
+    if country in inv_ds["country"]:            #for compatability with older inventory netcdfs, can be removed later
         return inv_ds.sel(country=country)
+    elif r_data['country_codes'][country] in inv_ds['country']:
+        return inv_ds.sel(country=r_data['country_codes'][country])
 
     region_search = r_data["regions"][country]
     country_list = region_search.split("-")
     logger.info(
         f"No inventory data available for {country}. Considering sum of individual countries: {region_search}"
     )
+       
+    country_list_update = []
+    
+    for country in country_list:            #for compatability with older inventory netcdfs, can be removed later
+        if country in inv_ds['country']:
+            country_list_update.append(country)
+        elif country in r_data['country_codes'].keys():
+            country_list_update.append(r_data['country_codes'][country])
+        else:
+            country_list_update.append(dict(map(reversed, r_data["country_codes"].items()))[country])
 
-    country_list_update = [
-        (
-            country
-            if country in inv_ds["country"]
-            else dict(map(reversed, r_data["country_codes"].items()))[country]
-        )  # type: ignore
-        for country in country_list
-    ]
     return inv_ds.sel(country=country_list_update).sum(dim="country", keep_attrs=True)
