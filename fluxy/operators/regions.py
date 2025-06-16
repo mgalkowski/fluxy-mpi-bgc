@@ -194,6 +194,7 @@ def extract_region_inventory_flux(
     s_data: dict[str, dict],
     r_data: dict[str, str],
     inventory_year: int | str | None = None,
+    inventory_filename: str = 'UNFCCC_inventory'
 ) -> xr.Dataset:
     """
     Extracts inventory flux values for regions that exists,
@@ -206,7 +207,7 @@ def extract_region_inventory_flux(
         s_data: Dictionary of species with information for plotting (read from json file).
         r_data: Dictionary with country and region names (read from json file).
         inventory_year: year of inventory to get.
-
+        inventory_filename: Name of inventory file: {inventory_filename}_{species}_{inventory_year}
     Returns:
         dataset with country selected
 
@@ -216,11 +217,11 @@ def extract_region_inventory_flux(
     if inventory_year is not None:
         filepath = (
             Path(data_dir) / "inventory" /
-            f"UNFCCC_inventory_{species}_{inventory_year}.nc"
+            f"{inventory_filename}_{species}_{inventory_year}.nc"
         )
     else:
         filelist = sorted(
-            (Path(data_dir) / "inventory").glob(f"UNFCCC_inventory_{species}_*.nc")
+            (Path(data_dir) / "inventory").glob(f"{inventory_filename}_{species}_*.nc")
         )
         if filelist:
             filepath = filelist[-1]
@@ -229,7 +230,7 @@ def extract_region_inventory_flux(
             filepath = (
                 Path(data_dir)
                 / "inventory"
-                / f'UNFCCC_inventory_{s_data[species]["model_species"]["intem"]}.nc'
+                / f'{inventory_filename}_{s_data[species]["model_species"]["intem"]}.nc'
             )
             inventory_year = None
 
