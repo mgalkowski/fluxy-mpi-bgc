@@ -194,7 +194,7 @@ def extract_region_inventory_flux(
     s_data: dict[str, dict],
     r_data: dict[str, str],
     inventory_year: int | str | None = None,
-    inventory_filename: str = 'UNFCCC_inventory'
+    inventory_filename: str = 'UNFCCC_inventory',
 ) -> xr.Dataset:
     """
     Extracts inventory flux values for regions that exists,
@@ -212,6 +212,9 @@ def extract_region_inventory_flux(
         dataset with country selected
 
     """
+    
+    if inventory_filename is None:
+        inventory_filename = 'UNFCCC_inventory'
 
     # Find filename
     if inventory_year is not None:
