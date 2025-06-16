@@ -118,6 +118,11 @@
         "species_print": "SO$_2$F$_2$",
         "molar_mass": 102.06
     },
+    "co2": {
+        "species_print": "CO$_2$",
+        "gwp": 1,
+        "molar_mass": 44.01
+    },
     "all_hfc": {
         "list_species": ["hfc125","hfc134a","hfc143a","hfc152a","hfc23","hfc227ea","hfc245fa","hfc32","hfc365mfc","hfc236fa"],
         "species_print": "Total HFC"

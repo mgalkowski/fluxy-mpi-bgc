@@ -8,7 +8,8 @@
     "model_labels":{
         "ELRIS_NAME_EDGAR_std" : "ELRIS",
         "InTEM_NAME_EDGAR_std" : "InTEM",
-        "RHIME_NAME_EDGAR_std" : "RHIME"
+        "RHIME_NAME_EDGAR_std" : "RHIME",
+        "CSR" : "CSR"
     },
 
     "species_name":{
@@ -32,6 +33,7 @@
                   "cf4": "CF4",
                   "clch2ch2cl": "ClCH2CH2Cl"
                 }
+        "CSR" : {"co2": "CO2"}
     },
 
     "standard_run":{
