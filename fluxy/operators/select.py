@@ -94,6 +94,7 @@ def slice_mf(
     end_date: str = None,
     site: str = None,
     baseline_site: str = None,
+    baseline_filename: None | str = "InTEM_baseline_timestamps",
     data_dir: os.PathLike | None = None,
     mf_units_print: str = None,
     keep_unassimilated: bool = False,
@@ -144,8 +145,8 @@ def slice_mf(
         data_dir = Path(data_dir)
         baseline_file = (
             data_dir
-            / "intem_baseline_timestamps"
-            / f"{baseline_site}_InTEM_baseline_timestamps.nc"
+            / "baseline_timestamps"
+            / f"{baseline_site}_{baseline_filename}.nc"
         )
 
         # Check if files exists
