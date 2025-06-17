@@ -11,7 +11,6 @@ import pandas as pd
 from typing import Literal
 
 
-
 class TaylorDiagram:
     """
     Taylor Diagram class for visualizing model performance.
@@ -20,26 +19,40 @@ class TaylorDiagram:
 
     def __init__(
             self, 
-            sd_obs, 
-            fig=None, 
-            position=(1, 1, 1), 
-            markersize=100, 
-            sd_range=(0, 1.5), 
-            sd_unit='ppb'
+            sd_obs: float = None, 
+            fig: Figure = None, 
+            position: tuple[int, int, int] = (1, 1, 1), 
+            markersize: int = 100, 
+            sd_range: tuple[float, float] = (0, 1.5), 
+            sd_unit: str = 'ppb',
     ):
+        
         """
-        Initialize the Taylor Diagram.
+        Initialize the axis for the Taylor Diagram.
 
-        Parameters:
-        - sd_obs: Standard deviation of the reference dataset (scalar).
-        - fig: Matplotlib figure instance (optional).
-        - position: Three integers (nrows, ncols, index). The subplot will take the index position
-                    on a grid with nrows rows and ncols columns.
-        - label: Label for the reference dataset (default: '_').
-        """   
+        Args:
+            sd_obs (float):
+                Observed standard deviation.
+                It makes sense to have it only if all markers share the same observed standard deviation.
+            fig (Figure):
+                Instance of a matplotlib figure. The axis for the Taylor Diagram will be added as as 
+                subplot to this figure.
+            position (tuple):
+                Three integers (nrows, ncols, index). The subplot will take the index position
+                on a grid with nrows rows and ncols columns.
+            markersize (int):
+                Size of the markers.
+            sd_range (tuple):
+                Two floats (min, max). It indicates the range for the radial coordinate.
+            sd_unit (str):
+                Unit for the standard deviation. It is only used for the axis label.
+        """
+   
         self.sd_obs = sd_obs  # Standard deviation of the reference
         self.markersize = markersize
-
+        self.smin = sd_range[0]  # Minimum standard deviation
+        self.smax = sd_range[1]  # Maximum standard deviation
+        
         # Polar transformation for the Taylor diagram
         tr = PolarAxes.PolarTransform()
 
@@ -50,8 +63,7 @@ class TaylorDiagram:
         tf1 = gf.DictFormatter(dict(zip(tlocs, map(str, rlocs))))  # Format tick labels
 
         # Define the grid helper with axis limits and labels
-        self.smin = sd_range[0]  # Minimum standard deviation
-        self.smax = sd_range[1]  # Maximum standard deviation
+
         gh = fa.GridHelperCurveLinear(
             tr,
             extremes=(0, np.pi / 2, self.smin, self.smax),  # (theta_min, theta_max, r_min, r_max)
@@ -97,35 +109,46 @@ class TaylorDiagram:
             ax.plot(x, y, color='gray', linestyle='--', linewidth=0.5)  # Dashed gray lines
 
         # Set main axes for plotting
+        self._ax = ax  # Main axes
         self.ax = ax.get_aux_axes(tr)  # Polar coordinates
 
-        # Add reference point for the observed standard deviation
-        l = self.ax.scatter(
-            [0], self.sd_obs, color='k', marker='*', s=self.markersize
-        )  # Reference point
-        t = np.linspace(0, np.pi / 2)  # Angles for sd_obs contour
-        r = np.zeros_like(t) + self.sd_obs
-        self.ax.plot(t, r, 'k--', label='_')  # Reference sd_obs line
-        self.samplePoints = [l]  # Collect sample points for the legend
+        # Add reference line and RMSE contours
+        if self.sd_obs != None:
+
+            # Plot the reference line and point
+            l = self.ax.scatter(
+                [0], self.sd_obs, color='k', marker='*', s=self.markersize
+            )  # Reference point
+            t = np.linspace(0, np.pi / 2)  # Angles for sd_obs contour
+            r = np.zeros_like(t) + self.sd_obs
+            self.ax.plot(t, r, 'k--', label='_')  # Reference sd_obs line
+
+            # Add RMSE countours
+            contours = self.add_contours(colors='0.5')
+            print(contours)
+            self.ax.clabel(contours, inline=1, fontsize=10)
 
 
     def add_samples(
             self, 
-            sds, 
-            pearsons, 
-            label, 
+            sds: list[float], 
+            pearsons: list[float], 
+            label: str, 
             *args, 
             **kwargs
         ):
-        
-        """
-        Add a sample point to the Taylor diagram.
 
-        Parameters:
-        - sd: Standard deviation of the sample.
-        - r: Correlation coefficient of the sample.
-        - *args, **kwargs: Additional plotting parameters (e.g., color, marker).
         """
+        Add markers representing sample points to the Taylor diagram.
+
+        Args:
+            sd_obs (list of floats):
+                Standard deviations of the sample points
+            pearsons (list of floats):
+                Pearson's correlation coefficiens of the sample points 
+            *args, **kwargs: Additional plotting parameters (e.g., color, marker).
+        """
+        
         self.ax.scatter(
             np.arccos(pearsons), sds, s=self.markersize, zorder=10, label=label, *args, **kwargs
         )  # Plot in polar coordinates
@@ -133,12 +156,17 @@ class TaylorDiagram:
 
     def add_contours(
             self, 
-            levels=10, 
+            levels: int = 10, 
             **kwargs
         ):
 
         """
         Add RMSE contours to the Taylor diagram.
+
+        Args:
+            levels (int):
+                Number of contour levels
+            **kwargs: Additional contour parameters.
         """
 
         rs, ts = np.meshgrid(
@@ -147,8 +175,12 @@ class TaylorDiagram:
         )
         xs = rs * np.cos(ts)
         ys = rs * np.sin(ts)
-        rmse = np.sqrt(self.sd_obs**2 + rs**2 - 2 * self.sd_obs * rs * np.cos(ts))
-        contours = self.ax.contour(xs, ys, rmse, levels=levels, **kwargs)
+        rmse = np.sqrt(
+            self.sd_obs**2
+            + rs**2
+            - 2 * self.sd_obs * rs * np.cos(ts)
+        )
+        contours = self._ax.contour(xs, ys, rmse, levels=levels, **kwargs)
         return contours
 
 
@@ -319,7 +351,7 @@ def plot_taylor_diagram(
         nrows = nsubplots // ncols + 1
     
     # Create the figure
-    fig = plt.figure(figsize=(6 * ncols, 6 * nrows), tight_layout=True)
+    fig = plt.figure(figsize=(6 * ncols, 6 * nrows), tight_layout=False)
 
     # Create a dictionary to save positions of diagrams
     dict_diags_pos = {}
@@ -352,10 +384,13 @@ def plot_taylor_diagram(
             list_sds_sim = df_sds_sim[m].values
             list_pearsons = df_pearson[m].values
 
+            # Remove observation reference if multiple sd_obs
+            sd_obs = df_sds_obs[m].values[0] if len(list_sds_obs) == 1 else None
+
             # Create the Taylor diagram using the corresponding class or fetch it
             if index_pos not in dict_diags_pos:
                 diag = TaylorDiagram(
-                    list_sds_obs[0], 
+                    sd_obs=sd_obs, 
                     fig=fig, 
                     position=(nrows, ncols, index_pos),
                     markersize=150, 
@@ -366,9 +401,6 @@ def plot_taylor_diagram(
             else:
                 diag = dict_diags_pos[index_pos]
 
-            # Add RMSE contours
-            # plt.clabel(diag.add_contours(colors='0.5'), inline=1, fontsize=10)
-
             # Define labels, colors and markers
             label = model_labels[m] + ' - ' + s
             color = model_colors[m][0] if s == 'prior' else model_colors[m][1] 
@@ -376,7 +408,7 @@ def plot_taylor_diagram(
 
             # Add samples to the diagram
             diag.add_samples(list_sds_sim, list_pearsons, c=color, edgecolor='k', marker=marker, label=label)
-            diag.ax.legend()
+            diag._ax.legend(fontsize=10, loc='lower left', bbox_to_anchor=(0.1, 1.05))
 
             # Save the position of the diagram's subplot
             dict_diags_pos[index_pos] = diag
