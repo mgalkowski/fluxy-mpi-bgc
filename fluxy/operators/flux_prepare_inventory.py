@@ -46,7 +46,13 @@ def retrieve_inventories(
 
     for year, inv_color in zip(inventory_years, inv_colors):
         ds_inv = extract_region_inventory_flux(
-            data_dir, country, species, unit, s_data, r_data, inventory_year=year,
+            data_dir,
+            country,
+            species,
+            unit,
+            s_data,
+            r_data,
+            inventory_year=year,
             inventory_filename=inventory_filename
         )
         ds_inv.attrs["plot_color"] = inv_color

@@ -194,7 +194,7 @@ def extract_region_inventory_flux(
     s_data: dict[str, dict],
     r_data: dict[str, str],
     inventory_year: int | str | None = None,
-    inventory_filename: str = 'UNFCCC_inventory',
+    inventory_filename: None | str = 'UNFCCC_inventory'
 ) -> xr.Dataset:
     """
     Extracts inventory flux values for regions that exists,
@@ -212,10 +212,7 @@ def extract_region_inventory_flux(
         dataset with country selected
 
     """
-    
-    if inventory_filename is None:
-        inventory_filename = 'UNFCCC_inventory'
-
+        
     # Find filename
     if inventory_year is not None:
         filepath = (
@@ -239,13 +236,14 @@ def extract_region_inventory_flux(
 
     inv_ds_all = xr.open_dataset(filepath)
         
-    if inv_ds_all.attrs['missing_data'] != '[]':
-        logger.warning(f"Inventory is missing data: {inv_ds_all.attrs['missing_data']}")
-    
-    if 'inventory' in inv_ds_all.keys():        #for compatability with older inventory netcdfs, can be removed later
-        inv_ds = inv_ds_all['inventory']    
+    if 'missing_data' in inv_ds_all.attrs:
+        if inv_ds_all.attrs['missing_data'] != '[]':
+            logger.warning(f"Inventory is missing data: {inv_ds_all.attrs['missing_data']}")
     else:
-        inv_ds = inv_ds_all["flux_total_inventory_country"] #could add in sector-level read in here
+        logger.warning(f'No missing_data variable available in inventory files, assuming all data present.')
+    
+    #first option left for compatability with older inventory netcdfs, can be removed later
+    inv_ds = inv_ds_all['inventory'] if 'inventory' in inv_ds_all.keys() else inv_ds_all["flux_total_inventory_country"]
 
     gwp = 1
     target_unit = unit
@@ -276,14 +274,14 @@ def extract_region_inventory_flux(
         f"No inventory data available for {country}. Considering sum of individual countries: {region_search}"
     )
        
-    country_list_update = []
-    
-    for country in country_list:            #for compatability with older inventory netcdfs, can be removed later
-        if country in inv_ds['country']:
-            country_list_update.append(country)
-        elif country in r_data['country_codes'].keys():
-            country_list_update.append(r_data['country_codes'][country])
-        else:
-            country_list_update.append(dict(map(reversed, r_data["country_codes"].items()))[country])
+    country_list_update = [
+        (
+            country
+            if country in inv_ds['country']
+            else r_data['country_codes'][country] if country in r_data['country_codes'].keys()
+            else dict(map(reversed, r_data["country_codes"].items()))[country] 
+        )
+        for country in country_list
+    ]
 
     return inv_ds.sel(country=country_list_update).sum(dim="country", keep_attrs=True)
