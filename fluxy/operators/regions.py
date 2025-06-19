@@ -263,7 +263,8 @@ def extract_region_inventory_flux(
     inv_ds.attrs["units"] = unit
     inv_ds.attrs["year"] = inventory_year
 
-    if country in inv_ds["country"]:            #for compatability with older inventory netcdfs, can be removed later
+    #for compatability with older inventory netcdfs, can be removed later
+    if country in inv_ds["country"]:            
         return inv_ds.sel(country=country)
     elif r_data['country_codes'][country] in inv_ds['country']:
         return inv_ds.sel(country=r_data['country_codes'][country])
