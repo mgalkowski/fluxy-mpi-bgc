@@ -94,7 +94,7 @@ def slice_mf(
     end_date: str = None,
     site: str = None,
     baseline_site: str = None,
-    baseline_filename: str = None,
+    baseline_filename: None | str = "InTEM_baseline_timestamps",
     data_dir: os.PathLike | None = None,
     mf_units_print: str = None,
     keep_unassimilated: bool = False,
@@ -137,9 +137,6 @@ def slice_mf(
 
     # Get logical array with baseline timestamps
     if baseline_site is not None:
-        
-        if baseline_filename is None:
-            baseline_filename = "InTEM_baseline_timestamps"
         
         if data_dir is None:
             raise ValueError(
