@@ -94,7 +94,7 @@ def slice_mf(
     end_date: str = None,
     site: str = None,
     baseline_site: str = None,
-    baseline_filename: None | str = "InTEM_baseline_timestamps",
+    baseline_filename: str = "InTEM_baseline_timestamps",
     data_dir: os.PathLike | None = None,
     mf_units_print: str = None,
     keep_unassimilated: bool = False,
