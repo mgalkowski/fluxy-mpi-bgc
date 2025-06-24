@@ -1,5 +1,6 @@
 import xarray as xr
 import os
+import re
 
 rename_candidates = {
     'longitude': ['lon'],
@@ -57,18 +58,29 @@ def _combine_variable(ds_prior, ds_posterior, varnames, new_prior_name, new_post
         if prior_data:
             combined = sum(prior_data)
             combined.attrs = prior_data[0].attrs.copy()
+            if 'units' in combined.attrs and combined.attrs['units'] == 'PgC/yr': 
+                area = ds_prior['area'] # Adjust to your target region  
+                combined = _pgcyr_to_mol_m2_s(combined, area)
+                 # Update unit string
+                combined.attrs['units'] = "mol m-2 s-1"
+                #combined.attrs['units'] = _convert_unit_fractions(original_unit)
             ds[new_prior_name] = combined
 
         if post_data:
             combined = sum(post_data)
             combined.attrs = post_data[0].attrs.copy()
+            if 'units' in combined.attrs and combined.attrs['units'] == 'PgC/yr':
+                area = ds_posterior['area'] # Adjust to your target region  
+                combined = _pgcyr_to_mol_m2_s(combined, area)
+                 # Update unit string
+                combined.attrs['units'] = "mol m-2 s-1"
+                #combined.attrs['units'] = _convert_unit_fractions(original_unit)
             ds[new_post_name] = combined
     else:
         for name in varnames:
             if name in ds.data_vars:
                 renamed = ds[name]
                 renamed.attrs = ds[name].attrs.copy()
-                ds = ds.rename({name: new_prior_name})
                 break
         for name in varnames:
             if name in ds_posterior.data_vars:
@@ -87,6 +99,41 @@ def _combine_variable(ds_prior, ds_posterior, varnames, new_prior_name, new_post
 def _save_dataset_safely(ds, path):
     try:
         ds.to_netcdf(path)
-        print(f"✅ Datei erfolgreich gespeichert: {path}")
+        print(f"✅ File saved successfully: {path}")
+    except Exception as e:
+        print(f"❌ Error when trying to save file {path}: {e}")
+
+
+def _convert_unit_fractions(unit_string):
+    """
+    Converts unit strings like 'Pg/yr' to 'Pg yr⁻¹', 'kg/m^2/s' to 'kg m⁻2 s⁻¹'.
+    """
+    if '/' not in unit_string:
+        return unit_string  # No fraction to process
+    
+    parts = unit_string.split('/')
+    numerator = parts[0].strip()
+    denominators = [p.strip() for p in parts[1:]]
+    
+    # Replace ^n with superscript negative
+    converted_denoms = []
+    for d in denominators:
+        match = re.match(r'(\w+)\^?(\d*)', d)
+        if match:
+            unit, power = match.groups()
+            power = int(power) if power else 1
+            converted_denoms.append(f"{unit}⁻{power}")
+        else:
+            converted_denoms.append(f"{d}⁻¹")
+    
+    return f"{numerator} {' '.join(converted_denoms)}"
+
+def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2):
+    grams = value_pgcyr * 1e15
+    mols = grams / 12.01
+    seconds_per_year = 31_536_000
+    flux = mols / seconds_per_year
+    return flux / area_m2
+
     
         
