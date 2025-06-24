@@ -193,8 +193,8 @@ def extract_region_inventory_flux(
     unit: str,
     s_data: dict[str, dict],
     r_data: dict[str, str],
-    inventory_year: int | str | None = None,
-    inventory_filename: None | str = 'UNFCCC_inventory'
+    inventory_year: int | str | None,
+    inventory_filename: str,
 ) -> xr.Dataset:
     """
     Extracts inventory flux values for regions that exists,
@@ -263,26 +263,30 @@ def extract_region_inventory_flux(
     inv_ds.attrs["units"] = unit
     inv_ds.attrs["year"] = inventory_year
 
-    #for compatability with older inventory netcdfs, can be removed later
-    if country in inv_ds["country"]:            
-        return inv_ds.sel(country=country)
-    elif r_data['country_codes'][country] in inv_ds['country']:
-        return inv_ds.sel(country=r_data['country_codes'][country])
+    # Get country_codes only if regions_info exists    
+    country_codes = r_data.get("country_codes", {})
+    # Look for the code if country_codes is defined, otherwise assume the code was given as input
+    country_search = country_codes.get(country, country)
+    
+    if country_search in inv_ds["country"]:
+        return inv_ds.sel(country=country_search) # new format
+    elif country in inv_ds["country"]:
+        return inv_ds.sel(country=country) # old format (would only work if the user specifies the country name)
 
-    region_search = r_data["regions"][country]
-    country_list = region_search.split("-")
-    logger.info(
+    # if grouped countries:
+    available_countries = inv_ds["country"].values.astype(str)
+    dict_regions: dict[str, str] = r_data.get("regions", {})
+    
+    if (country_search not in available_countries and country in dict_regions.keys()):
+        region_search = dict_regions[country]
+        country_list = region_search.split("-")
+        inv_ds = inv_ds.sel({"country": country_list})
+        
+        logger.info(
         f"No inventory data available for {country}. Considering sum of individual countries: {region_search}"
-    )
-       
-    country_list_update = [
-        (
-            country
-            if country in inv_ds['country']
-            else r_data['country_codes'][country] if country in r_data['country_codes'].keys()
-            else dict(map(reversed, r_data["country_codes"].items()))[country] 
         )
-        for country in country_list
-    ]
+    elif country_search in available_countries:
+        inv_ds = inv_ds.sel({"country": country_search})
 
-    return inv_ds.sel(country=country_list_update).sum(dim="country", keep_attrs=True)
+    return inv_ds.sum(dim="country", keep_attrs=True)
+

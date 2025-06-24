@@ -15,8 +15,8 @@ def retrieve_inventories(
     unit: str,
     s_data: dict[str, dict],
     r_data: dict[str, dict],
-    inventory_years: list[str] | None = None,
-    inventory_filename: str = 'UNFCCC_inventory',
+    inventory_years: list[str] | None,
+    inventory_filename: str,
 ) -> list[xr.Dataset]:
     """
     Load (in a list) inventories data to be plotted.
