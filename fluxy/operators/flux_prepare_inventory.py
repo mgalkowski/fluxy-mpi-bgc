@@ -38,8 +38,8 @@ def retrieve_inventories(
     
     inventories_list = list()
 
-    if inventory_years is None:
-        inventory_years = [None]
+    if not isinstance(inventory_years, list):
+        inventory_years = [inventory_years]
 
     inv_cmap = get_cmap("Greys")
     inv_colors = [inv_cmap(i) for i in np.linspace(0.5, 0.9, len(inventory_years))]

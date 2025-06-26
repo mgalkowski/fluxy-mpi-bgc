@@ -67,10 +67,7 @@ def extract_region_flux(
         # search for existing region names
         available_countries = ds["country"].values.astype(str)
 
-        if (
-            country_search not in available_countries
-            and country in dict_regions.keys()
-        ):
+        if country_search not in available_countries and country in dict_regions.keys():
             region_search = dict_regions[country]
 
             logger.info(
@@ -83,7 +80,9 @@ def extract_region_flux(
                 ds_region = ds_region.sel({"country_2": country_list})
 
             for v in ["posterior", "prior"]:
-                ds_region[v] = ds_region[f"flux_total_{v}_country"].sum(dim="country")
+                ds_region[v] = ds_region[f"flux_total_{v}_country"].sum(
+                    dim="country", keep_attrs=True
+                )
 
             if "percentile_flux_total_prior_country" in ds.variables:
                 ds_region["sigma_prior"] = np.sqrt(
