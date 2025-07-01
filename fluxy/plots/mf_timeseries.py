@@ -189,9 +189,21 @@ def plot_mf_timeseries(
                     )
 
                 if unc_var not in ds_plot.keys():
-                    raise KeyError(f"Variable {unc_var} not found in {m}.")
+                    if 'percentile' in unc_var:
+                        unc_var_in = unc_var
+                        unc_var = unc_var.replace('percentile','stdev')
 
-                if unc_var.split("_")[0] == "percentile":
+                    elif 'stdev' in unc_var:
+                        unc_var_in = unc_var
+                        unc_var = unc_var.replace('stdev','percentile')
+
+                    if unc_var not in ds_plot.keys():
+                        KeyError(f"Variables {unc_var_in} and {unc_var} not found in {m}.")
+                    else:
+                        print(logger.warning(f"Variable {unc_var_in} not found in {m} so reading uncert from {unc_var}."))
+                
+
+                if unc_var.split("_")[0] == "percentile" or unc_var.split("_")[0] == 'stdev':
                     # Add uncertainty band
                     ax[iax, 0].fill_between(
                         ds_plot.time.values,
@@ -323,7 +335,10 @@ def plot_sites_timeseries(
     assert margin < 0.5, "Margin must be smaller than 0.5"
     assert margin > 0, "Margin must be positive"
 
-    model_offset = (1 - 2 * margin) / (len(models) - 1)
+    if len(models) > 1:
+        model_offset = (1 - 2 * margin) / (len(models) - 1)
+    else:
+        model_offset = 1
 
     for site_iter, site in enumerate(siteList):
         if site_iter != 0:
