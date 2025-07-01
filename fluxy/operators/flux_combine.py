@@ -31,6 +31,7 @@ def combine_dataset(
 
 
 def combine_map_dataset(ds_all: dict[str, xr.Dataset]) -> dict[str, xr.Dataset]:
+
     """
     Combine multiple xarray datasets along the 'model' dimension and return the mean dataset.
 
@@ -40,6 +41,10 @@ def combine_map_dataset(ds_all: dict[str, xr.Dataset]) -> dict[str, xr.Dataset]:
     Returns:
         A dictionary with a single key 'combined', containing the mean of all datasets along the 'model' dimension.
     """
+    for d in list(ds_all.keys()):
+        for v in ds_all[d]:
+            if '_out' in v or 'percentile_flux_total_posterior_inversion_grid' in v:
+                ds_all[d] = ds_all[d].drop_vars(v,errors='ignore')
 
     models = list(ds_all.keys())
     ds_list = list(ds_all.values())
