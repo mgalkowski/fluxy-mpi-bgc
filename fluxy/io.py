@@ -542,6 +542,24 @@ def edit_vars_and_attributes(
     if "frequency" not in ds.attrs:
         ds.attrs["frequency"] = frequency
 
+    # Fix conc dataset
+    if file_type == "concentration":
+
+        # Aply model specific corrections
+        m0 = model.split("_")[0].lower()
+
+        if m0 == "flexinvert":
+            ds["Yobs"].attrs["units"] = "ppt"
+            ds["Yobs"].attrs["longname"] = "observed_mole_fraction"
+            ds["Yapriori"].attrs["units"] = "ppt"
+            ds["Yapriori"].attrs["longname"] = "apriori_simulated_mole_fraction"
+            ds["Yapost"].attrs["units"] = "ppt"
+            ds["Yapost"].attrs["longname"] = "aposteriori_simulated_mole_fraction"
+            ds["Ypri_bkg"].attrs["units"] = "ppt"
+            ds["Ypri_bkg"].attrs["longname"] = "apriori_simulated_boundary_condition_mole_fraction"
+            ds["Ypost_bkg"].attrs["units"] = "ppt"
+            ds["Ypost_bkg"].attrs["longname"] = "aposteriori_simulated_boundary_condition_mole_fraction"
+
     # Fix flux dataset
     if file_type == "flux":
 
@@ -562,7 +580,7 @@ def edit_vars_and_attributes(
         # Aply model specific corrections
         m0 = model.split("_")[0].lower()
 
-        if m0 == "elris":
+        if m0 in ("elris", "flexinvert"):
             ds["country"] = ds["country"].astype("str")
             ds = ds.set_index(countrynumber="country").rename(
                 {"countrynumber": "country"}
@@ -652,27 +670,5 @@ def edit_vars_and_attributes(
             ds["country"] = [
                 regions_info["country_codes"].get(x, x) for x in ds["country"].values
             ]
-
-        elif m0 == "flexinvert":
-            ds["percentile_country_flux_total_posterior"] = xr.concat(
-                [
-                    ds["country_flux_total_posterior"]
-                    - ds["country_flux_error_posterior"],
-                    ds["country_flux_total_posterior"]
-                    + ds["country_flux_error_posterior"],
-                ],
-                pd.Index([0, 1], name="percentile"),
-            )
-
-            ds["percentile_country_flux_total_prior"] = xr.concat(
-                [
-                    ds["country_flux_total_prior"] - ds["country_flux_error_prior"],
-                    ds["country_flux_total_prior"] + ds["country_flux_error_prior"],
-                ],
-                pd.Index([0, 1], name="percentile"),
-            )
-            ds["countrynumber"] = ds["country"].astype(str)
-            del ds["country"]
-            ds = ds.rename({"countrynumber": "country"})
 
     return ds
