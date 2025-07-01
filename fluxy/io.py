@@ -1,3 +1,4 @@
+import itertools
 import os
 import xarray as xr
 import numpy as np
@@ -18,6 +19,33 @@ from fluxy.operators.select import slice_flux
 from fluxy.operators.flux_align_dataset import align_time
 
 logger = logging.getLogger(__name__)
+
+
+# Naming of variables that might have changed in the past
+legacy_names: dict[str, str] = {
+    "country_flux_total_prior": "flux_total_prior_country",
+    "country_flux_total_posterior": "flux_total_posterior_country",
+    "percentile_country_flux_total_prior": "percentile_flux_total_prior_country",
+    "percentile_country_flux_total_posterior": "percentile_flux_total_posterior_country",
+    "covariance_country_flux_total_posterior": "covariance_flux_total_posterior_country",
+    "nsite": "number_of_identifier",
+    "sitenames": "platform",
+    "Yobs": "mf_observed",
+    "Yapriori": "mf_prior",
+    "Yapost": "mf_posterior",
+    "YaprioriBC": "mf_bc_prior",
+    "YapostBC": "mf_bc_posterior",
+    "Yapriori_bias": "mf_bias_prior",
+    "Yapost_bias": "mf_bias_posterior",
+    "YaprioriOUTER": "mf_outer_prior",
+    "YapostOUTER": "mf_outer_posterior",
+    "qYapriori": "percentile_mf_prior",
+    "qYapost": "percentile_mf_posterior",
+    "uYtotal": "stdev_mf_total",
+    "uYobs_repeatability": "stdev_mf_observed_repeatability",
+    "uYobs_variability": "stdev_mf_observed_variability",
+    "uYmod": "stdev_mf_model",
+}
 
 
 def read_json(filepath: os.PathLike) -> dict[str, dict]:
@@ -300,6 +328,9 @@ def read_flux_total_fgases(
             f"period must be a string or a list of the same length as models."
         )
 
+    if isinstance(regions, str):
+        regions = [regions]
+
     # Assign key to find file for each species and model according to the config file
     missing_species = {model: list() for model in models}
     default_overwrite = {model: list() for model in models}
@@ -423,20 +454,7 @@ def create_flux_total_fgases(ds_all, species, regions, models):
                 dim="species",
                 combine_attrs="drop_conflicts",
             )
-            ds_mean = ds_tmp[["prior", "posterior"]].sum(dim="species", keep_attrs=True)
-            ds_unc = np.sqrt(
-                (
-                    ds_tmp[
-                        [
-                            "prior_lower",
-                            "prior_upper",
-                            "posterior_lower",
-                            "posterior_upper",
-                        ]
-                    ]
-                    ** 2
-                ).sum(dim="species", keep_attrs=True)
-            )
+
             ds_summed = [
                 ds_tmp[["prior", "posterior"]].sum(dim="species", keep_attrs=True),
             ]
@@ -449,7 +467,7 @@ def create_flux_total_fgases(ds_all, species, regions, models):
                 ds_unc[f"{var}_lower"] = ds_summed[0][var] - ds_unc[f"{var}_lower"]
                 ds_unc[f"{var}_upper"] = ds_summed[0][var] + ds_unc[f"{var}_upper"]
                 ds_summed.append(ds_unc)
-            ds_list.append(xr.merge([ds_mean, ds_unc], combine_attrs="no_conflicts"))
+            ds_list.append(xr.merge(ds_summed, combine_attrs="no_conflicts"))
 
         ds_tmp = xr.concat(ds_list, dim="country", combine_attrs="no_conflicts")
         ds_tmp.attrs["species"] = species
@@ -512,7 +530,7 @@ def edit_vars_and_attributes(
     ds: xr.Dataset,
     model: str,
     frequency: str,
-    file_type: str,
+    file_type: Literal["flux", "concentration"],
     regions_info: dict[str, str],
 ) -> xr.Dataset:
     """
@@ -542,64 +560,30 @@ def edit_vars_and_attributes(
     if "frequency" not in ds.attrs:
         ds.attrs["frequency"] = frequency
 
-    # Fix conc dataset
-    if file_type == "concentration":
+    # Rename legacy variables
+    name_dict = {
+        var: legacy_names[var]
+        for var in itertools.chain(
+            ds.data_vars.keys(), ds.coords.keys(), ds.sizes.keys()
+        )
+        if var in legacy_names
+    }
 
-        # Aply model specific corrections
-        m0 = model.split("_")[0].lower()
+    ds = ds.rename(name_dict)
 
-        if m0 == "flexinvert":
-            ds["Yobs"].attrs["units"] = "ppt"
-            ds["Yobs"].attrs["longname"] = "observed_mole_fraction"
-            ds["Yapriori"].attrs["units"] = "ppt"
-            ds["Yapriori"].attrs["longname"] = "apriori_simulated_mole_fraction"
-            ds["Yapost"].attrs["units"] = "ppt"
-            ds["Yapost"].attrs["longname"] = "aposteriori_simulated_mole_fraction"
-            ds["Ypri_bkg"].attrs["units"] = "ppt"
-            ds["Ypri_bkg"].attrs["longname"] = "apriori_simulated_boundary_condition_mole_fraction"
-            ds["Ypost_bkg"].attrs["units"] = "ppt"
-            ds["Ypost_bkg"].attrs["longname"] = "aposteriori_simulated_boundary_condition_mole_fraction"
+    # Get model name
+    m0 = model.split("_")[0].lower()
 
     # Fix flux dataset
     if file_type == "flux":
 
-        # Easy fix for InTEM ("units" attribute is wrongly set to "unit")
-        vars_to_check = [
-            "country_flux_total_prior",
-            "country_flux_total_posterior",
-            "percentile_country_flux_total_prior",
-            "percentile_country_flux_total_posterior",
-        ]
-
-        for var in vars_to_check:
-            if var not in ds:
-                continue
-            if "units" not in ds[var].attrs.keys() and "unit" in ds[var].attrs.keys():
-                ds[var].attrs["units"] = ds[var].attrs["unit"]
-
-        # Aply model specific corrections
-        m0 = model.split("_")[0].lower()
-
+        # Apply model specific corrections
         if m0 in ("elris", "flexinvert"):
-            ds["country"] = ds["country"].astype("str")
-            ds = ds.set_index(countrynumber="country").rename(
-                {"countrynumber": "country"}
-            )
-            var_to_change = "covariance_country_flux_total_posterior"
-            if var_to_change in ds and ds[var_to_change].dims == (
-                "time",
-                "country",
-                "country",
-            ):
-                ds[var_to_change] = xr.DataArray(
-                    data=ds[var_to_change].data,
-                    dims=["time", "country", "country_2"],
-                    coords=dict(
-                        time=(["time"], ds[var_to_change].time.data),
-                        country=(["country"], ds[var_to_change].country.data),
-                        country_2=(["country_2"], ds[var_to_change].country.data),
-                    ),
-                    attrs=ds[var_to_change].attrs,
+            # Fix for legacy files
+            if "countrynumber" in ds.dims.keys():
+                ds["country"] = ds["country"].astype("str")
+                ds = ds.set_index(countrynumber="country").rename(
+                    {"countrynumber": "country"}
                 )
 
         elif m0 == "enkf":
@@ -610,6 +594,24 @@ def edit_vars_and_attributes(
                 ds["time"] = ds.time.values + np.timedelta64(15, "D")
 
         elif m0 == "intem":
+            # Easy fix for InTEM ("units" attribute is wrongly set to "unit")
+            vars_to_check = [
+                "flux_total_prior_country",
+                "flux_total_posterior_country",
+                "percentile_flux_total_prior_country",
+                "percentile_flux_total_posterior_country",
+            ]
+
+            for var in vars_to_check:
+                if var not in ds:
+                    continue
+                if (
+                    "units" not in ds[var].attrs.keys()
+                    and "unit" in ds[var].attrs.keys()
+                ):
+                    ds[var].attrs["units"] = ds[var].attrs["unit"]
+                    ds[var].attrs.pop("unit")
+
             ds = ds.rename({"countrynumber": "country"})
 
             if "BEL-LUX" in ds.country and (
@@ -670,5 +672,107 @@ def edit_vars_and_attributes(
             ds["country"] = [
                 regions_info["country_codes"].get(x, x) for x in ds["country"].values
             ]
+
+        elif m0 == "cif-enks":
+            # Move time variable to center of the month
+            ds["time"] = ds.time.values + np.timedelta64(15, "D")
+
+            # Add "_" to second country dimension in covariance matrix
+            ds = ds.rename({"country2": "country_2"})
+
+        # Rename second country dimension in covariance matrix (xarray requirement)
+        var_to_change = "covariance_flux_total_posterior_country"
+        if var_to_change in ds and ds[var_to_change].dims == (
+            "time",
+            "country",
+            "country",
+        ):
+            ds[var_to_change] = xr.DataArray(
+                data=ds[var_to_change].data,
+                dims=["time", "country", "country_2"],
+                coords=dict(
+                    time=(["time"], ds[var_to_change].time.data),
+                    country=(["country"], ds[var_to_change].country.data),
+                    country_2=(["country_2"], ds[var_to_change].country.data),
+                ),
+                attrs=ds[var_to_change].attrs,
+            )
+
+    elif file_type == "concentration":
+        # Ensure integer dtype
+        ds["number_of_identifier"] = ds["number_of_identifier"].astype(int)
+
+        # Ensure string dtype
+        ds["platform"] = ds["platform"].astype(str)
+
+        # Fix old format vs new format
+        if "index" not in ds.dims:
+            platforms = ds["platform"].values
+            ds = (
+                # Remove the old platform dimension and replace with a new coordinate
+                ds.drop_vars("platform")
+                .assign_coords({"platform": ("platform", platforms)})
+                # Restack the dataset to have a single index dimension
+                .stack({"index": ["number_of_identifier", "time"]})
+                .reset_index("index")
+            )
+
+        if "assimilation_flag" not in ds:
+            # Add assimilation_flag if not present
+            ds = ds.assign(
+                assimilation_flag=("index", np.ones(ds["index"].size, dtype=int))
+            )
+
+        # Test that the number of identifiers had valid values
+        max_num_id, min_num_id = (
+            ds["number_of_identifier"].max(),
+            ds["number_of_identifier"].min(),
+        )
+        if min_num_id == 1 and max_num_id == len(ds["platform"]):
+            # 1 based (also called as retarded) indexing, so we need to shift the values
+            ds["number_of_identifier"] -= 1
+        elif min_num_id < 0:
+            raise ValueError(
+                "The number of identifiers should be positive. Please check the input data."
+            )
+        elif max_num_id >= len(ds["platform"]):
+            raise ValueError(
+                f"The max number of identifiers should be less than the number of platform. "
+                "Please check the input data."
+            )
+
+        # Set coordinates
+        ds = ds.assign_coords(
+            {var: ds[var] for var in ["number_of_identifier", "time", "platform"]}
+        )
+
+        # Fix for InTEM (units of platform are wrongly set to mol mol-1)
+        ds["platform"].attrs.pop("units", None)
+
+        # Apply model specific corrections
+        if m0 == "cif-enks":
+            # Convert platform names to upper case and drop "_C" for continuos data
+            platform_in_caps = [platform.upper() for platform in ds["platform"].values]
+            for i, platform in enumerate(platform_in_caps):
+                platform_id, dtype = platform.split("_")
+                if dtype == "C":
+                    platform_in_caps[i] = platform_id
+
+            ds["platform"] = xr.DataArray(
+                data=platform_in_caps,
+                dims=ds["platform"].dims,
+                coords=ds["platform"].coords,
+            )
+        if m0 == "flexinvert":
+            ds["Yobs"].attrs["units"] = "ppt"
+            ds["Yobs"].attrs["longname"] = "observed_mole_fraction"
+            ds["Yapriori"].attrs["units"] = "ppt"
+            ds["Yapriori"].attrs["longname"] = "apriori_simulated_mole_fraction"
+            ds["Yapost"].attrs["units"] = "ppt"
+            ds["Yapost"].attrs["longname"] = "aposteriori_simulated_mole_fraction"
+            ds["Ypri_bkg"].attrs["units"] = "ppt"
+            ds["Ypri_bkg"].attrs["longname"] = "apriori_simulated_boundary_condition_mole_fraction"
+            ds["Ypost_bkg"].attrs["units"] = "ppt"
+            ds["Ypost_bkg"].attrs["longname"] = "aposteriori_simulated_boundary_condition_mole_fraction"
 
     return ds

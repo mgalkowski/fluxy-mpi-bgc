@@ -26,9 +26,9 @@ annotate_coords = set_print_settings()
 
 species = "hfc134a"  # options for individual species, or 'all_hfc' or 'all_pfc'
 models = [
-    "InTEM_NAME_EUROPE_EDGAR_std",
-    "ELRIS_NAME_EUROPE_EDGAR_std",
-    "RHIME_NAME_EUROPE_EDGAR_std",
+    "InTEM_NAME_EUROPE_EDGAR_old_format",
+    "ELRIS_NAME_EUROPE_EDGAR_old_format",
+    "RHIME_NAME_EUROPE_EDGAR_old_format",
 ]
 regions = ["GERMANY", "UK", "BENELUX", "NW_EU2"]
 period = "yearly"  # use to override standard inversion periods, must be a list the same length as models, e.g. ['monthly','yearly']
@@ -123,7 +123,7 @@ def test_flux_timeseries():
     plot_resample_and_original = False
     annex_mode = False
     rolling_mean = False
-
+    
     fig = plot_country_flux(
         ds_all_flux_scaled,
         species,
@@ -155,7 +155,7 @@ def test_mf_timeseries():
 
     fig = plot_sites_timeseries(
         ds_all_mf,
-        "Yapost",
+        "mf_posterior",
         start_date,
         end_date,
         model_colors,
@@ -173,8 +173,8 @@ def test_obs_modelled_separate():
         config_data,
         annotate_coords,
         plot_type="separate",
-        include={"Yobs": None, "Yapost": "qYapost"},
-        diff_include=["Yapost"],
+        include={"mf_observed": None, "mf_posterior": "percentile_mf_posterior"},
+        diff_include=["mf_posterior"],
         y_lim=None,
     )
 
@@ -190,8 +190,8 @@ def test_obs_modelled_together():
         config_data,
         annotate_coords,
         plot_type="together",
-        include={"Yapost": "qYapost"},
-        diff_include=["Yapost"],
+        include={"mf_posterior": "percentile_mf_posterior"},
+        diff_include=["mf_posterior"],
         y_lim=None,
     )
 
@@ -209,7 +209,7 @@ def test_mole_fraction_diff():
         config_data,
         annotate_coords,
         plot_type="diff",
-        include={"Yobs": None},
+        include={"mf_observed": None},
         diff_include=None,
         y_lim=None,
     )

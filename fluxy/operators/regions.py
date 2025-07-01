@@ -60,14 +60,14 @@ def extract_region_flux(
 
     dict_regions: dict[str, str] = regions_info.get("regions", {})
 
+    flag_percentile = False
+    flag_stdev = False
+
     for m, ds in ds_all.items():
         # search for existing region names
         available_countries = ds["country"].values.astype(str)
 
-        if (
-            country_search not in available_countries
-            and country in dict_regions.keys()
-        ):
+        if country_search not in available_countries and country in dict_regions.keys():
             region_search = dict_regions[country]
 
             logger.info(
@@ -80,23 +80,34 @@ def extract_region_flux(
                 ds_region = ds_region.sel({"country_2": country_list})
 
             for v in ["posterior", "prior"]:
-                ds_region[v] = ds_region[f"country_flux_total_{v}"].sum(dim="country")
+                ds_region[v] = ds_region[f"flux_total_{v}_country"].sum(
+                    dim="country", keep_attrs=True
+                )
 
-            ds_region["sigma_prior"] = np.sqrt(
-                (
+            if "percentile_flux_total_prior_country" in ds.variables:
+                ds_region["sigma_prior"] = np.sqrt(
                     (
-                        ds.country_flux_total_prior
-                        - ds.percentile_country_flux_total_prior.isel(
-                            percentile=min_percentile_index
+                        (
+                            ds["flux_total_prior_country"]
+                            - ds["percentile_flux_total_prior_country"].isel(
+                                percentile=min_percentile_index
+                            )
                         )
-                    )
-                    ** 2
+                        ** 2
+                    ).sum(dim="country")
+                )
+            elif "stdev_flux_total_prior_country" in ds.variables:
+                ds_region["sigma_prior"] = np.sqrt(
+                    ((ds["stdev_flux_total_prior_country"]) ** 2).sum(dim="country")
+                )
+            else:
+                ds_region["sigma_prior"] = xr.zeros_like(
+                    ds_region["flux_total_prior_country"]
                 ).sum(dim="country")
-            )
 
-            if "covariance_country_flux_total_posterior" in ds.variables:
+            if "covariance_flux_total_posterior_country" in ds.variables:
                 ds_region["sigma_posterior"] = np.sqrt(
-                    ds_region["covariance_country_flux_total_posterior"]
+                    ds_region["covariance_flux_total_posterior_country"]
                     .sum(dim="country")
                     .sum(dim="country_2")
                 )
@@ -115,15 +126,35 @@ def extract_region_flux(
             ds_region = ds.sel({"country": country_search})
 
             for v in ["posterior", "prior"]:
-                ds_region[v] = ds_region[f"country_flux_total_{v}"]
+                ds_region[v] = ds_region[f"flux_total_{v}_country"]
+                var_percentile = f"percentile_flux_total_{v}_country"
+                var_stdev = f"stdev_flux_total_{v}_country"
 
-                var_percentile = f"percentile_country_flux_total_{v}"
                 if var_percentile in ds_region.variables:
                     da = ds_region[var_percentile]
                     ds_region[f"{v}_lower"] = da.isel(percentile=min_percentile_index)
                     ds_region[f"{v}_upper"] = da.isel(percentile=max_percentile_index)
+
+                    # Print info
+                    flag_percentile = True
+                    confidence_interval = (
+                        ds_region["percentile"][max_percentile_index].values
+                        - ds_region["percentile"][min_percentile_index].values
+                    ) * 100
+                    logger.info(
+                        f"Using {var_percentile} to plot {m} {v} country flux {confidence_interval:.1f}% confidence interval."
+                    )
+                elif var_stdev in ds_region.variables:
+                    ds_region[f"{v}_lower"] = ds_region[v] - ds_region[var_stdev]
+                    ds_region[f"{v}_upper"] = ds_region[v] + ds_region[var_stdev]
+
+                    # Print info
+                    flag_stdev = True
+                    logger.info(
+                        f"Using {var_stdev} to plot {m} {v} country flux 68.2% confidence interval."
+                    )
                 else:
-                    da = ds_region[f"country_flux_total_{v}"]
+                    da = ds_region[f"flux_total_{v}_country"]
                     ds_region[f"{v}_lower"] = da
                     ds_region[f"{v}_upper"] = da
 
@@ -146,6 +177,11 @@ def extract_region_flux(
 
         ds_output[m] = ds_region
 
+    if flag_percentile and flag_stdev:
+        logger.warning(
+            f"Confidence intervals in {country} are being computed from percentile or stdev depending on the dataset. Set logging level to INFO to check for consistency."
+        )
+
     return ds_output
 
 
@@ -156,7 +192,8 @@ def extract_region_inventory_flux(
     unit: str,
     s_data: dict[str, dict],
     r_data: dict[str, str],
-    inventory_year: int | str | None = None,
+    inventory_year: int | str | None,
+    inventory_filename: str,
 ) -> xr.Dataset:
     """
     Extracts inventory flux values for regions that exists,
@@ -169,21 +206,21 @@ def extract_region_inventory_flux(
         s_data: Dictionary of species with information for plotting (read from json file).
         r_data: Dictionary with country and region names (read from json file).
         inventory_year: year of inventory to get.
-
+        inventory_filename: Name of inventory file: {inventory_filename}_{species}_{inventory_year}
     Returns:
         dataset with country selected
 
     """
-
+        
     # Find filename
     if inventory_year is not None:
         filepath = (
-            Path(data_dir) / "inventory"
-            f"UNFCCC_inventory_{species}_{inventory_year}.nc"
+            Path(data_dir) / "inventory" /
+            f"{inventory_filename}_{species}_{inventory_year}.nc"
         )
     else:
         filelist = sorted(
-            (Path(data_dir) / "inventory").glob(f"UNFCCC_inventory_{species}_*.nc")
+            (Path(data_dir) / "inventory").glob(f"{inventory_filename}_{species}_*.nc")
         )
         if filelist:
             filepath = filelist[-1]
@@ -192,10 +229,20 @@ def extract_region_inventory_flux(
             filepath = (
                 Path(data_dir)
                 / "inventory"
-                / f'UNFCCC_inventory_{s_data[species]["model_species"]["intem"]}.nc'
+                / f'{inventory_filename}_{s_data[species]["model_species"]["intem"]}.nc'
             )
             inventory_year = None
-    inv_ds = xr.open_dataset(filepath)["inventory"]
+
+    inv_ds_all = xr.open_dataset(filepath)
+        
+    if 'missing_data' in inv_ds_all.attrs:
+        if inv_ds_all.attrs['missing_data'] != '[]':
+            logger.warning(f"Inventory is missing data: {inv_ds_all.attrs['missing_data']}")
+    else:
+        logger.warning(f'No missing_data variable available in inventory files, assuming all data present.')
+    
+    #first option left for compatability with older inventory netcdfs, can be removed later
+    inv_ds = inv_ds_all['inventory'] if 'inventory' in inv_ds_all.keys() else inv_ds_all["flux_total_inventory_country"]
 
     gwp = 1
     target_unit = unit
@@ -208,27 +255,37 @@ def extract_region_inventory_flux(
             origin_unit = origin_unit.replace("CO2-eq", "").replace("CO2eq", "")
         target_unit = unit.replace("CO2-eq", "")
         logger.info(f"Converting to mass of CO2-eq using GWP = {gwp}.")
+        
     scaling_factor = get_units_conversion_factor(origin_unit, target_unit, molar_mass)
 
     inv_ds = inv_ds * scaling_factor * gwp
     inv_ds.attrs["units"] = unit
     inv_ds.attrs["year"] = inventory_year
 
-    if country in inv_ds["country"]:
-        return inv_ds.sel(country=country)
+    # Get country_codes only if regions_info exists    
+    country_codes = r_data.get("country_codes", {})
+    # Look for the code if country_codes is defined, otherwise assume the code was given as input
+    country_search = country_codes.get(country, country)
+    
+    if country_search in inv_ds["country"]:
+        return inv_ds.sel(country=country_search) # new format
+    elif country in inv_ds["country"]:
+        return inv_ds.sel(country=country) # old format (would only work if the user specifies the country name)
 
-    region_search = r_data["regions"][country]
-    country_list = region_search.split("-")
-    logger.info(
+    # if grouped countries:
+    available_countries = inv_ds["country"].values.astype(str)
+    dict_regions: dict[str, str] = r_data.get("regions", {})
+    
+    if (country_search not in available_countries and country in dict_regions.keys()):
+        region_search = dict_regions[country]
+        country_list = region_search.split("-")
+        inv_ds = inv_ds.sel({"country": country_list})
+        
+        logger.info(
         f"No inventory data available for {country}. Considering sum of individual countries: {region_search}"
-    )
+        )
+    elif country_search in available_countries:
+        inv_ds = inv_ds.sel({"country": country_search})
 
-    country_list_update = [
-        (
-            country
-            if country in inv_ds["country"]
-            else dict(map(reversed, r_data["country_codes"].items()))[country]
-        )  # type: ignore
-        for country in country_list
-    ]
-    return inv_ds.sel(country=country_list_update).sum(dim="country", keep_attrs=True)
+    return inv_ds.sum(dim="country", keep_attrs=True)
+
