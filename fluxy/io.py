@@ -764,15 +764,18 @@ def edit_vars_and_attributes(
                 coords=ds["platform"].coords,
             )
         if m0 == "flexinvert":
-            ds["Yobs"].attrs["units"] = "ppt"
-            ds["Yobs"].attrs["longname"] = "observed_mole_fraction"
-            ds["Yapriori"].attrs["units"] = "ppt"
-            ds["Yapriori"].attrs["longname"] = "apriori_simulated_mole_fraction"
-            ds["Yapost"].attrs["units"] = "ppt"
-            ds["Yapost"].attrs["longname"] = "aposteriori_simulated_mole_fraction"
-            ds["Ypri_bkg"].attrs["units"] = "ppt"
-            ds["Ypri_bkg"].attrs["longname"] = "apriori_simulated_boundary_condition_mole_fraction"
-            ds["Ypost_bkg"].attrs["units"] = "ppt"
-            ds["Ypost_bkg"].attrs["longname"] = "aposteriori_simulated_boundary_condition_mole_fraction"
+            ds["mf_observed"].attrs["units"] = "ppt"
+            ds["mf_observed"].attrs["longname"] = "observed_mole_fraction"
+            ds["mf_prior"].attrs["units"] = "ppt"
+            ds["mf_prior"].attrs["longname"] = "apriori_simulated_mole_fraction"
+            ds["mf_posterior"].attrs["units"] = "ppt"
+            ds["mf_posterior"].attrs["longname"] = "aposteriori_simulated_mole_fraction"
+            ds["mf_bc_prior"] = ds["Ypri_bkg"]
+            ds["mf_bc_prior"].attrs["units"] = "ppt"
+            ds["mf_bc_prior"].attrs["longname"] = "apriori_simulated_boundary_condition_mole_fraction"
+            ds["mf_bc_prior"] = ds["Ypri_bkg"]
+            ds["mf_bc_posterior"] = ds["Ypost_bkg"]
+            ds["mf_bc_posterior"].attrs["units"] = "ppt"
+            ds["mf_bc_posterior"].attrs["longname"] = "aposteriori_simulated_boundary_condition_mole_fraction"
 
     return ds
