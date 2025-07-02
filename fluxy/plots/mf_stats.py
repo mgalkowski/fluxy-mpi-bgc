@@ -286,14 +286,14 @@ def plot_stats_mf(
 
 
 def plot_taylor_diagram(
-    stats: dict[Literal["prior", "posterior"], pd.DataFrame],
+    stats: dict[Literal["prior", "posterior", "prior_above_BC", "posterior_above_BC"], pd.DataFrame],
     model_colors: dict[str, str],
     model_labels: dict[str, str],
     stat_markers: list[str] = ["o"],
     normalize: bool = True,
     plot_type_model: Literal["separate", "together"] = "separate",
     plot_type_stat: Literal["separate", "together"] = "separate",
-    include: list[Literal["prior", "posterior"]] = ["prior", "posterior"],
+    include: list[Literal["prior", "posterior", "prior_above_BC", "posterior_above_BC"]] = ["prior", "posterior"],
     sd_range: tuple[float, float] = (0, 2.5),
     sd_unit: str = "ppb",
     check_sites: bool = False,
@@ -338,6 +338,11 @@ def plot_taylor_diagram(
     # Check that include is a subset of stats keys
     if not set(include).issubset(stats.keys()):
         raise ValueError(f"include {include} must be a subset of stats keys {list(stats.keys())}")
+    
+    # Ensure stats keys are valid
+    type_options = ["prior", "posterior", "prior_above_BC", "posterior_above_BC"]
+    for s in stats:
+        assert s in type_options, f"'{s}' is not in {type_options}"
 
     # Get model names
     models = np.unique(stats[include[0]]["model"].to_numpy())
@@ -440,23 +445,29 @@ def plot_taylor_diagram(
 
             # Define labels, colors and markers
             label = f"{model_labels[m]} - {s}"
-            color = model_colors[m][1] if s == "prior" else model_colors[m][0]
+            color = model_colors[m][1] if s.split('_')[0] == "prior" else model_colors[m][0]
             edgecolor = "k"
             marker = stat_markers[include.index(s)] if len(stat_markers) > 1 else stat_markers[0]
 
             # Add samples to the diagram
             if check_sites:
 
-                for site, sd_sim, pearson, in zip(sites, sds_sim, pearsons):
+                for (
+                    site,
+                    sd_sim,
+                    pearson,
+                ) in zip(sites, sds_sim, pearsons):
 
                     # Add samples for each site with different colors
-                    site_handles = diag.add_samples([sd_sim], [pearson], c=site_colors[site], edgecolor="k", marker=marker, label=site)
+                    site_handles = diag.add_samples(
+                        [sd_sim], [pearson], c=site_colors[site], edgecolor="k", marker=marker, label=site
+                    )
 
                     # Add all site handles to the combined legend
                     if i == 0 and j == 0:
                         combined_handles += [site_handles]
                         combined_labels += [site]
-                    
+
                     # Add inner circles to indicate model/statistic
                     inner_handles = diag.add_samples(
                         [sd_sim], [pearson], c=color, edgecolor="k", marker="o", label=label, markersize=40
@@ -477,7 +488,7 @@ def plot_taylor_diagram(
                 if i == 0 and j == 0:
                     combined_handles = handles.copy()
                     combined_labels = [label] * len(handles)
-            
+
                 # Add the new marker(s) and label(s) to combined legend
                 else:
                     combined_handles += handles
