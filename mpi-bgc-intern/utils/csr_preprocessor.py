@@ -35,6 +35,14 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output):
                            new_prior_name="stdev_flux_total_prior_country",
                            new_post_name="stdev_flux_total_posterior_country")
 
+    for var in ds.data_vars:
+        if 'rt' in ds[var].dims:
+            ds[var] = ds[var].isel(rt=0) 
+
+    if 'rt' in ds.coords:
+        ds = ds.drop_vars('rt')
+
+
     _save_dataset_safely(ds, path_to_output)
 
 
@@ -94,6 +102,29 @@ def _combine_variable(ds_prior, ds_posterior, varnames, new_prior_name, new_post
         ds = ds.drop_vars([v for v in varnames_to_drop if v in ds])
 
     return ds
+
+def _reduce_to_latlon(ds):
+    for var in ds.data_vars:
+        v = ds[var]
+
+        # Reduce time dimension
+        if "time" in v.dims:
+            v = v.mean(dim="time")
+
+        # Reduce rt dimension (retrieval type)
+        if "rt" in v.dims:
+            v = v.isel(rt=0)
+
+        # Reduce species dimension if it exists
+        if "spec" in v.dims:
+            v = v.isel(spec=0)
+
+        # Remove singleton dimensions
+        v = v.squeeze()
+
+        ds[var] = v
+    return ds
+
 
 
 def _save_dataset_safely(ds, path):
