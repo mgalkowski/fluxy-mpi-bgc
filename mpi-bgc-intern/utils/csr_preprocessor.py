@@ -41,6 +41,9 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output):
 
     if 'rt' in ds.coords:
         ds = ds.drop_vars('rt')
+    
+    ds = ds.drop_vars(['lproc', 'lrt', 'lspec'])
+
 
 
     _save_dataset_safely(ds, path_to_output)
