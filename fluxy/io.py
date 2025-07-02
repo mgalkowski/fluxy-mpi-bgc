@@ -15,7 +15,7 @@ from typing import Literal
 
 from fluxy import config
 from fluxy.operators.regions import extract_region_flux
-from fluxy.operators.select import slice_flux
+from fluxy.operators.select import slice_flux,get_intake_height,get_site_index
 from fluxy.operators.flux_align_dataset import align_time
 
 logger = logging.getLogger(__name__)
@@ -242,7 +242,8 @@ def read_model_output(
 
         # Fix variables and attributes
         ds_all[m] = edit_vars_and_attributes(
-            ds_all[m], m, period[i], file_type, config_data.get("regions_info", {})
+            ds_all[m], m, period[i], file_type, config_data.get("regions_info", {}), 
+            config_data.get("site_info", {})
         )
 
     return ds_all
@@ -532,6 +533,7 @@ def edit_vars_and_attributes(
     frequency: str,
     file_type: Literal["flux", "concentration"],
     regions_info: dict[str, str],
+    site_info: dict[str,dict],
 ) -> xr.Dataset:
     """
     Edit dataset variables and attributes.
@@ -744,6 +746,16 @@ def edit_vars_and_attributes(
             ds = ds.assign(
                 assimilation_flag=("index", np.ones(ds["index"].size, dtype=int))
             )
+
+        if 'intake_height' not in ds:
+            # Add inlet height if not present
+            all_inlet = np.array([])
+            for site in ds['platform'].values:
+                site_inlet = get_intake_height(site,site_info)
+                site_index = get_site_index(ds,site)
+                all_inlet = np.hstack((all_inlet,
+                                       np.ones(np.where(ds['number_of_identifier']==site_index)[0].shape[0])*site_inlet))
+            ds = ds.assign(intake_height=("index",all_inlet))
 
         # Test that the number of identifiers had valid values
         max_num_id, min_num_id = (

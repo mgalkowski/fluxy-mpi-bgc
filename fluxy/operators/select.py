@@ -102,6 +102,7 @@ def slice_mf(
     data_dir: os.PathLike | None = None,
     mf_units_print: str = None,
     keep_unassimilated: bool = False,
+    intake_height: int | None = None,
 ) -> dict[str, xr.Dataset]:
     """
     Slices down the mole fraction timeseries data, to within the
@@ -194,11 +195,20 @@ def slice_mf(
                 logger.warning(f"Error slicing site {site} from {m}: {e}")
                 ds_all.pop(m)
                 continue
-
+            
+        # Slice according to intake height
+        if intake_height is not None:
+            try:
+                ds_all[m] = slice_height(ds_all[m],intake_height)
+            except ValueError as e:
+                logger.warning(f"Error slicing intake_height {intake_height} from {m}: {e}")
+                ds_all.pop(m)
+                continue
+                
         if len(ds_all[m]["time"]) == 0:
             # Remove model if no data left after time slicing
             logger.warning(
-                f"No {m} obs found for {site=} between {start_date} and {end_date}."
+                f"No {m} obs found for {site=} {intake_height=} between {start_date} and {end_date}."
             )
             ds_all.pop(m)
             continue
@@ -249,6 +259,24 @@ def slice_site(ds: xr.Dataset, site: str) -> xr.Dataset:
 
     return ds
 
+def slice_height(ds: xr.Dataset, intake_height: str) -> xr.Dataset:
+    """
+    Slices the dataset to only include data for a given intake height.
+
+    Args:
+        ds (xarray dataset):
+            Dataset with mf data of a given model.
+        intake_height (str):
+            intake_height of interest.
+    Returns:
+        ds (xarray dataset):
+            Dataset with mf data of a given model, sliced to only include data for the given intake_height.
+    """
+
+    mask = ds["intake_height"] == float(intake_height)
+    ds = ds.where(mask, drop=True)
+
+    return ds
 
 def get_site_index(ds: xr.Dataset, site: str) -> int | None:
     """
@@ -292,6 +320,36 @@ def get_unique_sites(ds_all: dict[str, xr.Dataset]) -> list[str]:
 
     return sites
 
+def get_intake_height(site:str,site_info: dict[str:dict]) -> int | None:
+    """
+    Extract the inlet height from site_info.json.
+    This function is used to insert the 'inlet' variable if this is missing.
+    This assumes use of the heighest height from all available at the specified site.
+    
+    Args:
+        site (str):
+            3-letter site code.
+        site_info (dict of dict):
+            Data extracted from site_info.json.
+    Returns:
+        max_height (int):
+            Maximum height from all networks and inlets available ast s
+    """
+
+    all_heights = []
+
+    for network in site_info[site].keys():
+        if 'height' in site_info[site][network].keys():
+            all_heights += site_info[site][network]['height']
+
+    if all_heights == []:
+        logger.warning(f"No height info available for {site} in site_info.json so using 0m.")
+        max_height = 0
+
+    else:
+        max_height = np.max([int(h.strip('m')) for h in all_heights])
+
+    return max_height
 
 def clean_timeseries_missing_data(
     ds: xr.Dataset,
