@@ -756,6 +756,7 @@ def edit_vars_and_attributes(
                 all_inlet = np.hstack((all_inlet,
                                        np.ones(np.where(ds['number_of_identifier']==site_index)[0].shape[0])*site_inlet))
             ds = ds.assign(intake_height=("index",all_inlet))
+            logger.warning(f'intake_height not present in {model} so assuming default maximum intake heights for all sites.')
 
         # Test that the number of identifiers had valid values
         max_num_id, min_num_id = (
