@@ -778,4 +778,7 @@ def edit_vars_and_attributes(
             ds["mf_bc_posterior"].attrs["units"] = "ppt"
             ds["mf_bc_posterior"].attrs["longname"] = "aposteriori_simulated_boundary_condition_mole_fraction"
 
+            # Fill intake_height and stdev_mf_model with fake values
+            ds["intake_height"][:] = 0
+            ds["stdev_mf_model"][:] = 0
     return ds
