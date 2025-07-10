@@ -19,7 +19,6 @@ from fluxy.plots.utils import update_list_params
 
 logger = logging.getLogger(__name__)
 
-
 def determine_subplots_arrangement(subplot_number: int) -> tuple[int, int]:
     """
     Determine number of columns and rows for the figure given the number of subplots to make.
@@ -178,6 +177,7 @@ def plot_country_flux(
     plot_resample_and_original: bool = False,
     return_res: bool = False,
     rolling_mean: bool = False,
+    sector: str | None = None
 ) -> Figure | list:
     """
     Timeseries plot of prior and posterior country fluxes, from list of
@@ -303,7 +303,7 @@ def plot_country_flux(
                 max_x = max(inventory.time.max(skipna=True).values, max_x)
                 max_cf[i] = np.nanmax((max_cf[i], inventory.max(skipna=True)))
 
-        ds_all_region = extract_region_flux(ds_all, country, r_data)
+        ds_all_region = extract_region_flux(ds_all, country, r_data,sector=sector)
         ds_to_plot = prepare_data_to_plot(
             ds_all_region,
             model_labels,
@@ -374,7 +374,7 @@ def plot_country_flux(
                 )
 
         ax.set_ylabel(
-            f"{s_data.get(species, {}).get('species_print', species)}"
+            f"{s_data.get(species, {}).get('species_print', species)} {sector.title()}"
             f" ({unit.replace('2','$_{{2}}$').replace('-1','$^{{-1}}$')})"
         )
 
