@@ -7,42 +7,6 @@ from fluxy.operators.convert import get_units_conversion_factor
 
 logger = logging.getLogger(__name__)
 
-def sum_region_fluxes(ds,regions,config_data,country_flux_units_print):
-    """
-    Uses country_fraction and cell_area variables to sum spatial fluxes into
-    region/country totals.
-    TODO: Add calculation of region sector flux uncertainties here.
-    """
-    
-    dict_regions: dict[str,str] = config_data['regions_info'].get("regions",{})
-    country_codes = config_data['regions_info'].get("country_codes", {})
-    country_search = country_codes.get(region, region)
-    
-    #units for spatial flux to regional flux totals
-    molar_mass = config_data["species_info"][species]["molar_mass"]
-    s_in_year = 60*60*24*365
-    scaling_factor = get_units_conversion_factor('mol s-1', country_flux_units_print, molar_mass)
-    
-    region_sector_prior_out = np.zeros(ds['flux_total_prior_country'].values.shape[1])
-    region_sector_posterior_out = np.zeros(ds['flux_total_prior_country'].values.shape[1])
-    
-    for country_search in regions:
-        if country_search in ds["country"].values:
-            country_id = np.where(ds["country"].values == country_search)
-            region_sector_out[r] = np.nansum()
-        elif country_search not in ds["country"].values and country_search in dict_regions.keys():
-            country_search = dict_regions[region_test]
-        
-    
-
-    r_fraction = ds['country_fraction'].values[r,:,:]
-    region_sector_prior_out[i,r] = np.nansum(flux_sector_prior_out[i,:,:]*r_fraction
-                                            *cell_area*scaling_factor)
-    region_sector_post_out[i,r] = np.nansum(flux_sector_post_out[i,:,:]*r_fraction
-                                            *cell_area*scaling_factor)
-    
-    return ds
-
 def scale_by_sector_proportions(data_dir:str,
                                 ds: xr.Dataset,
                                 species: str,
@@ -116,10 +80,10 @@ def scale_by_sector_proportions(data_dir:str,
         country_codes = config_data['regions_info'].get("country_codes", {})
         country_search = [country_codes.get(r, r) for r in regions]
                 
-    #units for spatial flux to regional flux totals
-    molar_mass = config_data["species_info"][species]["molar_mass"]
-    s_in_year = 60*60*24*365
-    scaling_factor = get_units_conversion_factor('mol s-1', country_flux_units_print, molar_mass)
+        #units for spatial flux to regional flux totals
+        molar_mass = config_data["species_info"][species]["molar_mass"]
+        s_in_year = 60*60*24*365
+        scaling_factor = get_units_conversion_factor('mol s-1', country_flux_units_print, molar_mass)
      
     sector_prop_path = os.path.join(data_dir,'sector_proportions',
                                        f'{sector_proportions_file}_{species}_yearly_flux_sector_proportions.nc')
@@ -180,25 +144,25 @@ def scale_by_sector_proportions(data_dir:str,
                             region_sector_post_out[i,country_id] += np.nansum(flux_sector_post_out[i,:,:]*r_fraction
                                                                     *cell_area*scaling_factor)
 
-        ds[f'flux_{s}_prior'] = (['time','lat','lon'],flux_sector_prior_out)
-        ds[f'flux_{s}_prior'].attrs = {'unit':'mol m-2 s-1',
+        ds[f'flux_{s}_prior'] = (['time','latitude','longitude'],flux_sector_prior_out)
+        ds[f'flux_{s}_prior'].attrs = {'units':'mol m-2 s-1',
                                             '_FillValue':np.nan,
                                             'long_name':f'prior {s} {species} flux, created by scaling total flux by sector proportions'}
         
-        ds[f'flux_{s}_posterior'] = (['time','lat','lon'],flux_sector_post_out)
-        ds[f'flux_{s}_posterior'].attrs = {'unit':'mol m-2 s-1',
+        ds[f'flux_{s}_posterior'] = (['time','latitude','longitude'],flux_sector_post_out)
+        ds[f'flux_{s}_posterior'].attrs = {'units':'mol m-2 s-1',
                                             '_FillValue':np.nan,
                                             'long_name':f'posterior total {species} {s} flux, created by scaling total flux by sector proportions'}
         
         if create_region_sector_totals == True:
         
             ds[f'flux_{s}_prior_country'] = (['time','country'],region_sector_prior_out)
-            ds[f'flux_{s}_prior_country'].attrs = {'unit':'kg yr-1',
+            ds[f'flux_{s}_prior_country'].attrs = {'units':'kg yr-1',
                                                 '_FillValue':np.nan,
                                                 'long_name':f'country {s} {species} prior flux, created by scaling total flux by sector proportions'}
 
             ds[f'flux_{s}_posterior_country'] = (['time','country'],region_sector_post_out)
-            ds[f'flux_{s}_posterior_country'].attrs = {'unit':'kg yr-1',
+            ds[f'flux_{s}_posterior_country'].attrs = {'units':'kg yr-1',
                                                 '_FillValue':np.nan,
                                                 'long_name':f'country {s} {species} posterior flux, created by scaling total flux by sector proportions'}
 

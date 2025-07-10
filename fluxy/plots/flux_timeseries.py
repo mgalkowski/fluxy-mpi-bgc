@@ -483,3 +483,281 @@ def plot_country_flux(
         return fig, res_dict
     else:
         return fig
+
+def plot_country_sector_flux_bar(plot_region: str,
+                                 plot_inventory_or_prior: str = 'prior'):
+    """
+    """
+    
+    s_data = config_data.get("species_info", {})
+    r_data = config_data.get("regions_info", {})
+
+    if return_res:
+        res_dict: dict[str, dict] = {country: dict() for country in plot_region}
+
+    max_cf = 0
+    min_x, max_x = np.datetime64("2100-01-01", "D"), np.datetime64("1900-01-01", "D")
+    linewidth, alpha = (1.0, 0.7) if annex_mode else (1.5, 1.0)
+
+    # Create figure
+    n_cols, n_rows = 2, len([ds_all.keys()])
+
+    units = {ds["flux_total_posterior_country"].units for ds in ds_all.values()}
+    if len(units) == 1:
+        unit = list(units)[0]
+    else:
+        raise ValueError(
+            f"Inconsistency in the units from the different datasets : {units} are present. Only one is expected."
+        )
+
+    fig, axes = plt.subplots(
+        n_rows,
+        n_cols,
+        sharex=True,
+        constrained_layout=True,
+        figsize=(n_cols * 6, n_rows * 4),
+    )
+    
+    row_count = 0
+    col_count = 0
+
+    for i,m in enumerate(ds_all.keys()):
+    
+        if n_rows == 1:
+            ax_data = axes[0]
+            ax_comp = axes[1]
+        else:
+            ax_data = axes[i,0]
+            ax_comp = axes[i,1]
+    
+        if plot_inventory_or_prior == 'inventory':
+            '''
+            if isinstance(start_date, list):
+                start_date_inv = str(min([np.datetime64(date) for date in start_date]))
+            else:
+                start_date_inv = start_date
+            if isinstance(end_date, list):
+                end_date_inv = str(max([np.datetime64(date) for date in end_date]))
+            else:
+                end_date_inv = end_date
+            inventories_to_plot = retrieve_inventories(
+                data_dir,
+                country,
+                species,
+                start_date_inv,
+                end_date_inv,
+                unit,
+                s_data,
+                r_data,
+                inventory_years,
+                inventory_filename,
+            )
+            for i_inv, inventory in enumerate(inventories_to_plot):
+                ax.bar(
+                    inventory.time,
+                    inventory,
+                    np.timedelta64(340 - i_inv * 20, "D"),
+                    edgecolor=inventory.plot_color,
+                    align="edge",
+                    fill=False,
+                    label=f"Inventory {inventory.year}",
+                    zorder=0,
+                )
+                if return_res:
+                    res_dict[country][f"inventory_{inventory.year}"] = {
+                        "time": inventory.time.values,
+                        "value": inventory.values,
+                    }
+                min_x = min(inventory.time.min(skipna=True).values, min_x)
+                max_x = max(inventory.time.max(skipna=True).values, max_x)
+                max_cf[i] = np.nanmax((max_cf[i], inventory.max(skipna=True)))
+            '''
+            print('add inventory plotting here')
+        
+        elif plot_inventory_or_prior == 'prior':
+            print('add prior plotting here')
+            
+        for s,sector in enumerate(sectors):#TODO: continue here
+            
+        ds_all_region = extract_region_flux(ds_all, country, r_data,sector=sector)
+        ds_to_plot = prepare_data_to_plot(
+            ds_all_region,
+            model_labels,
+            model_colors,
+            plot_separate=plot_separate,
+            plot_combined=plot_combined,
+            resample=resample,
+            rolling_mean=rolling_mean,
+            plot_resample_and_original=plot_resample_and_original,
+            resample_uncert_correlation=resample_uncert_correlation,
+        )
+
+        for m, ds_region in ds_to_plot.items():
+
+            ax.plot(
+                ds_region.time,
+                ds_region.posterior,
+                label=ds_region.attrs["model_label"],
+                color=ds_region.attrs["model_color"],
+            )
+            ax.fill_between(
+                ds_region.time,
+                ds_region.posterior_lower,
+                ds_region.posterior_upper,
+                alpha=0.3,
+                color=ds_region.attrs["model_color"],
+            )
+            max_cf[i] = np.nanmax(
+                (
+                    max_cf[i],
+                    ds_region.posterior_upper.max(skipna=True),
+                    ds_region.posterior.max(skipna=True),
+                )
+            )
+            min_x = min(ds_region.time.min(skipna=True).values, min_x)
+            max_x = max(ds_region.time.max(skipna=True).values, max_x)
+
+            if return_res:
+                res_dict[country][m] = {
+                    "time": ds_region.time.values.astype("datetime64[ns]"),
+                    "mean": ds_region.posterior.values,
+                    "min": ds_region.posterior_lower.values,
+                    "max": ds_region.posterior_upper.values,
+                }
+
+            if add_prior:
+                ax.plot(
+                    ds_region.time,
+                    ds_region.prior,
+                    label=ds_region.attrs["model_label"] + " prior",
+                    color=ds_region.attrs["model_color"],
+                    linestyle="dashed",
+                    linewidth=linewidth,
+                    alpha=alpha,
+                )
+                max_cf[i] = np.nanmax((max_cf[i], ds_region.prior.max(skipna=True)))
+
+            if add_prior_unc:
+                ax.fill_between(
+                    ds_region.time,
+                    ds_region.prior_lower,
+                    ds_region.prior_upper,
+                    alpha=0.1,
+                    color=ds_region.attrs["model_color"],
+                )
+                max_cf[i] = np.nanmax(
+                    (max_cf[i], ds_region.prior_upper.max(skipna=True))
+                )
+
+        ax.set_ylabel(
+            f"{s_data.get(species, {}).get('species_print', species)} {sector.title()}"
+            f" ({unit.replace('2','$_{{2}}$').replace('-1','$^{{-1}}$')})"
+        )
+
+        # set legend if needed
+        if not set_global_leg:
+            ncol = len(ds_to_plot) + 1 if annex_mode else 2
+            leg = ax.legend(ncol=ncol, borderpad=0.4, columnspacing=1.0)
+
+            handle_name = (
+                "legend_handles"
+                if int(mplt_version.split(".")[0]) >= 3
+                and int(mplt_version.split(".")[1]) >= 7
+                else "legendHandles"
+            )
+            for l in leg.__getattribute__(handle_name)[
+                : (-1 if plot_inventory else None)
+            ]:
+                # for l in leg.legendHandles[: (-1 if plot_inventory else None)]:
+                l.set_linewidth(3.0)
+
+        # set title
+        country_equivalent = {
+            "NW_EU2": "NW EUROPE",
+            "CW_EU": "CENTRAL W EUROPE",
+            "NW_EU_CONTINENT": "NW CONTINENTAL EUROPE",
+        }
+        print_country = country_equivalent.get(country, country)
+
+        if country_codes_as_titles and country in r_data["regions"].keys():
+            ax.set_title(f'{print_country}\n{r_data["regions"][country]}')
+        else:
+            ax.set_title(f"{print_country}")
+
+        # set grid
+        ax.grid(visible=True, which="major", alpha=0.4)
+
+        # set xticks
+        year_range = max_x.astype("datetime64[Y]") - min_x.astype("datetime64[Y]")
+        if (
+            "yearly" in [ds.attrs["frequency"] for ds in ds_to_plot.values()]
+            or resample == "year"
+        ):
+            min_x = min_x.astype("datetime64[Y]")
+            max_x = max_x.astype("datetime64[Y]") + np.timedelta64(1, "Y")
+        xlim = [min_x - (max_x - min_x) / 50, max_x + (max_x - min_x) / 50]
+
+        if year_range > np.timedelta64(8, "Y"):
+            max_x = max_x.astype("datetime64[Y]")
+            min_x = min_x.astype("datetime64[Y]")
+            step = int(year_range) // 8 + 1
+            xticks = np.arange(min_x, max_x, step=np.timedelta64(step, "Y"))
+            if (max_x - min_x) % np.timedelta64(step, "Y") == 0:
+                xticks = np.append(xticks, max_x)
+            ax.set_xticks(xticks)
+            ax.set_xticklabels(xticks.astype("datetime64[Y]"))
+            ax.xaxis.set_major_locator(YearLocator())
+
+        else:
+            ax.xaxis.set_minor_locator(MonthLocator())
+            ax.xaxis.set_major_locator(YearLocator())
+
+        ax.set_xlim(xlim)
+
+    if set_global_leg:
+        ncol = 0
+        if plot_separate or resample:
+            ncol = len(ds_all.keys())
+        if plot_combined and plot_separate:
+            ncol = math.floor(len(ds_all.keys()) / 2) + 2
+        elif plot_combined:
+            ncol = 3
+        if plot_inventory:
+            ncol = ncol + 1
+
+        if n_rows > 1:
+            legend_loc = (0.5, 1.1)
+        else:
+            legend_loc = (0.5, 1.15)
+        handles, labels = ax.get_legend_handles_labels()
+        fig.legend(
+            handles,
+            labels,
+            loc="upper center",
+            ncol=ncol,
+            borderpad=0.4,
+            columnspacing=1.0,
+            bbox_to_anchor=legend_loc,
+        )
+
+    fac = 1.1 if set_global_leg else 1.2
+
+    # loop through plots again to fix min/max y-axis values
+    for i, country in enumerate(plot_regions):
+        if fix_y_axes == True:
+            fig.axes[i].set_ylim([0, np.nanmax(max_cf) * fac])
+        elif type(fix_y_axes) == list:
+            fig.axes[i].set_ylim(fix_y_axes)
+        elif fix_y_axes == False:
+            fig.axes[i].set_ylim([0, max_cf[i] * fac])
+
+    logger.info(
+        "NOTE: If all the data is not within axis limits, adjust the set_ylim parameter"
+    )
+
+    if return_res:
+        return fig, res_dict
+    else:
+        return fig
+    
+    return fig
