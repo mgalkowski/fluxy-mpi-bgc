@@ -1,6 +1,9 @@
 import xarray as xr
 import os
 import re
+import calendar
+import numpy as np
+import pandas as pd
 
 #new_name: ['old_name1', 'old_name2']
 rename_candidates = {
@@ -22,8 +25,9 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
     ds_posterior = xr.open_dataset(path_to_posterior)
 
     ds_prior = _rename(ds_prior)
+    ds_prior = _convert_time(ds_prior)
     ds_posterior = _rename(ds_posterior)
-
+    ds_posterior = _convert_time(ds_posterior)
     ds = _combine_variable(ds_prior, ds_posterior,
                            species=species,
                            drop_also=[f"{species}flux_ocean", 
@@ -53,7 +57,6 @@ def _rename(ds):
 
 def _combine_variable(ds_prior, ds_post, species, drop_also=[]):
     ds = ds_prior.copy()
-
     for v, new_vars in combine_candidates.items():
         varname = f'{species}{v}'
         if varname in ds and varname in ds_post:
@@ -78,17 +81,54 @@ def _check_for_units(varname, data, ds):
         data.attrs = ds[varname].attrs.copy()
         if 'units' in data.attrs and data.attrs['units'] == 'PgC/yr': 
             area = ds['area'] # Adjust to target region  
-            data = _pgcyr_to_mol_m2_s(data, area)
+            years = _get_years_from_time(ds)
+            data = _pgcyr_to_mol_m2_s(data, area, years)
              # Update unit string
             data.attrs['units'] = "mol m-2 s-1"
         return data
          
-def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2):
+def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2, years):
+    
     grams = value_pgcyr * 1e15
     mols = grams / 12.01
-    seconds_per_year = 31_536_000
+
+    days_in_year = np.array([366 if calendar.isleap(y) else 365 for y in years])
+    seconds_per_year = days_in_year * 24 * 60 * 60
+
+      # Make this an xarray DataArray to allow broadcasting
+    seconds_per_year = xr.DataArray(
+        seconds_per_year,
+        dims=["time"],
+        coords={"time": value_pgcyr["time"]}
+    )
+   
     flux = mols / seconds_per_year
     return flux / area_m2
+
+def _convert_time(ds):
+    if np.issubdtype(ds['time'].dtype, np.datetime64):
+        # already datetime64 — no need to convert
+        return ds
+
+    # convert seconds since 2000-01-01 to datetime64
+    base = np.datetime64("2000-01-01T00:00:00", "s")
+    time_seconds = ds['time'].values.astype("timedelta64[s]")
+    new_time = base + time_seconds
+
+    # set the new time coordinate, forcing ns resolution to avoid warnings
+    ds = ds.assign_coords(time=new_time.astype("datetime64[ns]"))
+    return ds
+
+def _get_years_from_time(ds):
+    # Create datetime64 array for time coordinate (days since 1970-01-01)
+    dates = np.datetime64('1970-01-01') + ds['time'].values.astype('timedelta64[D]')
+
+    # Extract years as integers
+    years = dates.astype('datetime64[Y]').astype(int) + 1970
+
+    return years
+
+  
 
 def _save_dataset(ds, path):
     try:
