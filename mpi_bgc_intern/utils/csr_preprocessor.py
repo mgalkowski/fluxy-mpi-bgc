@@ -79,14 +79,21 @@ def _combine_variable(ds_prior, ds_post, species, drop_also=[]):
 
 
 def _check_for_units(varname, data, ds):
-     if data.any():
+    if data.any():
         data.attrs = ds[varname].attrs.copy()
-        if 'units' in data.attrs and data.attrs['units'] == 'PgC/yr': 
-            area = ds['area'] # Adjust to target region  
+        if 'units' in data.attrs:
+            unit = data.attrs['units']
+            area = ds['area']  # Adjust to target region  
             years = _get_years_from_time(ds)
-            data = _pgcyr_to_mol_m2_s(data, area, years)
-             # Update unit string
-            data.attrs['units'] = flux_unit
+
+            if unit == 'PgC/yr':
+                data = _pgcyr_to_mol_m2_s(data, area, years)
+                data.attrs['units'] = "mol m-2 s-1"
+            elif unit == 'TgC/yr':
+                # Convert TgC to PgC first (1 PgC = 1000 TgC)
+                data = data / 1000.0
+                data = _pgcyr_to_mol_m2_s(data, area, years)
+                data.attrs['units'] = "mol m-2 s-1"
         return data
          
 def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2, years):
