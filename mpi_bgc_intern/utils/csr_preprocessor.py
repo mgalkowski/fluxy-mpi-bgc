@@ -33,7 +33,8 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
     ds = _combine_variable(ds_prior, ds_posterior,
                            species=species,
                            drop_also=[f"{species}flux_ocean", 
-                                      f"{species}flux_subt"])
+                                      f"{species}flux_subt",
+                                      f"{species}flux_excl"])
 
     for var in ds.data_vars:
         if 'rt' in ds[var].dims:
