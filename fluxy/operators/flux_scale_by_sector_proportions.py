@@ -89,13 +89,41 @@ def scale_by_sector_proportions(data_dir:str,
                                        f'{sector_proportions_file}_{species}_yearly_flux_sector_proportions.nc')
 
     sector_prop = {}
-
+    
     with xr.open_dataset(sector_prop_path) as f:
         sector_time = f.time.values
         for s in sectors:
             sector_prop[s] = f[f'flux_proportion_{s}']
             
-    for s in sectors:
+    if create_region_sector_totals == True:
+        
+        # create a dictionary of {region_name:[available_region_masks]}  
+        country_all = {}
+
+        for country in country_search:
+            # if a grouped region flux total and grouped country mask is available e.g. InTEM: {BEL-LUX-NLD:[BEL-LUX-NLD]}
+            if country in ds["country_fraction"].country and country in ds['country'].values:
+                country_all[country] = [country]
+                country_id = np.where(ds["country_fraction"].country.values == country)[0]
+                r_fraction = ds['country_fraction'].values[country_id,:,:]
+                
+                # if a grouped region flux total but no grouped country mask is available, e.g. RHIME: {BEL-LUX-NLD:[BEL,LUX,NLD]}
+                if np.isnan(r_fraction).all() == True:
+                    logger.warning(
+                        f"{country} country_fraction is not present in ds. "+
+                        f"Considering sum of individual countries: {country_all}."
+                        )
+                    country_all[country] = country.split('-')
+            else:
+                # if no region flux total and no country mask is available, e.g. ELRIS: {BEL:BEL,LUX:LUX,NLD:NLD}
+                logger.warning(
+                    f"{country} country_fraction is not present in ds. "+
+                    f"Considering sum of individual countries: {country_all}."
+                    )
+                for c_add in country.split('-'):
+                    country_all[c_add] = [c_add]
+            
+    for s_id,s in enumerate(sectors):
         
         flux_sector_prior_out = np.zeros_like(ds['flux_total_prior'].values)
         flux_sector_post_out = np.zeros_like(ds['flux_total_posterior'].values)
@@ -121,29 +149,21 @@ def scale_by_sector_proportions(data_dir:str,
             if create_region_sector_totals == True:
                 #TODO: add calculation of region/country sector flux uncertainties here
                 #      currently just calculates flux prior and posterior mean
-                for country in country_search:
-                    if country in ds["country"].values:
-                        country_id = np.where(ds["country"].values == country)
+                
+                # loop through only selected regions and their matching region masks
+                for grouped_c in country_all.keys():
+                    c_update = np.where(ds['country'].values == grouped_c)[0]
+                    
+                    for c in country_all[grouped_c]:                        
+                        country_id = np.where(ds["country_fraction"].country.values == c)[0]
                         r_fraction = ds['country_fraction'].values[country_id,:,:]
-                        region_sector_prior_out[i,country_id] = np.nansum(flux_sector_prior_out[i,:,:]*r_fraction
-                                                            *cell_area*scaling_factor)
-                        region_sector_post_out[i,country_id] = np.nansum(flux_sector_post_out[i,:,:]*r_fraction
-                                                                *cell_area*scaling_factor)
-                    elif country not in ds["country"].values and country in dict_regions.keys():
-                        country_all = dict_regions[country]
-                        #TODO: include uncertainty covariance in this calculation?
-                        logger.warning(
-                            f"{country} emissions are not present in ds. "+
-                            f"Considering sum of individual countries: {country_all}."
-                            )
-                        for c in country_all:
-                            country_id = np.where(ds["country"].values == c)
-                            r_fraction = ds['country_fraction'].values[country_id,:,:]
-                            region_sector_prior_out[i,country_id] += np.nansum(flux_sector_prior_out[i,:,:]*r_fraction
-                                                                *cell_area*scaling_factor)
-                            region_sector_post_out[i,country_id] += np.nansum(flux_sector_post_out[i,:,:]*r_fraction
-                                                                    *cell_area*scaling_factor)
-
+                        cell_area_by_country = cell_area * r_fraction
+                        
+                        region_sector_prior_out[i,c_update] += np.nansum(flux_sector_prior_out[i,:,:]*r_fraction
+                                                            *cell_area_by_country*scaling_factor)
+                        region_sector_post_out[i,c_update] += np.nansum(flux_sector_post_out[i,:,:]*r_fraction
+                                                                *cell_area_by_country*scaling_factor)
+                    
         ds[f'flux_{s}_prior'] = (['time','latitude','longitude'],flux_sector_prior_out)
         ds[f'flux_{s}_prior'].attrs = {'units':'mol m-2 s-1',
                                             '_FillValue':np.nan,
