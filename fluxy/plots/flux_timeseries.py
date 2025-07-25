@@ -277,6 +277,7 @@ def plot_country_flux(
                 r_data,
                 inventory_years,
                 inventory_filename,
+                sector=sector
             )
             for i_inv, inventory in enumerate(inventories_to_plot):
                 ax.bar(
@@ -560,8 +561,11 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
     print_country = country_equivalent.get(plot_region, plot_region)
 
     # Create figure
-    n_cols, n_rows = 2, len(ds_all.keys())
-
+    if plot_inventory_or_prior == 'inventory':
+        n_cols, n_rows = len(ds_all.keys())+1,1
+    elif plot_inventory_or_prior == 'prior':
+        n_cols, n_rows = 2, len(ds_all.keys())
+    
     units = {ds["flux_total_posterior_country"].units for ds in ds_all.values()}
     unit = list(units)[0]
 
@@ -580,8 +584,11 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
     for i,m in enumerate(ds_all.keys()):
         
         if n_rows == 1:
-            ax_data = axes[0]
-            ax_comp = axes[1]
+            ax_data = axes[i]
+            if plot_inventory_or_prior == 'prior':
+                ax_comp = axes[1]
+            if plot_inventory_or_prior == 'inventory':
+                ax_comp = axes[-1]
         else:
             ax_data = axes[i,0]
             ax_comp = axes[i,1]
@@ -608,7 +615,8 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
             
             if s == 0:
                 total_s = np.zeros(ds_to_plot[m_extract].time.shape[0])
-                total_s_comp = np.zeros(ds_to_plot[m_extract].time.shape[0])
+                if plot_inventory_or_prior == 'prior':
+                    total_s_comp = np.zeros(ds_to_plot[m_extract].time.shape[0])
 
             xticks = np.arange(ds_to_plot[m_extract].time.values.shape[0])
 
@@ -626,11 +634,8 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
                     width=width
                     )
             total_s += ds_to_plot[m_extract].posterior
-            
-            if plot_inventory_or_prior == 'inventory':
-                print('add inventory plotting here')
                 
-            elif plot_inventory_or_prior == 'prior':
+            if plot_inventory_or_prior == 'prior':
             
                 ax_comp.bar(xticks,
                     ds_to_plot[m_extract].prior,
@@ -641,26 +646,27 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
                     width=width
                     )
                 total_s_comp += ds_to_plot[m_extract].prior
+                                    
+        if resample != None:
+            ax_data.set_xticks(xticks)
+            ax_data.set_xticks(xticks,minor=True)
+            ax_data.set_xticklabels(xtick_labels)
             
-            if resample != None:
-                ax_data.set_xticks(xticks)
-                ax_data.set_xticks(xticks,minor=True)
-                ax_data.set_xticklabels(xtick_labels)
-                
-                ax_comp.set_xticks(xticks)
-                ax_comp.set_xticks(xticks,minor=True)
-                ax_comp.set_xticklabels(xtick_labels)
-                
-            else:  
-                ax_data.set_xticks(xticks[::12])
-                ax_data.set_xticks(xticks,minor=True)
-                ax_data.set_xticklabels(xtick_labels[::12])
-                
-                ax_comp.set_xticks(xticks[::12])
-                ax_comp.set_xticks(xticks,minor=True)
-                ax_comp.set_xticklabels(xtick_labels[::12])
+            ax_comp.set_xticks(xticks)
+            ax_comp.set_xticks(xticks,minor=True)
+            ax_comp.set_xticklabels(xtick_labels)
             
-            max_cf = np.nanmax((max_cf,np.nanmax(total_s)))
+        else:  
+            ax_data.set_xticks(xticks[::12])
+            ax_data.set_xticks(xticks,minor=True)
+            ax_data.set_xticklabels(xtick_labels[::12])
+            
+            ax_comp.set_xticks(xticks[::12])
+            ax_comp.set_xticks(xticks,minor=True)
+            ax_comp.set_xticklabels(xtick_labels[::12])
+        
+        max_cf = np.nanmax((max_cf,np.nanmax(total_s)))
+        if plot_inventory_or_prior == 'prior':
             max_cf = np.nanmax((max_cf,np.nanmax(total_s_comp)))        
         
         ax_data.set_ylabel(
@@ -669,13 +675,69 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
                 )
         
         leg = ax_data.legend(ncol=2, borderpad=0.4, columnspacing=1.0)
+        if plot_inventory_or_prior == 'prior':
+            leg = ax_comp.legend(ncol=2, borderpad=0.4, columnspacing=1.0)
+        
+    if plot_inventory_or_prior == 'inventory':
+        
+        ax_comp = axes[-1]
+        
+        for s,sector in enumerate(sectors):
+            inventories_to_plot = retrieve_inventories(
+                data_dir,
+                plot_region,
+                species,
+                (ds_to_plot[m_extract].time.values[0].astype('datetime64[Y]'))-np.timedelta64(1,'Y'),
+                ds_to_plot[m_extract].time.values[-1],
+                unit,
+                s_data,
+                r_data,
+                inventory_years,
+                inventory_filename,
+                sector=sector
+                )[0]
+                                            
+            if ds_to_plot[m_extract].attrs['frequency'] == 'monthly':
+                logger.info(f'{m_extract} inversion is monthly, '+
+                            'so annual inventory value applied to each month')
+                #inventories_to_plot = inventories_to_plot.resample(time='1M',origin='start').ffill()
+                inventories_to_plot = inventories_to_plot.reindex_like(ds_to_plot[m_extract],method='ffill')
+                
+            elif ds_to_plot[m_extract].attrs['frequency'] == 'yearly':
+                logger.info(f'{m_extract} inversion is yearly, '+
+                            'so no adjustments made to inventory data')
+                
+            if s == 0: 
+                total_s_comp = np.zeros(inventories_to_plot.values.shape)
+
+            ax_comp.bar(np.arange(inventories_to_plot.time.values.shape[0]),
+                        inventories_to_plot,
+                        label=sector.title(),
+                        color=sector_colors[sector],
+                        bottom=total_s_comp,
+                        width=width,
+                        alpha=0.7
+            )
+            
+            total_s_comp += inventories_to_plot.values
+            
+        ax_comp.set_xticks(xticks[::12])
+        ax_comp.set_xticks(xticks,minor=True)
+        ax_comp.set_xticklabels(xtick_labels[::12])
+        ax_comp.set_ylabel(f"{print_country} Inventory {s_data.get(species, {}).get('species_print', species)}"
+                    f" ({unit.replace('2','$_{{2}}$').replace('-1','$^{{-1}}$')})")
+        
         leg = ax_comp.legend(ncol=2, borderpad=0.4, columnspacing=1.0)
+        max_cf = np.nanmax((max_cf,np.nanmax(total_s_comp)))        
         
     for i,m in enumerate(ds_all.keys()):
         
         if n_rows == 1:
-            ax_data = axes[0]
-            ax_comp = axes[1]
+            ax_data = axes[i]
+            if plot_inventory_or_prior == 'prior':
+                ax_comp = axes[1]
+            if plot_inventory_or_prior == 'inventory':
+                ax_comp = axes[-1]
         else:
             ax_data = axes[i,0]
             ax_comp = axes[i,1]
@@ -684,12 +746,12 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
             ax_data.set_ylim([0,max_cf*1.2])
             ax_comp.set_ylim([0,max_cf*1.2])
             
-        if i == 0:
-            ax_data.set_title('Inverse modelling')
-            if plot_inventory_or_prior == 'inventory':
-                ax_comp.set_title('Inventory')
-            elif plot_inventory_or_prior == 'prior':
-                ax_comp.set_title('Prior')
+        #if i == 0:
+        #    ax_data.set_title('Inverse modelling')
+        #    if plot_inventory_or_prior == 'inventory':
+        #        ax_comp.set_title('Inventory')
+        #    elif plot_inventory_or_prior == 'prior':
+        #        ax_comp.set_title('Prior')
 
     
     return fig

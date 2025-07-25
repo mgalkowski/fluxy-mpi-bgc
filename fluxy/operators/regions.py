@@ -242,7 +242,7 @@ def extract_region_inventory_flux(
             logger.warning(f"Inventory is missing data: {inv_ds_all.attrs['missing_data']}")
     else:
         logger.warning(f'No missing_data variable available in inventory files, assuming all data present.')
-    
+        
     #first option left for compatability with older inventory netcdfs, can be removed later
     inv_ds = inv_ds_all['inventory'] if 'inventory' in inv_ds_all.keys() else inv_ds_all[f"flux_{sector}_inventory_country"]
 
@@ -268,7 +268,7 @@ def extract_region_inventory_flux(
     country_codes = r_data.get("country_codes", {})
     # Look for the code if country_codes is defined, otherwise assume the code was given as input
     country_search = country_codes.get(country, country)
-    
+        
     if country_search in inv_ds["country"]:
         return inv_ds.sel(country=country_search) # new format
     elif country in inv_ds["country"]:
@@ -288,6 +288,6 @@ def extract_region_inventory_flux(
         )
     elif country_search in available_countries:
         inv_ds = inv_ds.sel({"country": country_search})
-
+        
     return inv_ds.sum(dim="country", keep_attrs=True)
 
