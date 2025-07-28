@@ -635,7 +635,8 @@ def plot_flux_map_over_time(
 
     # Add colorbar
     cbar_label = print_cbar_label(
-        ds_plot, species_info, var, format=["variable", "species", "units"]
+        ds_plot, species_info, var, sector=sector,
+        format=["variable", "species", "sector", "units"]
     )
     add_colorbar(
         fig,
