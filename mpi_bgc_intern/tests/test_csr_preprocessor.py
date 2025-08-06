@@ -8,8 +8,8 @@ import os
 @pytest.fixture(scope="module")
 def processed_dataset(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp("data")
-    path_to_prior = "mpi_bgc_intern/tests/data/Prior_vprm_flux_monthly_2006_2023_59_66km.nc"
-    path_to_posterior = "mpi_bgc_intern/tests/data/Posterior_vprm_flux_monthly_2006_2023_59_66km.nc"
+    path_to_prior = "mpi_bgc_intern/tests/data/Prior_vprm_flux_monthly_2021.nc"
+    path_to_posterior = "mpi_bgc_intern/tests/data/Posterior_vprm_flux_monthly_2021.nc"
     output_path = tmp_path / "CSR_co2_monthly.nc"
     species = "co2"
 

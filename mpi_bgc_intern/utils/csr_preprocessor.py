@@ -43,7 +43,7 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
     if 'rt' in ds.coords:
         ds = ds.drop_vars('rt')
     
-    ds = ds.drop_vars(['lproc', 'lrt', 'lspec'])
+    ds = ds.drop_vars([v for v in ['lproc', 'lrt', 'lspec'] if v in ds])
 
     _save_dataset(ds, path_to_output)
 
