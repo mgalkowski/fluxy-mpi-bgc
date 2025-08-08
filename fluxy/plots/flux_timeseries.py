@@ -177,7 +177,7 @@ def plot_country_flux(
     plot_resample_and_original: bool = False,
     return_res: bool = False,
     rolling_mean: bool = False,
-    sector: str | None = None
+    sector: str = 'total'
 ) -> Figure | list:
     """
     Timeseries plot of prior and posterior country fluxes, from list of

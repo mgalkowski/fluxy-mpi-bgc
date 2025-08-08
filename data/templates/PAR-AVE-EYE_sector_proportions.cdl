@@ -1,4 +1,4 @@
-netcdf EUROPE_EDGAR_ch4_yearly_flux_sector_proportions {
+netcdf EUROPE_EDGAR_ch4_yearly_flux_sectors {
 dimensions:
 	time = 43 ;
 	lat = 293 ;
@@ -17,33 +17,18 @@ variables:
 	int64 time(time) ;
 		time:units = "days since 1980-01-01 00:00:00" ;
 		time:calendar = "proleptic_gregorian" ;
-	float flux_proportion_total(time, lat, lon) ;
-		flux_proportion_total:_FillValue = NaNf ;
-		flux_proportion_total:longname = "total flux as a proportion of total flux" ;
 	float flux_waste(time, lat, lon) ;
 		flux_waste:_FillValue = NaNf ;
 		string flux_waste:EDGAR_sectors = "SWD_LDF","SWD_INC","WWT" ;
-	float flux_proportion_waste(time, lat, lon) ;
-		flux_proportion_waste:_FillValue = NaNf ;
-		flux_proportion_waste:longname = "waste flux as a proportion of total flux" ;
 	float flux_agriculture(time, lat, lon) ;
 		flux_agriculture:_FillValue = NaNf ;
 		string flux_agriculture:EDGAR_sectors = "AGS","AWB","ENF","MNM" ;
-	float flux_proportion_agriculture(time, lat, lon) ;
-		flux_proportion_agriculture:_FillValue = NaNf ;
-		flux_proportion_agriculture:longname = "agriculture flux as a proportion of total flux" ;
 	float flux_energy(time, lat, lon) ;
 		flux_energy:_FillValue = NaNf ;
 		string flux_energy:EDGAR_sectors = "ENE","IND","TRO","TNR_Other","TNR_Ship","RCO","PRO_FFF","REF_TRF" ;
-	float flux_proportion_energy(time, lat, lon) ;
-		flux_proportion_energy:_FillValue = NaNf ;
-		flux_proportion_energy:longname = "energy flux as a proportion of total flux" ;
 	float flux_industry(time, lat, lon) ;
 		flux_industry:_FillValue = NaNf ;
 		string flux_industry:EDGAR_sectors = "IRO", "CHE" ;
-	float flux_proportion_industry(time, lat, lon) ;
-		flux_proportion_industry:_FillValue = NaNf ;
-		flux_proportion_industry:longname = "industry flux as a proportion of total flux" ;
 
 // global attributes:
 		:units = "g m-2 s-1" ;

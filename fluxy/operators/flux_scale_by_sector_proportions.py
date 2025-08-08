@@ -14,7 +14,7 @@ def scale_by_sector_proportions(data_dir:str,
                                 regions: list[str],
                                 country_flux_units_print: str,
                                 config_data = dict[str, dict],
-                                sector_proportions_file: str = 'EUROPE_EDGAR',
+                                sector_file: str = 'EUROPE_EDGAR',
                                 create_region_sector_totals: bool = True
 ) -> xr.Dataset:
     """
@@ -42,8 +42,8 @@ def scale_by_sector_proportions(data_dir:str,
             config_data (dict of dict):
             Dictionary with settings read from json file.
             Use json filenames as keys.
-        sector_proportions_file (str):
-            Start of sector_proportions file name, e.g. 'EUROPE_EDGAR'
+        sector_file (str):
+            Start of sector file name, e.g. 'EUROPE_EDGAR'
         create_region_sector_totals (bool):
             If True, sums spatial fluxes over country_fraction masks 
             to create country/region totals.
@@ -70,8 +70,8 @@ def scale_by_sector_proportions(data_dir:str,
             if 'domain' in ds.attrs:
                 domain = ds.attrs["domain"]
             else:
-                domain = sector_proportions_file.split('_')[0]
-                logger.warning(f'No domain info in dataset attributes, so reading domain from sector_proportions_filename: {domain}')
+                domain = sector_file.split('_')[0]
+                logger.warning(f'No domain info in dataset attributes, so reading domain from sector_filename: {domain}')
             with xr.open_dataset(os.path.join(configs_dir,f"{domain}_cell_area.nc")) as f:
                 cell_area = f['cell_area'].values
                 
@@ -85,15 +85,16 @@ def scale_by_sector_proportions(data_dir:str,
         s_in_year = 60*60*24*365
         scaling_factor = get_units_conversion_factor('mol s-1', country_flux_units_print, molar_mass)
      
-    sector_prop_path = os.path.join(data_dir,'sector_proportions',
-                                       f'{sector_proportions_file}_{species}_yearly_flux_sector_proportions.nc')
+    sector_prop_path = os.path.join(data_dir,'sector_flux',
+                                       f'{sector_file}_{species}_yearly_flux_sectors.nc')
 
     sector_prop = {}
     
     with xr.open_dataset(sector_prop_path) as f:
         sector_time = f.time.values
         for s in sectors:
-            sector_prop[s] = f[f'flux_proportion_{s}']
+            #sector_prop[s] = f[f'flux_proportion_{s}']
+            sector_prop[s] = f[f'flux_{s}']/f[f'flux_total']
             
     if create_region_sector_totals == True:
         
