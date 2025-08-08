@@ -747,6 +747,7 @@ def edit_vars_and_attributes(
                 assimilation_flag=("index", np.ones(ds["index"].size, dtype=int))
             )
 
+        '''
         if 'intake_height' not in ds:
             # Add inlet height if not present
             all_inlet = np.array([])
@@ -757,7 +758,7 @@ def edit_vars_and_attributes(
                                        np.ones(np.where(ds['number_of_identifier']==site_index)[0].shape[0])*site_inlet))
             ds = ds.assign(intake_height=("index",all_inlet))
             logger.warning(f'intake_height not present in {model} so assuming default maximum intake heights for all sites.')
-
+        '''
         # Test that the number of identifiers had valid values
         max_num_id, min_num_id = (
             ds["number_of_identifier"].max(),

@@ -258,14 +258,13 @@ def plot_mf_timeseries(
             )
 
         # Set timeseries y-axis label and legend
+        
+        height_label = ''
         if intake_height is not None:
-            ax[iax, 0].set_ylabel(
-                f'{species_info["species_print"]} {site} {intake_height}m ({plot_units[0]})'
-            )
-        else:
-            ax[iax, 0].set_ylabel(
-                f'{species_info["species_print"]} {site} ({plot_units[0]})'
-            )
+            height_label = f'-{intake_height}m'
+            
+        ax[iax, 0].set_ylabel({species_info["species_print"]} {site}{height_label} ({plot_units[0]}))
+        
         leg = ax[iax, 0].legend(ncol=2, borderpad=0.2, columnspacing=1.0)
         try:
             for l in leg.legend_handles:

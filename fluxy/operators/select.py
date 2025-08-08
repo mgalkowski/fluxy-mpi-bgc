@@ -198,12 +198,12 @@ def slice_mf(
             
         # Slice according to intake height
         if intake_height is not None:
-            try:
-                ds_all[m] = slice_height(ds_all[m],intake_height)
-            except ValueError as e:
-                logger.warning(f"Error slicing intake_height {intake_height} from {m}: {e}")
-                ds_all.pop(m)
-                continue
+            #try:
+            ds_all[m] = slice_height(ds_all[m],intake_height)
+            #except ValueError as e:
+            #    logger.warning(f"Error slicing intake_height {intake_height} from {m}: {e}")
+            #    ds_all.pop(m)
+            #    continue
                 
         if len(ds_all[m]["time"]) == 0:
             # Remove model if no data left after time slicing
@@ -272,9 +272,16 @@ def slice_height(ds: xr.Dataset, intake_height: str) -> xr.Dataset:
         ds (xarray dataset):
             Dataset with mf data of a given model, sliced to only include data for the given intake_height.
     """
-
-    mask = ds["intake_height"] == float(intake_height)
-    ds = ds.where(mask, drop=True)
+    
+    if 'intake_height' in ds.keys():
+        
+        mask = ds["intake_height"] == float(intake_height)
+        ds = ds.where(mask, drop=True)
+        
+    else:
+        raise ValueError(f"Variable intake_height not found in dateset. "+
+                         "slice_height must be set to None if intake_height "+
+                         "is not available for all models.")
 
     return ds
 
