@@ -746,13 +746,5 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
         if fix_y_axes == True:
             ax_data.set_ylim([0,max_cf*1.2])
             ax_comp.set_ylim([0,max_cf*1.2])
-            
-        #if i == 0:
-        #    ax_data.set_title('Inverse modelling')
-        #    if plot_inventory_or_prior == 'inventory':
-        #        ax_comp.set_title('Inventory')
-        #    elif plot_inventory_or_prior == 'prior':
-        #        ax_comp.set_title('Prior')
-
     
     return fig
