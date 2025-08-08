@@ -561,10 +561,13 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
     print_country = country_equivalent.get(plot_region, plot_region)
 
     # Create figure
+    
     if plot_inventory_or_prior == 'inventory':
-        n_cols, n_rows = len(ds_all.keys())+1,1
+        n_plots = len(ds_all.keys())+1
     elif plot_inventory_or_prior == 'prior':
-        n_cols, n_rows = 2, len(ds_all.keys())
+        n_plots = len(ds_all.keys())*2
+        
+    n_cols, n_rows = determine_subplots_arrangement(n_plots)
     
     units = {ds["flux_total_posterior_country"].units for ds in ds_all.values()}
     unit = list(units)[0]
@@ -576,9 +579,7 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
         constrained_layout=True,
         figsize=(n_cols * 6, n_rows * 4),
     )
-
-    row_count = 0
-    col_count = 0
+    
     max_cf = 0
 
     for i,m in enumerate(ds_all.keys()):
