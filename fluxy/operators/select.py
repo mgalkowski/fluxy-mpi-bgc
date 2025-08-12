@@ -142,7 +142,7 @@ def slice_mf(
 
     # Get logical array with baseline timestamps
     if baseline_site is not None:
-        
+
         if data_dir is None:
             raise ValueError(
                 "Baseline site is set, but no data_dir provided. "
@@ -150,9 +150,7 @@ def slice_mf(
             )
         data_dir = Path(data_dir)
         baseline_file = (
-            data_dir
-            / "baseline_timestamps"
-            / f"{baseline_site}_{baseline_filename}.nc"
+            data_dir / "baseline_timestamps" / f"{baseline_site}_{baseline_filename}.nc"
         )
 
         # Check if files exists
@@ -195,11 +193,11 @@ def slice_mf(
                 logger.warning(f"Error slicing site {site} from {m}: {e}")
                 ds_all.pop(m)
                 continue
-            
+
         # Slice according to intake height
         if intake_height is not None:
-            ds_all[m] = slice_height(ds_all[m],intake_height)
-                
+            ds_all[m] = slice_height(ds_all[m], intake_height)
+
         if len(ds_all[m]["time"]) == 0:
             # Remove model if no data left after time slicing
             logger.warning(
@@ -224,8 +222,7 @@ def slice_mf(
             b_masked = b.sel(time=b["time"][np.where(b["baseline"] == 1.0)])
 
             # mask dataset using only baseline times
-            ds_all[m] = ds_all[m].where(ds_all[m].time.isin(b_masked.time),
-                                        drop=True)
+            ds_all[m] = ds_all[m].where(ds_all[m].time.isin(b_masked.time), drop=True)
 
     return ds_all
 
@@ -254,6 +251,7 @@ def slice_site(ds: xr.Dataset, site: str) -> xr.Dataset:
 
     return ds
 
+
 def slice_height(ds: xr.Dataset, intake_height: str) -> xr.Dataset:
     """
     Slices the dataset to only include data for a given intake height.
@@ -267,18 +265,21 @@ def slice_height(ds: xr.Dataset, intake_height: str) -> xr.Dataset:
         ds (xarray dataset):
             Dataset with mf data of a given model, sliced to only include data for the given intake_height.
     """
-    
-    if 'intake_height' in ds.keys():
-        
+
+    if "intake_height" in ds.keys():
+
         mask = ds["intake_height"] == float(intake_height)
         ds = ds.where(mask, drop=True)
-        
+
     else:
-        raise ValueError(f"Variable intake_height not found in dateset. "+
-                         "slice_height must be set to None if intake_height "+
-                         "is not available for all models.")
+        raise ValueError(
+            f"Variable intake_height not found in dateset. "
+            + "slice_height must be set to None if intake_height "
+            + "is not available for all models."
+        )
 
     return ds
+
 
 def get_site_index(ds: xr.Dataset, site: str) -> int | None:
     """
@@ -322,12 +323,13 @@ def get_unique_sites(ds_all: dict[str, xr.Dataset]) -> list[str]:
 
     return sites
 
-def get_intake_height(site:str,site_info: dict[str:dict]) -> int | None:
+
+def get_intake_height(site: str, site_info: dict[str:dict]) -> int | None:
     """
     Extract the inlet height from site_info.json.
     This function is used to insert the 'inlet' variable if this is missing.
     This assumes use of the heighest height from all available at the specified site.
-    
+
     Args:
         site (str):
             3-letter site code.
@@ -339,25 +341,30 @@ def get_intake_height(site:str,site_info: dict[str:dict]) -> int | None:
     """
 
     all_heights = []
-    
+
     if site in site_info:
 
         for network in site_info[site].keys():
-            if 'height' in site_info[site][network].keys():
-                all_heights += site_info[site][network]['height']
+            if "height" in site_info[site][network].keys():
+                all_heights += site_info[site][network]["height"]
 
         if all_heights == []:
-            logger.warning(f"No height info available for {site} in site_info.json so using 0m.")
+            logger.warning(
+                f"No height info available for {site} in site_info.json so using 0m."
+            )
             max_height = 0
 
         else:
-            max_height = np.max([int(h.strip('m')) for h in all_heights])
-            
+            max_height = np.max([int(h.strip("m")) for h in all_heights])
+
     else:
-        logger.warning(f"No height info available for {site} in site_info.json so using 0m.")
+        logger.warning(
+            f"No height info available for {site} in site_info.json so using 0m."
+        )
         max_height = 0
-        
+
     return max_height
+
 
 def clean_timeseries_missing_data(
     ds: xr.Dataset,

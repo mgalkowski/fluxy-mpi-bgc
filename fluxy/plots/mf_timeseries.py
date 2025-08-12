@@ -37,7 +37,7 @@ def plot_mf_timeseries(
     diff_include: list[str] | None = None,
     y_lim: None | list[float] = None,
     time_freq_min: FrequencyType = None,
-    intake_height: int | None = None
+    intake_height: int | None = None,
 ):
     """
     Timeseries plots of observations, modelled mole fractions, baseline mf and/or
@@ -190,19 +190,22 @@ def plot_mf_timeseries(
                     )
 
                 if unc_var not in ds_plot.keys():
-                    if 'percentile' in unc_var:
+                    if "percentile" in unc_var:
                         unc_var_in = unc_var
-                        unc_var = unc_var.replace('percentile','stdev')
+                        unc_var = unc_var.replace("percentile", "stdev")
 
-                    elif 'stdev' in unc_var:
+                    elif "stdev" in unc_var:
                         unc_var_in = unc_var
-                        unc_var = unc_var.replace('stdev','percentile')
+                        unc_var = unc_var.replace("stdev", "percentile")
 
                     if unc_var not in ds_plot.keys():
-                        raise KeyError(f"Variables {unc_var_in} and {unc_var} not found in {m}.")
+                        raise KeyError(
+                            f"Variables {unc_var_in} and {unc_var} not found in {m}."
+                        )
                     else:
-                        logger.warning(f"Variable {unc_var_in} not found in {m} so reading uncert from {unc_var}.")
-                
+                        logger.warning(
+                            f"Variable {unc_var_in} not found in {m} so reading uncert from {unc_var}."
+                        )
 
                 if unc_var.split("_")[0] == "percentile":
                     # Add uncertainty band
@@ -258,13 +261,15 @@ def plot_mf_timeseries(
             )
 
         # Set timeseries y-axis label and legend
-        
-        height_label = ''
+
+        height_label = ""
         if intake_height is not None:
-            height_label = f'-{intake_height}m'
-            
-        ax[iax, 0].set_ylabel(f'{species_info["species_print"]} {site}{height_label} ({plot_units[0]})')
-        
+            height_label = f"-{intake_height}m"
+
+        ax[iax, 0].set_ylabel(
+            f'{species_info["species_print"]} {site}{height_label} ({plot_units[0]})'
+        )
+
         leg = ax[iax, 0].legend(ncol=2, borderpad=0.2, columnspacing=1.0)
         try:
             for l in leg.legend_handles:
@@ -307,8 +312,14 @@ def plot_mf_timeseries(
 
 
 def plot_sites_timeseries(
-    ds_all, var, start_date, end_date, model_colors, model_labels, margin: float = 0.1,
-    separate_by_height: bool = False
+    ds_all,
+    var,
+    start_date,
+    end_date,
+    model_colors,
+    model_labels,
+    margin: float = 0.1,
+    separate_by_height: bool = False,
 ):
     """
     Plot the timeseries of data available for each site and model.
@@ -336,31 +347,33 @@ def plot_sites_timeseries(
     dt_end_date = np.datetime64(end_date)
     siteList = get_unique_sites(ds_all)
     model_labels_copy = model_labels.copy()
-    
+
     # create list of grouped site-height pairs
     if separate_by_height == True:
-        
+
         unique_pairs = set()
-        
-        for d,ds in enumerate(ds_all.values()):
-            if 'intake_height' not in ds.keys():
-                raise ValueError(f"Varible intake_height not present in {list(ds_all.keys())[d]} so cannot plot separate_by_height")
-            
-            platform_names = ds['platform'].values
-            number_ids = ds['number_of_identifier'].values
-            intake_heights = ds['intake_height'].values
-            
+
+        for d, ds in enumerate(ds_all.values()):
+            if "intake_height" not in ds.keys():
+                raise ValueError(
+                    f"Varible intake_height not present in {list(ds_all.keys())[d]} so cannot plot separate_by_height"
+                )
+
+            platform_names = ds["platform"].values
+            number_ids = ds["number_of_identifier"].values
+            intake_heights = ds["intake_height"].values
+
             platform_for_obs = platform_names[number_ids]
 
-            pairs = zip(platform_for_obs,intake_heights)
-            
+            pairs = zip(platform_for_obs, intake_heights)
+
             unique_pairs.update(pairs)
-            
+
         siteList = sorted(unique_pairs)
-        
+
     else:
-        siteList = zip(siteList,[None]*len(siteList))
-        
+        siteList = zip(siteList, [None] * len(siteList))
+
     # Create figure
     fig, ax = plt.subplots(1, 1, figsize=(0.7 * len(siteList), 8))
 
@@ -394,7 +407,7 @@ def plot_sites_timeseries(
                 ds_all[m][var].notnull()
             )
             if separate_by_height == True:
-                mask &= (ds_all[m]["intake_height"] == site[1])
+                mask &= ds_all[m]["intake_height"] == site[1]
             data = ds_all[m]["time"].where(mask, drop=True)
             ax.scatter(
                 (site_iter + model_offset * i - 0.5 + margin) * np.ones(data.size),
@@ -414,7 +427,7 @@ def plot_sites_timeseries(
 
     ax.set_xticks(np.arange(len(siteList)))
     if separate_by_height == True:
-        ax.set_xticklabels([f'{s[0]}\n{int(s[1])}m' for s in siteList])
+        ax.set_xticklabels([f"{s[0]}\n{int(s[1])}m" for s in siteList])
     else:
         ax.set_xticklabels([s[0] for s in siteList])
 
