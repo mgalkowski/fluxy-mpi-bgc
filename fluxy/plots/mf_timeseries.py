@@ -199,9 +199,9 @@ def plot_mf_timeseries(
                         unc_var = unc_var.replace('stdev','percentile')
 
                     if unc_var not in ds_plot.keys():
-                        KeyError(f"Variables {unc_var_in} and {unc_var} not found in {m}.")
+                        raise KeyError(f"Variables {unc_var_in} and {unc_var} not found in {m}.")
                     else:
-                        print(logger.warning(f"Variable {unc_var_in} not found in {m} so reading uncert from {unc_var}."))
+                        logger.warning(f"Variable {unc_var_in} not found in {m} so reading uncert from {unc_var}.")
                 
 
                 if unc_var.split("_")[0] == "percentile":
@@ -263,7 +263,7 @@ def plot_mf_timeseries(
         if intake_height is not None:
             height_label = f'-{intake_height}m'
             
-        ax[iax, 0].set_ylabel({species_info["species_print"]} {site}{height_label} ({plot_units[0]}))
+        ax[iax, 0].set_ylabel(f'{species_info["species_print"]} {site}{height_label} ({plot_units[0]})')
         
         leg = ax[iax, 0].legend(ncol=2, borderpad=0.2, columnspacing=1.0)
         try:
@@ -339,24 +339,27 @@ def plot_sites_timeseries(
     
     # create list of grouped site-height pairs
     if separate_by_height == True:
-        siteHeightList = []
-        for ds in ds_all.values():
-            for site_iter,site in enumerate(siteList):
-                # numpy.unique sorts values, so this is work-around to retain correct site-height pairs
-                site_ids = np.where(ds['number_of_identifier'] == get_site_index(ds, site))
-                all_heights,all_heights_id = np.unique(ds['intake_height'][site_ids],return_index=True)
-                all_heights = ds['intake_height'][site_ids][np.sort(all_heights_id)]
-                all_heights = all_heights[~np.isnan(all_heights)]
-                for h in all_heights:
-                    siteHeightList.append(f'{site}-{int(h)}')
-        siteHeightList = np.sort(np.unique(siteHeightList))
-        siteHeightList_print = [f"{i.split('-')[0]}\n{i.split('-')[1]}m" for i in siteHeightList]
-        siteList = np.array([i.split('-')[0] for i in siteHeightList])
-        heightList = np.array([float(i.split('-')[1]) for i in siteHeightList])
+        
+        unique_pairs = set()
+        
+        for d,ds in enumerate(ds_all.values()):
+            if 'intake_height' not in ds.keys():
+                raise ValueError(f"Varible intake_height not present in {list(ds_all.keys())[d]} so cannot plot separate_by_height")
+            
+            platform_names = ds['platform'].values
+            number_ids = ds['number_of_identifier'].values
+            intake_heights = ds['intake_height'].values
+            
+            platform_for_obs = platform_names[number_ids]
+
+            pairs = zip(platform_for_obs,intake_heights)
+            
+            unique_pairs.update(pairs)
+            
+        siteList = sorted(unique_pairs)
         
     else:
-        siteList = siteList
-        heightList = [None]*siteList.shape[0]
+        siteList = zip(siteList,[None]*len(siteList))
         
     # Create figure
     fig, ax = plt.subplots(1, 1, figsize=(0.7 * len(siteList), 8))
@@ -382,7 +385,7 @@ def plot_sites_timeseries(
 
         for i, m in enumerate(models):
 
-            site_index = get_site_index(ds_all[m], site)
+            site_index = get_site_index(ds_all[m], site[0])
 
             if site_index is None:
                 continue
@@ -391,7 +394,7 @@ def plot_sites_timeseries(
                 ds_all[m][var].notnull()
             )
             if separate_by_height == True:
-                mask &= (ds_all[m]["intake_height"] == heightList[site_iter])
+                mask &= (ds_all[m]["intake_height"] == site[1])
             data = ds_all[m]["time"].where(mask, drop=True)
             ax.scatter(
                 (site_iter + model_offset * i - 0.5 + margin) * np.ones(data.size),
@@ -409,11 +412,11 @@ def plot_sites_timeseries(
         dt_start_date - np.timedelta64(1, "D"), dt_end_date + np.timedelta64(1, "D")
     )
 
-    ax.set_xticks(np.arange(siteList.size))
+    ax.set_xticks(np.arange(len(siteList)))
     if separate_by_height == True:
-        ax.set_xticklabels(siteHeightList_print)
+        ax.set_xticklabels([f'{s[0]}\n{int(s[1])}m' for s in siteList])
     else:
-        ax.set_xticklabels(siteList)
+        ax.set_xticklabels([s[0] for s in siteList])
 
     if (
         int(dt_end_date.astype("datetime64[M]") - dt_start_date.astype("datetime64[M]"))
@@ -426,7 +429,7 @@ def plot_sites_timeseries(
         ax.yaxis.set_major_locator(MonthLocator())
     ax.yaxis.grid(True, which="major")
 
-    ax.set_xlim(-0.5, siteList.size - 0.5)
+    ax.set_xlim(-0.5, len(siteList) - 0.5)
 
     plt.legend(loc="lower right", markerscale=4, bbox_to_anchor=(1, 1))
 

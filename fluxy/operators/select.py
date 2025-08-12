@@ -198,12 +198,7 @@ def slice_mf(
             
         # Slice according to intake height
         if intake_height is not None:
-            #try:
             ds_all[m] = slice_height(ds_all[m],intake_height)
-            #except ValueError as e:
-            #    logger.warning(f"Error slicing intake_height {intake_height} from {m}: {e}")
-            #    ds_all.pop(m)
-            #    continue
                 
         if len(ds_all[m]["time"]) == 0:
             # Remove model if no data left after time slicing
@@ -340,22 +335,28 @@ def get_intake_height(site:str,site_info: dict[str:dict]) -> int | None:
             Data extracted from site_info.json.
     Returns:
         max_height (int):
-            Maximum height from all networks and inlets available ast s
+            Maximum height from all networks and inlets available at the site.
     """
 
     all_heights = []
+    
+    if site in site_info:
 
-    for network in site_info[site].keys():
-        if 'height' in site_info[site][network].keys():
-            all_heights += site_info[site][network]['height']
+        for network in site_info[site].keys():
+            if 'height' in site_info[site][network].keys():
+                all_heights += site_info[site][network]['height']
 
-    if all_heights == []:
+        if all_heights == []:
+            logger.warning(f"No height info available for {site} in site_info.json so using 0m.")
+            max_height = 0
+
+        else:
+            max_height = np.max([int(h.strip('m')) for h in all_heights])
+            
+    else:
         logger.warning(f"No height info available for {site} in site_info.json so using 0m.")
         max_height = 0
-
-    else:
-        max_height = np.max([int(h.strip('m')) for h in all_heights])
-
+        
     return max_height
 
 def clean_timeseries_missing_data(
