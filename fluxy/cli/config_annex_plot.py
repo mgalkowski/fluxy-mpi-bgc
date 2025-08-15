@@ -192,7 +192,7 @@ class AnnexConfig:
     """
 
     ### Path to results directory
-    data_dir = "/project/bmda/PARIS_jupyter/NID2025/"
+    data_dir = "/project/paris/NID2025/"
 
     ### Species
     monthly_species = ["ch4", "n2o"]
