@@ -299,7 +299,7 @@ def plot_country_flux(
                 max_x = max(inventory.time.max(skipna=True).values, max_x)
                 max_cf[i] = np.nanmax((max_cf[i], inventory.max(skipna=True)))
 
-        ds_all_region = extract_region_flux(ds_all, country, r_data,sector=sector)
+        ds_all_region = extract_region_flux(ds_all, country, r_data, sector=sector)
         ds_to_plot = prepare_data_to_plot(
             ds_all_region,
             model_labels,
@@ -482,7 +482,7 @@ def plot_country_flux(
 
 def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
                                 species: str,
-                                plot_region: list[str] | str = [],
+                                plot_region: str,
                                 config_data: dict[str, dict] = {},
                                 model_colors: dict[str, str] = {},
                                 model_labels: dict[str, str] = {},
@@ -567,7 +567,7 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
     elif plot_inventory_or_prior == 'prior':
         n_plots = len(ds_all.keys())*2
         
-    n_cols, n_rows = determine_subplots_arrangement(n_plots)
+    n_rows, n_cols = determine_subplots_arrangement(n_plots)
     
     units = {ds["flux_total_posterior_country"].units for ds in ds_all.values()}
     unit = list(units)[0]
@@ -581,9 +581,9 @@ def plot_country_sector_flux_bar(ds_all: dict[str, xr.Dataset],
     )
     
     max_cf = 0
-
+    
     for i,m in enumerate(ds_all.keys()):
-        
+
         if n_rows == 1:
             ax_data = axes[i]
             if plot_inventory_or_prior == 'prior':
