@@ -412,7 +412,7 @@ def get_unique_site_height_pairs(
         siteList = sorted(unique_pairs)
 
     else:
-        siteList = zip(siteList, [None] * len(siteList))
+        siteList = list(zip(siteList, [None] * len(siteList)))
     
     
     return siteList
