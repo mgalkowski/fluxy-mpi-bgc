@@ -7,7 +7,7 @@ name = "fluxy"
 version = "v2.0"
 dependencies = [
   "matplotlib",
-  "xarray",
+  "xarray>=2023.08",
   "netcdf4",
   "geopandas",
 ]
@@ -19,6 +19,7 @@ authors = [
   {name = "Hélène De Longueville", email = "helene.delongueville@bristol.ac.uk"},
   {name = "Lionel Constantin", email = "lionel.constantin@empa.ch"},
   {name = "Stephan Henne", email = "stephan.henne@empa.ch"},
+  {name = "Joël Thanwerdas", email = "joel.thanwerdas@empa.ch"},
 ]
 maintainers = [
   {name = "Alexandre Danjou", email = "alexandre.danjou@bristol.ac.uk"},
