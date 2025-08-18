@@ -350,7 +350,7 @@ def plot_sites_timeseries(
     model_labels_copy = model_labels.copy()
 
     # create list of grouped site-height pairs
-    siteList = get_unique_site_height_pairs(ds_all,separate_by_height)
+    siteList = get_unique_site_height_pairs(ds_all,siteList,separate_by_height)
 
     # Create figure
     fig, ax = plt.subplots(1, 1, figsize=(0.7 * len(siteList), 8))

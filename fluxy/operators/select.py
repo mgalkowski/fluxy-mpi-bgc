@@ -367,6 +367,7 @@ def get_intake_height(site: str, site_info: dict[str:dict]) -> int | None:
 
 def get_unique_site_height_pairs(
     ds_all: dict[str, xr.Dataset],
+    siteList: list[str],
     separate_by_height: bool = False
     ) -> list[tuple]:
     """
@@ -377,6 +378,8 @@ def get_unique_site_height_pairs(
     Args:
         ds_all:
             Dictionary of datasets with mf data from all models.
+        siteList:
+            List of unique sites from all models.
         separate_by_height:
             If True, includes a tuple per site height, if False, returns a tuple per
             site, with the second index set to None for all sites,
