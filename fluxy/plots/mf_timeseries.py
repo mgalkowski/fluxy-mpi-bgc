@@ -14,6 +14,7 @@ from fluxy.operators.select import (
     get_site_index,
     get_unique_sites,
     slice_site,
+    get_unique_site_height_pairs
 )
 from fluxy.plots.utils import set_min_decimal_points
 
@@ -349,30 +350,7 @@ def plot_sites_timeseries(
     model_labels_copy = model_labels.copy()
 
     # create list of grouped site-height pairs
-    if separate_by_height == True:
-
-        unique_pairs = set()
-
-        for d, ds in enumerate(ds_all.values()):
-            if "intake_height" not in ds.keys():
-                raise ValueError(
-                    f"Varible intake_height not present in {list(ds_all.keys())[d]} so cannot plot separate_by_height"
-                )
-
-            platform_names = ds["platform"].values
-            number_ids = ds["number_of_identifier"].values
-            intake_heights = ds["intake_height"].values
-
-            platform_for_obs = platform_names[number_ids]
-
-            pairs = zip(platform_for_obs, intake_heights)
-
-            unique_pairs.update(pairs)
-
-        siteList = sorted(unique_pairs)
-
-    else:
-        siteList = zip(siteList, [None] * len(siteList))
+    siteList = get_unique_site_height_pairs(ds_all,separate_by_height)
 
     # Create figure
     fig, ax = plt.subplots(1, 1, figsize=(0.7 * len(siteList), 8))
@@ -385,7 +363,7 @@ def plot_sites_timeseries(
     else:
         model_offset = 1
 
-    for site_iter, site in enumerate(siteList):
+    for site_iter, (site,height) in enumerate(siteList):
         if site_iter != 0:
             # Add grey vertical line between sites
             ax.plot(
@@ -398,7 +376,7 @@ def plot_sites_timeseries(
 
         for i, m in enumerate(models):
 
-            site_index = get_site_index(ds_all[m], site[0])
+            site_index = get_site_index(ds_all[m], site)
 
             if site_index is None:
                 continue
@@ -407,7 +385,7 @@ def plot_sites_timeseries(
                 ds_all[m][var].notnull()
             )
             if separate_by_height == True:
-                mask &= ds_all[m]["intake_height"] == site[1]
+                mask &= ds_all[m]["intake_height"] == height
             data = ds_all[m]["time"].where(mask, drop=True)
             ax.scatter(
                 (site_iter + model_offset * i - 0.5 + margin) * np.ones(data.size),
@@ -427,9 +405,9 @@ def plot_sites_timeseries(
 
     ax.set_xticks(np.arange(len(siteList)))
     if separate_by_height == True:
-        ax.set_xticklabels([f"{s[0]}\n{int(s[1])}m" for s in siteList])
+        ax.set_xticklabels([f"{s}\n{int(h)}m" for (s,h) in siteList])
     else:
-        ax.set_xticklabels([s[0] for s in siteList])
+        ax.set_xticklabels([s for (s,h) in siteList])
 
     if (
         int(dt_end_date.astype("datetime64[M]") - dt_start_date.astype("datetime64[M]"))

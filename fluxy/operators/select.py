@@ -365,6 +365,54 @@ def get_intake_height(site: str, site_info: dict[str:dict]) -> int | None:
 
     return max_height
 
+def get_unique_site_height_pairs(
+    ds_all: dict[str, xr.Dataset],
+    separate_by_height: bool = False
+    ) -> list[tuple]:
+    """
+    Finds all unique pairs of site-height from all datasets.
+    e.g. if one dataset has MHD-10, TAC-185, RGL-90 and one dataset has 
+    MHD-10, TAC-100, this function will return MHD-10, TAC-100, TAC-185 and RGL-90.
+    
+    Args:
+        ds_all:
+            Dictionary of datasets with mf data from all models.
+        separate_by_height:
+            If True, includes a tuple per site height, if False, returns a tuple per
+            site, with the second index set to None for all sites,
+            e.g. [('MHD',None),('TAC',None)]
+    Returns:
+        siteList:
+            Pairs of sites and heights, e.g. [('MHD',10),(TAC,100),(TAC,185)]
+    """
+    
+    if separate_by_height == True:
+
+        unique_pairs = set()
+
+        for d, ds in enumerate(ds_all.values()):
+            if "intake_height" not in ds.keys():
+                raise ValueError(
+                    f"Varible intake_height not present in {list(ds_all.keys())[d]} so cannot plot separate_by_height"
+                )
+
+            platform_names = ds["platform"].values
+            number_ids = ds["number_of_identifier"].values
+            intake_heights = ds["intake_height"].values
+
+            platform_for_obs = platform_names[number_ids]
+
+            pairs = zip(platform_for_obs, intake_heights)
+
+            unique_pairs.update(pairs)
+
+        siteList = sorted(unique_pairs)
+
+    else:
+        siteList = zip(siteList, [None] * len(siteList))
+    
+    
+    return siteList
 
 def clean_timeseries_missing_data(
     ds: xr.Dataset,
