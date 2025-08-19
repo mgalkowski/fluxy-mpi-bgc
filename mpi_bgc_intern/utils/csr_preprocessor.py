@@ -4,6 +4,7 @@ import re
 import calendar
 import numpy as np
 import pandas as pd
+import logging
 
 #new_name: ['old_name1', 'old_name2']
 rename_candidates = {
@@ -15,7 +16,7 @@ rename_candidates = {
 }
 #old_name : ['new_name_prior', 'new_name_posterior']
 combine_candidates = {
-    'flux_land' : ['flux_total_prior', 'flux_total_posterior'],
+    'flux_combined' : ['flux_total_prior', 'flux_total_posterior'],
     'flux' : ['flux_total_prior_country', 'flux_total_posterior_country'],
     'flux_unc' : ['stdev_flux_total_prior_country', 'stdev_flux_total_posterior_country']
 }
@@ -28,11 +29,14 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
 
     ds_prior = _rename(ds_prior)
     ds_prior = _convert_time(ds_prior)
+    ds_prior = _combine_fluxes(ds_prior, species)
     ds_posterior = _rename(ds_posterior)
     ds_posterior = _convert_time(ds_posterior)
+    ds_posterior = _combine_fluxes(ds_posterior, species)
     ds = _combine_variable(ds_prior, ds_posterior,
                            species=species,
-                           drop_also=[f"{species}flux_ocean", 
+                           drop_also=[f"{species}flux_land",
+                                      f"{species}flux_ocean", 
                                       f"{species}flux_subt",
                                       f"{species}flux_excl"])
 
@@ -45,6 +49,15 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
     
     ds = ds.drop_vars([v for v in ['lproc', 'lrt', 'lspec'] if v in ds])
 
+
+    prior = ds["flux_total_prior"].values
+    posterior = ds["flux_total_posterior"].values
+    print("_save_dataset")    
+    print("Max prior:", np.nanmax(prior))
+    print("Unique large values prior:", np.unique(prior[prior > 1e10]))
+    print("Max posterior:", np.nanmax(posterior))
+    print("Unique large values posterior:", np.unique(posterior[posterior > 1e10]))
+    
     _save_dataset(ds, path_to_output)
 
 
@@ -57,16 +70,30 @@ def _rename(ds):
                 break
     return ds.rename(rename_dict) if rename_dict else ds
 
+def _combine_fluxes(ds_in, species):
+    ds = ds_in.copy()
+    land = _check_for_units(f"{species}flux_land", ds_in)
+    ocean = _check_for_units(f"{species}flux_ocean", ds_in)
+    
+    flux_combined = land + ocean
+    flux_combined.attrs = land.attrs.copy()
+    ds[f"{species}{list(combine_candidates.keys())[0]}"] = flux_combined
+    
+    combined = ds[f"{species}flux_combined"].values
+    print("combine_fluxes")    
+    print("Max combined:", np.nanmax(combined))
+    print("Unique large values combined:", np.unique(combined[combined > 1e10]))
+
+    return ds
+    
 
 def _combine_variable(ds_prior, ds_post, species, drop_also=[]):
     ds = ds_prior.copy()
     for v, new_vars in combine_candidates.items():
         varname = f'{species}{v}'
         if varname in ds and varname in ds_post:
-            prior_data = ds[varname]
-            prior_data = _check_for_units(varname, prior_data, ds)
-            post_data = ds_post[varname]
-            post_data = _check_for_units(varname, post_data, ds_post)
+            prior_data = _check_for_units(varname, ds)
+            post_data = _check_for_units(varname, ds_post)
             
             ds[new_vars[0]] = prior_data
             ds[new_vars[1]] = post_data
@@ -79,23 +106,39 @@ def _combine_variable(ds_prior, ds_post, species, drop_also=[]):
     return ds
 
 
-def _check_for_units(varname, data, ds):
-    if data.any():
-        data.attrs = ds[varname].attrs.copy()
-        if 'units' in data.attrs:
-            unit = data.attrs['units']
-            area = ds['area']  # Adjust to target region  
-            years = _get_years_from_time(ds)
+def _check_for_units(varname, ds):
+    if varname not in ds:
+        logging.warning(f"Variable {varname} not found in dataset.")
+        return None
 
-            if unit == 'PgC/yr':
-                data = _pgcyr_to_mol_m2_s(data, area, years)
-                data.attrs['units'] = "mol m-2 s-1"
-            elif unit == 'TgC/yr':
-                # Convert TgC to PgC first (1 PgC = 1000 TgC)
-                data = data / 1000.0
-                data = _pgcyr_to_mol_m2_s(data, area, years)
-                data.attrs['units'] = "mol m-2 s-1"
-        return data
+    data = ds[varname]
+    if data.size == 0 or np.all(np.isnan(data)):
+        logging.warning(f"Variable {varname} is empty or all NaN.")
+        return None
+
+    # Copy attrs to preserve metadata
+    data.attrs = ds[varname].attrs.copy()
+
+    if 'units' in data.attrs:
+        unit = data.attrs['units']
+        if "dxyp" not in ds:
+            raise KeyError("Dataset is missing 'dxyp' (grid cell area), required for flux conversion.")
+
+        area = ds["dxyp"]
+        years = _get_years_from_time(ds)
+
+        unit_conversions = {
+            "PgC/yr": 1,
+            "TgC/yr": 1/1000,
+        }
+        if unit in unit_conversions:
+            data = data * unit_conversions[unit]
+            data = _pgcyr_to_mol_m2_s(data, area, years)
+            data.attrs['units'] = "mol m-2 s-1"
+        else:
+            logging.info(f"No conversion applied for variable {varname} with unit '{unit}'.")
+
+    return data
          
 def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2, years):
     
