@@ -12,6 +12,13 @@ color_palette = {
     3: [["darkorange", "orange"], ["gold", "khaki"], ["yellow", "lightyellow"]],
 }
 
+sector_color_palette = {
+    "agriculture": "darkgreen",
+    "waste": "purple",
+    "industry": "darkblue",
+    "energy": "dodgerblue",
+}
+
 # population from 2018 to 2023 (at Jan 1 each year)
 bel_pop = np.array([11.399, 11.455, 11.522, 11.555, 11.618, 11.723])
 lux_pop = np.array([0.602, 0.614, 0.626, 0.635, 0.645, 0.661])
@@ -261,3 +268,11 @@ def get_default_colors() -> list[str]:
     """
 
     return plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+
+def get_default_sector_colors() -> list[str]:
+    """
+    Returns colors to be used for sector bar chart plots.
+    """
+
+    return sector_color_palette
