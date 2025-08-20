@@ -18,8 +18,9 @@ from fluxy.plots.mf_timeseries import (
 )
 from fluxy.operators.mf import compute_mf_difference
 from fluxy.plots.mf_stats import plot_stats_mf, plot_taylor_diagram
+from fluxy.test_utils import data_dir
 
-data_dir = Path(fluxy.__path__[0]).parent / "data" / "tests"
+#data_dir = Path(fluxy.__path__[0]).parent / "data" / "tests"
 
 config_data = read_config_files()
 annotate_coords = set_print_settings()

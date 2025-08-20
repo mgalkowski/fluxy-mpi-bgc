@@ -27,6 +27,7 @@ def test_scale_by_sector_proportions():
     create_region_sector_totals = True  # if True, uses country_fraction variable to sum spatial sector fluxes to region sector fluxes
 
     ds_all_flux_scaled = {}
+    
     ds_all_flux = read_model_output(
         data_dir, "flux", species, models, config_data, period=period
     )
