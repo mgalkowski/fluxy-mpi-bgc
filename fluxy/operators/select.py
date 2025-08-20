@@ -102,7 +102,7 @@ def slice_mf(
     data_dir: os.PathLike | None = None,
     mf_units_print: str = None,
     keep_unassimilated: bool = False,
-    intake_height: int | None = None,
+    intake_height: float | None = None,
 ) -> dict[str, xr.Dataset]:
     """
     Slices down the mole fraction timeseries data, to within the
@@ -252,7 +252,7 @@ def slice_site(ds: xr.Dataset, site: str) -> xr.Dataset:
     return ds
 
 
-def slice_height(ds: xr.Dataset, intake_height: str) -> xr.Dataset:
+def slice_height(ds: xr.Dataset, intake_height: float) -> xr.Dataset:
     """
     Slices the dataset to only include data for a given intake height.
 
@@ -324,7 +324,7 @@ def get_unique_sites(ds_all: dict[str, xr.Dataset]) -> list[str]:
     return sites
 
 
-def get_intake_height(site: str, site_info: dict[str:dict]) -> int | None:
+def get_intake_height(site: str, site_info: dict[str, dict]) -> int | None:
     """
     Extract the inlet height from site_info.json.
     This function is used to insert the 'inlet' variable if this is missing.
@@ -340,56 +340,60 @@ def get_intake_height(site: str, site_info: dict[str:dict]) -> int | None:
             Maximum height from all networks and inlets available at the site.
     """
 
-    all_heights = []
-
-    if site in site_info:
-
-        for network in site_info[site].keys():
-            if "height" in site_info[site][network].keys():
-                all_heights += site_info[site][network]["height"]
-
-        if all_heights == []:
-            logger.warning(
-                f"No height info available for {site} in site_info.json so using 0m."
-            )
-            max_height = 0
-
-        else:
-            max_height = np.max([int(h.strip("m")) for h in all_heights])
-
-    else:
+    if site not in site_info:
         logger.warning(
             f"No height info available for {site} in site_info.json so using 0m."
         )
+
         max_height = 0
+
+        return max_height
+
+    all_heights = []
+
+    for network in site_info[site].keys():
+        if "height" in site_info[site][network].keys():
+            all_heights += site_info[site][network]["height"]
+
+    if not all_heights:
+        logger.warning(
+            f"No height info available for {site} in site_info.json so using 0m."
+        )
+
+        max_height = 0
+
+        return max_height
+
+    max_height = np.max([int(h.strip("m")) for h in all_heights])
 
     return max_height
 
+
 def get_unique_site_height_pairs(
     ds_all: dict[str, xr.Dataset],
-    siteList: list[str],
-    separate_by_height: bool = False
-    ) -> list[tuple]:
+    site_list: list[str],
+    separate_by_height: bool = False,
+) -> list[tuple]:
     """
     Finds all unique pairs of site-height from all datasets.
-    e.g. if one dataset has MHD-10, TAC-185, RGL-90 and one dataset has 
+    e.g. if one dataset has MHD-10, TAC-185, RGL-90 and one dataset has
     MHD-10, TAC-100, this function will return MHD-10, TAC-100, TAC-185 and RGL-90.
-    
+
     Args:
         ds_all:
             Dictionary of datasets with mf data from all models.
-        siteList:
+        site_list:
             List of unique sites from all models.
         separate_by_height:
             If True, includes a tuple per site height, if False, returns a tuple per
             site, with the second index set to None for all sites,
             e.g. [('MHD',None),('TAC',None)]
     Returns:
-        siteList:
+        site_list:
             Pairs of sites and heights, e.g. [('MHD',10),(TAC,100),(TAC,185)]
     """
-    
-    if separate_by_height == True:
+
+    if separate_by_height:
 
         unique_pairs = set()
 
@@ -409,13 +413,13 @@ def get_unique_site_height_pairs(
 
             unique_pairs.update(pairs)
 
-        siteList = sorted(unique_pairs)
+        site_list = sorted(unique_pairs)
 
     else:
-        siteList = list(zip(siteList, [None] * len(siteList)))
-    
-    
-    return siteList
+        site_list = list(zip(site_list, [None] * len(site_list)))
+
+    return site_list
+
 
 def clean_timeseries_missing_data(
     ds: xr.Dataset,

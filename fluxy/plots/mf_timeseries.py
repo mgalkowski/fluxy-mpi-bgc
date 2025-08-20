@@ -14,7 +14,7 @@ from fluxy.operators.select import (
     get_site_index,
     get_unique_sites,
     slice_site,
-    get_unique_site_height_pairs
+    get_unique_site_height_pairs,
 )
 from fluxy.plots.utils import set_min_decimal_points
 
@@ -346,14 +346,14 @@ def plot_sites_timeseries(
     models = ds_all.keys()
     dt_start_date = np.datetime64(start_date)
     dt_end_date = np.datetime64(end_date)
-    siteList = get_unique_sites(ds_all)
+    site_list = get_unique_sites(ds_all)
     model_labels_copy = model_labels.copy()
 
     # create list of grouped site-height pairs
-    siteList = get_unique_site_height_pairs(ds_all,siteList,separate_by_height)
+    site_list = get_unique_site_height_pairs(ds_all, site_list, separate_by_height)
 
     # Create figure
-    fig, ax = plt.subplots(1, 1, figsize=(0.7 * len(siteList), 8))
+    fig, ax = plt.subplots(1, 1, figsize=(0.7 * len(site_list), 8))
 
     assert margin < 0.5, "Margin must be smaller than 0.5"
     assert margin > 0, "Margin must be positive"
@@ -363,7 +363,7 @@ def plot_sites_timeseries(
     else:
         model_offset = 1
 
-    for site_iter, (site,height) in enumerate(siteList):
+    for site_iter, (site, height) in enumerate(site_list):
         if site_iter != 0:
             # Add grey vertical line between sites
             ax.plot(
@@ -384,7 +384,7 @@ def plot_sites_timeseries(
             mask = (ds_all[m]["number_of_identifier"] == site_index) & (
                 ds_all[m][var].notnull()
             )
-            if separate_by_height == True:
+            if separate_by_height:
                 mask &= ds_all[m]["intake_height"] == height
             data = ds_all[m]["time"].where(mask, drop=True)
             ax.scatter(
@@ -403,11 +403,12 @@ def plot_sites_timeseries(
         dt_start_date - np.timedelta64(1, "D"), dt_end_date + np.timedelta64(1, "D")
     )
 
-    ax.set_xticks(np.arange(len(siteList)))
-    if separate_by_height == True:
-        ax.set_xticklabels([f"{s}\n{int(h)}m" for (s,h) in siteList])
+    ax.set_xticks(np.arange(len(site_list)))
+    if separate_by_height:
+        xticklabels = [f"{s}\n{int(h)}m" for (s, h) in site_list]
     else:
-        ax.set_xticklabels([s for (s,h) in siteList])
+        xticklabels = [s for (s, h) in site_list]
+    ax.set_xticklabels()
 
     if (
         int(dt_end_date.astype("datetime64[M]") - dt_start_date.astype("datetime64[M]"))
@@ -420,7 +421,7 @@ def plot_sites_timeseries(
         ax.yaxis.set_major_locator(MonthLocator())
     ax.yaxis.grid(True, which="major")
 
-    ax.set_xlim(-0.5, len(siteList) - 0.5)
+    ax.set_xlim(-0.5, len(site_list) - 0.5)
 
     plt.legend(loc="lower right", markerscale=4, bbox_to_anchor=(1, 1))
 
