@@ -589,7 +589,7 @@ def plot_country_sector_flux_bar(
     elif plot_inventory_or_prior == "prior":
         n_plots = len(ds_all.keys()) * 2
 
-    n_cols, n_rows = determine_subplots_arrangement(n_plots)
+    n_rows, n_cols = determine_subplots_arrangement(n_plots)
 
     units = {ds["flux_total_posterior_country"].units for ds in ds_all.values()}
     if len(units) == 1:

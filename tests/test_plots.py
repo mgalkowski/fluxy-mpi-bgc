@@ -11,16 +11,15 @@ from fluxy.plots.flux_map import (
     plot_flux_map_model_comparison,
     plot_flux_map_over_time,
 )
-from fluxy.plots.flux_timeseries import plot_country_flux
+from fluxy.plots.flux_timeseries import plot_country_flux,plot_country_sector_flux_bar
 from fluxy.plots.mf_timeseries import (
     plot_mf_timeseries,
-    plot_sites_timeseries,
+    plot_sites_timeseries
 )
 from fluxy.operators.mf import compute_mf_difference
 from fluxy.plots.mf_stats import plot_stats_mf, plot_taylor_diagram
 from fluxy.test_utils import data_dir
-
-#data_dir = Path(fluxy.__path__[0]).parent / "data" / "tests"
+from fluxy.operators.flux_scale_by_sector_proportions import scale_by_sector_proportions
 
 config_data = read_config_files()
 annotate_coords = set_print_settings()
@@ -348,9 +347,9 @@ def test_plot_country_sector_flux_bar():
         "RHIME_NAME_EUROPE_EDGAR_old_format",
     ]
     regions = ["GERMANY", "UK", "BENELUX", "NW_EU2"]
-    period = "yearly"  # use to override standard inversion periods, must be a list the same length as models, e.g. ['monthly','yearly']
+    period = "monthly"  # use to override standard inversion periods, must be a list the same length as models, e.g. ['monthly','yearly']
     country_flux_units_print = "Gg yr-1"
-    start_date = "2018-01-01"  # inclusive. Option to set as list of dates, e.g. ['2018-01-01','2019-01-01'] which is required for total fgases if one model is missing obs for a year
+    start_date = "2022-01-01"  # inclusive. Option to set as list of dates, e.g. ['2018-01-01','2019-01-01'] which is required for total fgases if one model is missing obs for a year
     end_date = "2024-01-01"  # not inclusive. Option to set as list of dates, e.g. ['2023-01-01','2022-01-01'] which is required for total fgases if one model is missing obs for a year
     get_labels_from_file = False
     sector_file = "EUROPE_EDGAR"
