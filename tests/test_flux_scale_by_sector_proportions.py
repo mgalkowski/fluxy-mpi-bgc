@@ -52,6 +52,7 @@ def test_scale_by_sector_proportions():
         sector_file=sector_file,
         create_region_sector_totals=create_region_sector_totals,
         sectors=["agriculture"],
+        cell_area_test_file=True
     )
 
     # variables flux_agriculture_prior, flux_agriculture_posterior,

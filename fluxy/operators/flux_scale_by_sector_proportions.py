@@ -19,6 +19,7 @@ def scale_by_sector_proportions(
     sector_file: str = "EUROPE_EDGAR",
     create_region_sector_totals: bool = True,
     sectors: list[str] | None = None,
+    cell_area_test_file: bool = False
 ) -> xr.Dataset:
     """
     Produces sector level fluxes by scaling prior and posterior fluxes by the
@@ -47,7 +48,9 @@ def scale_by_sector_proportions(
         create_region_sector_totals (bool):
             If True, sums spatial fluxes over country_fraction masks
             to create country/region totals.
-
+        cell_area_test_file (bool):
+            Only used in tests. If True, extracts cell_area from a smaller test file
+            with restricted lat/lons.
     Returns:
         ds (xarray dataset):
             Input ds, with added flux_sector_prior and flux_sector_posterior variables.
@@ -145,7 +148,10 @@ def scale_by_sector_proportions(
             # check for cell_area and create if needed
             if "cell_area" not in ds:
                 parent_dir = Path(__file__).parent.parent.parent
-                configs_dir = parent_dir / "configs"
+                if cell_area_test_file:
+                    configs_dir = parent_dir / "data" / "tests" / "configs"
+                else:
+                    configs_dir = parent_dir / "configs"
                 if "domain" in ds.attrs:
                     domain = ds.attrs["domain"]
                 else:
