@@ -380,6 +380,7 @@ def test_plot_country_sector_flux_bar():
         regions=regions,
         sector_file=sector_file,
         create_region_sector_totals=create_region_sector_totals,
+        cell_area_test_file=True
     )
 
     fig = plot_country_sector_flux_bar(
