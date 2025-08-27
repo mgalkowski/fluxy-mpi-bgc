@@ -404,10 +404,7 @@ def plot_sites_timeseries(
     )
 
     ax.set_xticks(np.arange(len(site_list)))
-    if separate_by_height:
-        xticklabels = [f"{s}\n{int(h)}m" for (s, h) in site_list]
-    else:
-        xticklabels = [s for (s, h) in site_list]
+    xticklabels = [f"{s}\n{int(h)}m" if separate_by_height else s for (s, h) in site_list]
     ax.set_xticklabels(xticklabels)
 
     if (

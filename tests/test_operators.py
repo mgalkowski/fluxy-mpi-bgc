@@ -16,15 +16,14 @@ from fluxy.operators.select import (
 )
 from fluxy.test_utils.models import (
     get_loaded_models,
-    get_loaded_models_new,
     test_models,
-    test_models_new,
+    test_models_with_inlet,
 )
 
-ds_all_mf = get_loaded_models("concentration")
-ds_all_flux = get_loaded_models("flux")
+ds_all_mf = get_loaded_models(test_models,"concentration")
+ds_all_flux = get_loaded_models(test_models,"flux")
 
-ds_all_mf_new = get_loaded_models_new("concentration")
+ds_all_mf_with_inlet = get_loaded_models(test_models_with_inlet,"concentration")
 
 
 # Test the difference between all available models
@@ -75,12 +74,12 @@ def test_stats_mf(stat):
     )
 
 
-@pytest.mark.parametrize("model", test_models_new)
+@pytest.mark.parametrize("model", test_models_with_inlet)
 def test_slice_height(model):
 
-    ds_all_mf_new_sliced = slice_site(ds_all_mf_new[model], site="TAC")
+    ds_all_mf__with_inlet_sliced = slice_site(ds_all_mf_with_inlet[model], site="TAC")
 
-    ds_sliced = slice_height(ds_all_mf_new_sliced, intake_height=185)
+    ds_sliced = slice_height(ds_all_mf__with_inlet_sliced, intake_height=185)
     
     print(ds_sliced)
 
