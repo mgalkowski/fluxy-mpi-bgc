@@ -346,7 +346,6 @@ def plot_sites_timeseries(
     models = ds_all.keys()
     dt_start_date = np.datetime64(start_date)
     dt_end_date = np.datetime64(end_date)
-    site_list = get_unique_sites(ds_all)
     model_labels_copy = model_labels.copy()
 
     # create list of grouped site-height pairs
