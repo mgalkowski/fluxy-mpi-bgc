@@ -57,6 +57,8 @@ def scale_by_sector_proportions(
             If regions is not None, also contains region/country sector total variables.
     """
 
+    logger.warning(f"Scaling fluxes to create sector flux totals, this can be slow (>1 minute to run) if using lots of models and regions.")
+
     country_codes = config_data["regions_info"].get("country_codes", {})
     r_data = config_data.get("regions_info", {})["country_codes"]
 
@@ -75,6 +77,8 @@ def scale_by_sector_proportions(
         data_dir, "sector_flux", f"{sector_file}_{species}_yearly_flux_sectors.nc"
     )
 
+    logger.warning(f"Using {sector_prop_path} to scale total fluxes into sector fluxes.")
+
     ds_all_out = {}
     scaling_factor_all = {}
 
@@ -91,6 +95,7 @@ def scale_by_sector_proportions(
                 raise ValueError(
                     "This part of the code as not be tested for a sector file with frequency not equal to 'YS-JAN' or dataset frequency not one of 'monthly'/'yearly'. In the current implementation, the sector file frequency is suppose to be bugger or equal to the dataset frequency and start before or at the same time as the dataset."
                 )
+                
             ds_sectors = f.sel(time=ds["time"].values, method="ffill")
             ds_sectors["time"] = ds["time"]
 
