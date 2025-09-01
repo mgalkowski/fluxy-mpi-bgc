@@ -15,7 +15,7 @@ from typing import Literal
 
 from fluxy import config
 from fluxy.operators.regions import extract_region_flux
-from fluxy.operators.select import slice_flux
+from fluxy.operators.select import slice_flux, get_intake_height, get_site_index
 from fluxy.operators.flux_align_dataset import align_time
 
 logger = logging.getLogger(__name__)
@@ -284,7 +284,12 @@ def read_model_output(
 
         # Fix variables and attributes
         ds_all[m] = edit_vars_and_attributes(
-            ds_all[m], m, period[i], file_type, config_data.get("regions_info", {})
+            ds_all[m],
+            m,
+            period[i],
+            file_type,
+            config_data.get("regions_info", {}),
+            config_data.get("site_info", {}),
         )
 
     return ds_all
@@ -547,6 +552,7 @@ def edit_vars_and_attributes(
     frequency: str,
     file_type: Literal["flux", "concentration"],
     regions_info: dict[str, str],
+    site_info: dict[str, dict],
 ) -> xr.Dataset:
     """
     Edit dataset variables and attributes.
