@@ -270,8 +270,6 @@ def plot_country_flux(
             f"Inconsistency in the units from the different datasets : {units} are present. Only one is expected."
         )
 
-    unit = list(units)[0]
-
     fig, axes = plt.subplots(
         n_rows,
         n_cols,
