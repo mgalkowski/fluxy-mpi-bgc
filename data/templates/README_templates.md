@@ -108,5 +108,12 @@ transport model output.
 
 ## 5. Cell area file
 
-Used during the calculation of sector-level region/country monthly/annual flux totals from 
-sector-level spatial fluxes.
+By default, the cell_area variable is read from each model's flux file
+and used during the calculation of sector-level region/country monthly/annual flux totals from 
+sector-level spatial fluxes. The cell area file is only required when this 
+variable is not available.
+
+## 6. Sector flux file
+
+Spatial flux data for each emissions sector, either from an inventory or bottom-up model.
+This is data used to scale model total fluxes into model sector fluxes.
