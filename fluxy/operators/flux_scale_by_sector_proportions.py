@@ -88,7 +88,7 @@ def scale_by_sector_proportions(
         with xr.open_dataset(sector_prop_path) as f:
             # timely align sector dataset on main dataset
             freq_ds = ds.attrs["frequency"]
-            if xr.infer_freq(f.time) in ["YS-JAN","AS-JAN"] or freq_ds not in [
+            if xr.infer_freq(f.time) not in ["YS-JAN","AS-JAN"] or freq_ds not in [
                 "monthly",
                 "yearly",
             ]:
