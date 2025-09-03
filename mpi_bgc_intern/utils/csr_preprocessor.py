@@ -65,10 +65,6 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
     prior = ds["flux_total_prior"].values
     posterior = ds["flux_total_posterior"].values
     print("_save_dataset")    
-    print("Max prior:", np.nanmax(prior))
-    print("Unique large values prior:", np.unique(prior[prior > 1e10]))
-    print("Max posterior:", np.nanmax(posterior))
-    print("Unique large values posterior:", np.unique(posterior[posterior > 1e10]))
     
     _save_dataset(ds, path_to_output)
 
@@ -91,11 +87,6 @@ def _combine_fluxes(ds_in, species):
     flux_combined.attrs = land.attrs.copy()
     ds[f"{species}{list(combine_candidates.keys())[0]}"] = flux_combined
     
-    combined = ds[f"{species}flux_combined"].values
-    print("combine_fluxes")    
-    print("Max combined:", np.nanmax(combined))
-    print("Unique large values combined:", np.unique(combined[combined > 1e10]))
-
     return ds
     
 
