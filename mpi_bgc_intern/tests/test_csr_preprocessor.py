@@ -3,7 +3,21 @@ from mpi_bgc_intern.utils import csr_preprocessor as prp
 import xarray as xr
 import numpy as np
 import os
+import sys 
 
+
+print("Python:", sys.version)
+print("xarray:", xr.__version__)
+try:
+    import netCDF4
+    print("netCDF4:", netCDF4.__version__)
+except ImportError:
+    print("netCDF4 not installed")
+try:
+    import h5netcdf
+    print("h5netcdf:", h5netcdf.__version__)
+except ImportError:
+    print("h5netcdf not installed")
 
 @pytest.fixture(scope="module")
 def processed_dataset(tmp_path_factory):
@@ -44,3 +58,4 @@ def test_combined_flux_units_correct(processed_dataset):
 def test_time_format(processed_dataset):
     dt_time = processed_dataset['time'].dtype
     assert dt_time == np.dtype("datetime64[ns]"), f"{dt_time} is the wrong format for time. Should be datetime64[ns]"
+
