@@ -2,18 +2,22 @@ import pytest
 from mpi_bgc_intern.utils import csr_preprocessor as prp
 import xarray as xr
 import numpy as np
-import os
+from pathlib import Path
 
 
 @pytest.fixture(scope="module")
 def processed_dataset(tmp_path_factory):
     tmp_path = tmp_path_factory.mktemp("data")
-    path_to_prior = "mpi_bgc_intern/tests/data/Prior_vprm_flux_monthly_2021.nc"
-    path_to_posterior = "mpi_bgc_intern/tests/data/Posterior_vprm_flux_monthly_2021.nc"
+    test_dir = Path(__file__).parent / "data"
+    path_to_prior = test_dir / "Prior_vprm_flux_monthly_2021.nc"
+    path_to_posterior = test_dir / "Posterior_vprm_flux_monthly_2021.nc"
     output_path = tmp_path / "CSR_co2_monthly.nc"
     species = "co2"
 
     prp.preprocess(path_to_prior, path_to_posterior, output_path, species)
+
+    if not output_path.exists():
+        pytest.fail(f"Output file {output_path} was not created")
 
     return xr.open_dataset(output_path)
 
@@ -44,3 +48,4 @@ def test_combined_flux_units_correct(processed_dataset):
 def test_time_format(processed_dataset):
     dt_time = processed_dataset['time'].dtype
     assert dt_time == np.dtype("datetime64[ns]"), f"{dt_time} is the wrong format for time. Should be datetime64[ns]"
+
