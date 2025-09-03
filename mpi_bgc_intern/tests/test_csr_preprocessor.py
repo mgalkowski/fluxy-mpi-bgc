@@ -16,6 +16,9 @@ def processed_dataset(tmp_path_factory):
 
     prp.preprocess(path_to_prior, path_to_posterior, output_path, species)
 
+    if not output_path.exists():
+        pytest.fail(f"Output file {output_path} was not created")
+
     return xr.open_dataset(output_path)
 
 

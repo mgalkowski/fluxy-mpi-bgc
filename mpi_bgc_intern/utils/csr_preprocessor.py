@@ -142,7 +142,7 @@ def _get_years_from_time(ds):
 
 def _save_dataset(ds, path):
     try:
-        ds.to_netcdf(path)
+        ds.to_netcdf(path, engine="netcdf4")
         print(f"✅ File saved successfully: {path}")
     except Exception as e:
         print(f"❌ Error when trying to save file {path}: {e}")
