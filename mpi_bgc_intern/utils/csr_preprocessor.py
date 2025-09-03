@@ -21,6 +21,12 @@ combine_candidates = {
     'flux_unc' : ['stdev_flux_total_prior_country', 'stdev_flux_total_posterior_country']
 }
 
+unit_conversions = {
+        "PgC/yr": 1,
+        "TgC/yr": 1/1000,
+        "Tmol/yr": 12.01/1000
+    }
+
 flux_unit = "mol m-2 s-1"
 
 def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
@@ -34,11 +40,7 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
     ds_posterior = _convert_time(ds_posterior)
     ds_posterior = _combine_fluxes(ds_posterior, species)
     ds = _combine_variable(ds_prior, ds_posterior,
-                           species=species,
-                           drop_also=[f"{species}flux_land",
-                                      f"{species}flux_ocean", 
-                                      f"{species}flux_subt",
-                                      f"{species}flux_excl"])
+                           species=species)
 
     for var in ds.data_vars:
         if 'rt' in ds[var].dims:
@@ -47,8 +49,18 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
     if 'rt' in ds.coords:
         ds = ds.drop_vars('rt')
     
-    ds = ds.drop_vars([v for v in ['lproc', 'lrt', 'lspec'] if v in ds])
+    drop = ["flux_land",
+                "flux_ocean", 
+                "flux_subt",
+                "flux_excl",
+                "lproc",
+                "lrt", 
+                "lspec"
+           ]
 
+    to_drop = [v for v in ds.variables if any(sub in v for sub in drop)]
+
+    ds = ds.drop_vars(to_drop)
 
     prior = ds["flux_total_prior"].values
     posterior = ds["flux_total_posterior"].values
@@ -87,7 +99,7 @@ def _combine_fluxes(ds_in, species):
     return ds
     
 
-def _combine_variable(ds_prior, ds_post, species, drop_also=[]):
+def _combine_variable(ds_prior, ds_post, species):
     ds = ds_prior.copy()
     for v, new_vars in combine_candidates.items():
         varname = f'{species}{v}'
@@ -100,8 +112,6 @@ def _combine_variable(ds_prior, ds_post, species, drop_also=[]):
             ds = ds.drop_vars([varname])
         else:
             print(f'INFO: {varname} not found in dataset.')
-
-    ds = ds.drop_vars([v for v in drop_also if v in ds])
 
     return ds
 
@@ -127,10 +137,6 @@ def _check_for_units(varname, ds):
         area = ds["dxyp"]
         years = _get_years_from_time(ds)
 
-        unit_conversions = {
-            "PgC/yr": 1,
-            "TgC/yr": 1/1000,
-        }
         if unit in unit_conversions:
             data = data * unit_conversions[unit]
             data = _pgcyr_to_mol_m2_s(data, area, years)
