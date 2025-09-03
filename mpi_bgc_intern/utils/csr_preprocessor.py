@@ -82,12 +82,35 @@ def _combine_fluxes(ds_in, species):
     ds = ds_in.copy()
     land = _check_for_units(f"{species}flux_land", ds_in)
     ocean = _check_for_units(f"{species}flux_ocean", ds_in)
-    
-    flux_combined = land + ocean
-    flux_combined.attrs = land.attrs.copy()
+
+    if land is None and ocean is None:
+        # Fallback to combined flux if neither land nor ocean is available
+        combined = _check_for_units(f"{species}flux", ds_in)
+        if combined is None:
+            raise ValueError(
+                f"No {species}flux_land, {species}flux_ocean, or {species}flux in dataset"
+            )
+        flux_combined = combined
+        attrs = _copy_attrs(combined)
+    elif land is None:
+        flux_combined = ocean
+        attrs = _copy_attrs(ocean)
+    elif ocean is None:
+        flux_combined = land
+        attrs = _copy_attrs(land)
+    else:
+        flux_combined = land + ocean
+        attrs = _copy_attrs(land)
+        attrs.update(_copy_attrs(ocean))
+
+    flux_combined.attrs = attrs
+        
     ds[f"{species}{list(combine_candidates.keys())[0]}"] = flux_combined
     
     return ds
+
+def _copy_attrs(var, default=None):
+    return var.attrs.copy() if hasattr(var, "attrs") else (default or {})
     
 
 def _combine_variable(ds_prior, ds_post, species):
