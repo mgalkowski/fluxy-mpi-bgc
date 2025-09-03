@@ -141,6 +141,9 @@ def _get_years_from_time(ds):
   
 
 def _save_dataset(ds, path):
+    ds.encoding.clear()
+    for v in ds.variables:
+        ds[v].encoding.clear()
     try:
         ds.to_netcdf(path, engine="netcdf4")
         print(f"✅ File saved successfully: {path}")
