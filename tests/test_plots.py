@@ -38,6 +38,7 @@ end_date = "2024-01-01"  # not inclusive. Option to set as list of dates, e.g. [
 get_labels_from_file = False
 
 ds_all_flux_scaled = {}
+ds_all_flux_with_sites_scaled = {}
 
 if "all" in species:
     ds_all_flux_scaled = read_flux_total_fgases(
@@ -54,6 +55,9 @@ else:
     ds_all_flux = read_model_output(
         data_dir, "flux", species, models, config_data, period=period
     )
+    ds_all_flux_with_sites = read_model_output(
+        data_dir, "flux", species, models, config_data, period=period, add_sites_to_flux=True,
+    )
 
     for m in models:
         ds_all_flux_scaled[m] = slice_flux(
@@ -64,6 +68,15 @@ else:
             species=species,
             country_flux_units_print=country_flux_units_print,
         )[m]
+
+        ds_all_flux_with_sites_scaled[m] = slice_flux(
+            {m: ds_all_flux_with_sites[m]},
+            config_data,
+            start_date,
+            end_date,
+            species=species,
+            country_flux_units_print=country_flux_units_print,
+        )[m]    
 
 
 site = "MHD"
@@ -179,6 +192,22 @@ def test_obs_modelled_separate():
         y_lim=None,
     )
 
+def test_mf_timeseries_no_hist():
+    fig = plot_mf_timeseries(
+        ds_all_mf_sliced,
+        species,
+        site,
+        model_colors,
+        model_labels,
+        config_data,
+        annotate_coords,
+        histogram_type="none",
+        plot_type="separate",
+        include={"mf_observed": None, "mf_posterior": "percentile_mf_posterior"},
+        diff_include=["mf_posterior"],
+        y_lim=None,
+    )
+
 
 def test_obs_modelled_together():
 
@@ -270,7 +299,7 @@ def test_plot_taylor_diagram():
 def test_plot_flux_map():
 
     fig = plot_flux_map(
-        ds_all=ds_all_flux_scaled,
+        ds_all=ds_all_flux_with_sites_scaled,
         species=species,
         region=region,
         config_data=config_data,
@@ -293,7 +322,7 @@ def test_plot_flux_map_model_comparison():
     models_comparison = [models[0], models[2]]
 
     fig = plot_flux_map_model_comparison(
-        ds_all=ds_all_flux_scaled,
+        ds_all=ds_all_flux_with_sites_scaled,
         var=var,
         models=models_comparison,
         species=species,
@@ -319,7 +348,7 @@ def test_plot_flux_map_over_time():
     dt = 2
 
     fig = plot_flux_map_over_time(
-        ds_all=ds_all_flux_scaled,
+        ds_all=ds_all_flux_with_sites_scaled,
         var=var,
         species=species,
         region=region,
