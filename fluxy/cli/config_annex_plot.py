@@ -257,25 +257,14 @@ class AnnexConfig:
     }
 
     # for annual species (list or dictionary if different between species)
-    logger.warning("Excluding InTEM-FLEXPART from SF6 country fluxes!")
-    models_yearly_species = {
-        "default": [
-            "InTEM_NAME",
-            "InTEM_FLEXPART",
-            "ELRIS_NAME",
-            "ELRIS_FLEXPART",
-            "RHIME_NAME",
-            "RHIME_FLEXPART",
-        ],
-        "sf6": [
-            "InTEM_NAME",
-            #"InTEM_FLEXPART",
-            "ELRIS_NAME",
-            "ELRIS_FLEXPART",
-            "RHIME_NAME",
-            "RHIME_FLEXPART",
-        ],
-    }
+    models_yearly_species = [
+        "InTEM_NAME",
+        "InTEM_FLEXPART",
+        "ELRIS_NAME",
+        "ELRIS_FLEXPART",
+        "RHIME_NAME",
+        "RHIME_FLEXPART",
+    ]
 
     ## Units for plot
     country_flux_units_print = "Tg CO2-eq yr-1"
@@ -313,16 +302,8 @@ class AnnexConfig:
     kwargs_country_flux_yearly_species = dict(
         resample=None,
         rolling_mean=True,
+        plot_separate=[True, False, False, False, False, False],
     )
-
-    kwargs_country_flux_yearly_species_per_species = {
-        "default": dict(
-            plot_separate=[True, False, False, False, False, False],
-        ),
-        "sf6": dict(
-            plot_separate=[True, False, False, False, False],
-        ),
-    }
 
     # Define separately for N2O because there are no RHIME N2O results in NID2025
     # For NID2026, the default settings can be moved to kwargs_country_flux_general
@@ -339,8 +320,7 @@ class AnnexConfig:
     }
 
     ### Settings for spatial maps (list or dictionary if different between species)
-    # no RHIME N2O results in NID2025
-    logger.warning("Excluding InTEM-FLEXPART from CH4, N2O and SF6 spatial maps!")
+    logger.warning("Excluding InTEM-FLEXPART from CH4 and N2O spatial maps!")
     models_spatial_maps = {
         "default": [
             "InTEM_NAME",
@@ -359,14 +339,6 @@ class AnnexConfig:
             "RHIME_FLEXPART",
         ],
         "n2o": [
-            "InTEM_NAME",
-            # "InTEM_FLEXPART",
-            "ELRIS_NAME",
-            "ELRIS_FLEXPART",
-            "RHIME_NAME",
-            "RHIME_FLEXPART",
-        ],
-        "sf6": [
             "InTEM_NAME",
             # "InTEM_FLEXPART",
             "ELRIS_NAME",
@@ -420,3 +392,6 @@ class AnnexConfig:
 
         if not hasattr(self, "kwargs_country_flux_monthly_species_per_species"):
             self.kwargs_country_flux_monthly_species_per_species = {}
+
+        if not hasattr(self, "kwargs_country_flux_yearly_species_per_species"):
+            self.kwargs_country_flux_yearly_species_per_species = {}
