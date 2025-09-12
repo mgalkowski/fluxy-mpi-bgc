@@ -228,33 +228,14 @@ class AnnexConfig:
     ### Settings for country fluxes
     ## Model definitions
     # for monthly species (list or dictionary if different between species)
-    logger.warning("Excluding InTEM-FLEXPART from CH4 and N2O country fluxes!")
-    models_monthly_species = {
-        "default": [
-            "InTEM_NAME",
-            "InTEM_FLEXPART",
-            "ELRIS_NAME",
-            "ELRIS_FLEXPART",
-            "RHIME_NAME",
-            "RHIME_FLEXPART",
-        ],
-        "ch4": [
-            "InTEM_NAME",
-            #"InTEM_FLEXPART",
-            "ELRIS_NAME",
-            "ELRIS_FLEXPART",
-            "RHIME_NAME",
-            "RHIME_FLEXPART",
-        ],
-        "n2o": [
-            "InTEM_NAME",
-            #"InTEM_FLEXPART",
-            "ELRIS_NAME",
-            "ELRIS_FLEXPART",
-            "RHIME_NAME",
-            "RHIME_FLEXPART",
-        ],
-    }
+    models_monthly_species = [
+        "InTEM_NAME",
+        "InTEM_FLEXPART",
+        "ELRIS_NAME",
+        "ELRIS_FLEXPART",
+        "RHIME_NAME",
+        "RHIME_FLEXPART",
+    ]
 
     # for annual species (list or dictionary if different between species)
     models_yearly_species = [
@@ -280,6 +261,7 @@ class AnnexConfig:
         add_prior_unc=False,
         set_global_leg=False,
         country_codes_as_titles=None,
+        plot_separate=[True, False, False, False, False, False],
         plot_combined=True,
         plot_resample_and_original=False,
         return_res=True,
@@ -302,51 +284,17 @@ class AnnexConfig:
     kwargs_country_flux_yearly_species = dict(
         resample=None,
         rolling_mean=True,
-        plot_separate=[True, False, False, False, False, False],
     )
 
-    # Define separately for N2O because there are no RHIME N2O results in NID2025
-    # For NID2026, the default settings can be moved to kwargs_country_flux_general
-    kwargs_country_flux_monthly_species_per_species = {
-        "default": dict(
-            plot_separate=[True, False, False, False, False, False],
-        ),
-        "ch4": dict(
-            plot_separate=[True, False, False, False, False],
-        ),
-        "n2o": dict(
-            plot_separate=[True, False, False, False, False],
-        ),
-    }
-
     ### Settings for spatial maps (list or dictionary if different between species)
-    logger.warning("Excluding InTEM-FLEXPART from CH4 and N2O spatial maps!")
-    models_spatial_maps = {
-        "default": [
-            "InTEM_NAME",
-            "InTEM_FLEXPART",
-            "ELRIS_NAME",
-            "ELRIS_FLEXPART",
-            "RHIME_NAME",
-            "RHIME_FLEXPART",
-        ],
-        "ch4": [
-            "InTEM_NAME",
-            # "InTEM_FLEXPART",
-            "ELRIS_NAME",
-            "ELRIS_FLEXPART",
-            "RHIME_NAME",
-            "RHIME_FLEXPART",
-        ],
-        "n2o": [
-            "InTEM_NAME",
-            # "InTEM_FLEXPART",
-            "ELRIS_NAME",
-            "ELRIS_FLEXPART",
-            "RHIME_NAME",
-            "RHIME_FLEXPART",
-        ],
-    }
+    models_spatial_maps = [
+        "InTEM_NAME",
+        "InTEM_FLEXPART",
+        "ELRIS_NAME",
+        "ELRIS_FLEXPART",
+        "RHIME_NAME",
+        "RHIME_FLEXPART",
+    ]
     flux_units_print = "kg km-2 yr-1"
 
     ## Kwargs for flux_map functions
