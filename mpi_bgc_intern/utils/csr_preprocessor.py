@@ -209,8 +209,8 @@ def _save_dataset(ds, path):
     for v in ds.variables:
         ds[v].encoding.clear()
     try:
-        if os.path.exists(path_to_output):
-            os.remove(path_to_output)
+        if os.path.exists(path):
+            os.remove(path)
         # make sure parent folders exist
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         ds.to_netcdf(path, engine="netcdf4")
