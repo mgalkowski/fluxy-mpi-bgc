@@ -5,6 +5,7 @@ import calendar
 import numpy as np
 import pandas as pd
 import logging
+from pathlib import Path
 
 #new_name: ['old_name1', 'old_name2']
 rename_candidates = {
@@ -208,6 +209,10 @@ def _save_dataset(ds, path):
     for v in ds.variables:
         ds[v].encoding.clear()
     try:
+        if os.path.exists(path):
+            os.remove(path)
+        # make sure parent folders exist
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
         ds.to_netcdf(path, engine="netcdf4")
         print(f"✅ File saved successfully: {path}")
     except Exception as e:
