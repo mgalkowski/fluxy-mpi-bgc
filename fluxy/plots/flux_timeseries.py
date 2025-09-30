@@ -461,6 +461,7 @@ def add_ylim(
                 )
             for ax in axes:
                 ax.set_ylim(*fix_y_axes)
+
         return
 
     max_cf = []
@@ -811,8 +812,8 @@ def plot_country_flux(
     )
     add_xlims_and_ticks(axes[-1], yearly_freq, res_dict, aggreg_month)
 
-    add_legend(fig, set_global_leg, annex_mode, plot_inventory)
 
+    add_legend(fig, set_global_leg, annex_mode, plot_inventory)
     logger.info(
         "NOTE: If all the data is not within axis limits, adjust the fix_y_axes parameter"
     )
