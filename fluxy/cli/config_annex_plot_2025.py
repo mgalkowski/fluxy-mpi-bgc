@@ -194,7 +194,7 @@ class AnnexConfig:
     """
 
     ### Path to results directory
-    data_dir = "/project/paris/inverse_modelling/"
+    data_dir = "/project/paris/PARISNID2025/"
 
     ### Species
     monthly_species = ["ch4", "n2o"]
@@ -207,7 +207,6 @@ class AnnexConfig:
         "hfc143a",
         "hfc152a",
         "hfc227ea",
-        "hfc236fa",
         "hfc245fa",
         "hfc365mfc",
         "hfc4310mee",
@@ -216,27 +215,39 @@ class AnnexConfig:
         "pfc218",
         "pfc318",
         "sf6",
-        "nf3",
     ]
 
     combined_species = ["all_hfc", "all_pfc"]
 
     ### Start/end date
     start_date_monthly_species = "2008-01-01"
-    start_date_paris_window = "2017-01-01"
-    start_date_spatial_maps = "2019-01-01"
-    end_date = "2025-01-01"
+    start_date_paris_window = "2018-01-01"
+    start_date_spatial_maps = "2018-01-01"
+    end_date = "2024-01-01"
 
     ### Settings for country fluxes
     ## Model definitions (list or dict["<period>": list(), "<species>": list()] if different between species)
-    models_country_flux = [
-        "InTEM_NAME",
-        "InTEM_FLEXPART",
-        "ELRIS_NAME",
-        "ELRIS_FLEXPART",
-        "RHIME_NAME",
-        "RHIME_FLEXPART",
-    ]
+    # no RHIME N2O results in NID2025
+    logger.warning("Excluding RHIME from N2O country fluxes!")
+    models_country_flux = {
+        "monthly": [
+            "InTEM_longrun",
+            "InTEM",
+            "ELRIS",
+            "RHIME",
+        ],
+        "yearly": [
+            "InTEM_longrun",
+            "InTEM",
+            "ELRIS",
+            "RHIME",
+        ],
+        "n2o": [
+            "InTEM_longrun",
+            "InTEM",
+            "ELRIS",
+        ],
+    }
 
     ## Units for plot
     country_flux_units_print = "Tg CO2-eq yr-1"
@@ -252,8 +263,6 @@ class AnnexConfig:
         add_prior_unc=False,
         set_global_leg=False,
         country_codes_as_titles=None,
-        plot_separate=[True, False, False, False, False, False],
-        plot_combined=True,
         plot_resample_and_original=False,
         return_res=True,
     )
@@ -262,28 +271,64 @@ class AnnexConfig:
     # add entries for specific species if different from monthly/yearly default
     kwargs_country_flux_species_specific = {
         "monthly": dict(
+            plot_separate=[True, False, False, False],
+            plot_combined=[False, True, True, True],
             resample="year",
             resample_uncert_correlation=False,
             rolling_mean=False,
         ),
         "yearly": dict(
+            plot_separate=[True, False, False, False],
+            plot_combined=[False, True, True, True],
             resample=None,
-            rolling_mean=True,
+            rolling_mean=[False, True, True, True],
+        ),
+        "n2o": dict(
+            plot_separate=[True, False, False],
+            plot_combined=[False, True, True],
+            resample="year",
+            resample_uncert_correlation=False,
+            rolling_mean=False,
         ),
     }
 
     # for monthly species on PARIS time window
     kwargs_country_flux_monthly_species_special = {
         "monthly": dict(
+            plot_separate=[True, False, False, False],
+            plot_combined=[False, True, True, True],
             resample=None,
             rolling_mean=False,
-        )
+        ),
+        "n2o": dict(
+            plot_separate=[True, False, False],
+            plot_combined=[False, True, True],
+            resample=None,
+            rolling_mean=False,
+        ),
     }
 
     ### Settings for spatial maps
     ## Model definitions (list or dict["<period>": list(), "<species>": list()] if different between species)
-    # NOTE: in produce_plots, it is assumed that models_spatial_maps exist in models_country_flux
-    models_spatial_maps = models_country_flux
+    # NOTE: it is assumed that models_spatial_maps exist in models_monthly/yearly_species
+    # no RHIME N2O results in NID2025
+    logger.warning("Excluding RHIME from N2O spatial maps!")
+    models_spatial_maps = {
+        "yearly": [
+            "InTEM",
+            "ELRIS",
+            "RHIME",
+        ],
+        "monthly": [
+            "InTEM",
+            "ELRIS",
+            "RHIME",
+        ],
+        "n2o": [
+            "InTEM",
+            "ELRIS",
+        ],
+    }
     flux_units_print = "kg km-2 yr-1"
 
     ## Kwargs for flux_map functions
