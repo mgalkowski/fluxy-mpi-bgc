@@ -798,7 +798,6 @@ def plot_country_flux(
 
         # set ax title
         add_title(ax, country, r_data, country_codes_as_titles)
-
     res_dict: dict[str, dict] = {
         "inventory": inventory_data,
         "posterior": posterior_data,
@@ -812,7 +811,6 @@ def plot_country_flux(
     add_xlims_and_ticks(axes[-1], yearly_freq, res_dict, aggreg_month)
 
     add_legend(fig, set_global_leg, annex_mode, plot_inventory)
-
     logger.info(
         "NOTE: If all the data is not within axis limits, adjust the fix_y_axes parameter"
     )
