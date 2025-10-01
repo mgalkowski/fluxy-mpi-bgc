@@ -29,9 +29,19 @@ unit_conversions = {
 
 flux_unit = "mol m-2 s-1"
 
-def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
-    ds_prior = xr.open_dataset(path_to_prior)
-    ds_posterior = xr.open_dataset(path_to_posterior)
+country_code_EUROPE30f = ['none','AUT','BEL','BGR','CHE','CYP','CZE','DEU','DNK','EST','GRC','ESP','FIN','FRA','HRV','HUN','IRL',
+                          'ITA','LTU','LUX','LVA','MLT','NLD','POL','PRT','ROU','SWE','SVN','SVK','GBR','LAND','OCEAN']
+
+country_code_FLUXY = ['CHE','SWE','ESP','SVK','SVN','PRT','POL','NOR','LUX','ITA','IRL','HUN','DEU','CZE','HRV','BEL',
+                      'AUT','OCEAN']
+
+header_names_rhs = ['time','row','col','covar_pri','covar_post','corr_pri','corr_post','deriv_mu']
+
+def preprocess(path_to_prior, path_to_posterior, path_to_prior_country, path_to_posterior_country, path_to_uncertainty_country, path_to_output, species):
+    ds_prior = xr.open_dataset(path_to_prior,decode_timedelta=True)
+    ds_posterior = xr.open_dataset(path_to_posterior,decode_timedelta=True)
+    ds_prior_country = xr.open_dataset(path_to_prior_country,decode_timedelta=True)
+    ds_posterior_country = xr.open_dataset(path_to_posterior_country,decode_timedelta=True) 
 
     ds_prior = _rename(ds_prior)
     ds_prior = _convert_time(ds_prior)
@@ -39,7 +49,16 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
     ds_posterior = _rename(ds_posterior)
     ds_posterior = _convert_time(ds_posterior)
     ds_posterior = _combine_fluxes(ds_posterior, species)
-    ds = _combine_variable(ds_prior, ds_posterior,
+    ds_prior_country = _rename(ds_prior_country) 
+    ds_prior_country = _rename_country_id(ds_prior_country) 
+    ds_prior_country = _convert_time(ds_prior_country) 
+    ds_prior_country = _combine_fluxes_country(ds_prior_country, species)
+    ds_posterior_country = _rename(ds_posterior_country) 
+    ds_posterior_country = _rename_country_id(ds_posterior_country) 
+    ds_posterior_country = _convert_time(ds_posterior_country) 
+    ds_posterior_country = _combine_fluxes_country(ds_posterior_country, species)
+
+    ds = _combine_variable(ds_prior, ds_posterior, ds_prior_country, ds_posterior_country,
                            species=species)
 
     for var in ds.data_vars:
@@ -55,7 +74,8 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
                 "flux_excl",
                 "lproc",
                 "lrt", 
-                "lspec"
+                "lspec",
+                "dt" # remove to avoid encoding issues (anyway not needed)
            ]
 
     to_drop = [v for v in ds.variables if any(sub in v for sub in drop)]
@@ -64,6 +84,108 @@ def preprocess(path_to_prior, path_to_posterior, path_to_output, species):
 
     prior = ds["flux_total_prior"].values
     posterior = ds["flux_total_posterior"].values
+
+    # --- National uncertainties begin -----------------------------------------------------------------------------------
+    # This section works for Fabian's setup (for UBA meeting, Sep. 2025). 
+    # Needs further changes to be applied for Saqr & Thomas setup.
+    if isinstance(path_to_uncertainty_country, list):
+        # check if RHS results available for each flux time-step (e.g. each year or month) 
+        # or if RHS result only available for a specific year/month and assumption that it is valid for all years/months
+        if os.path.exists(path_to_uncertainty_country[0]): 
+            print("Number of RHS results: "+str(len(path_to_uncertainty_country)))
+            if len(ds['time'])!=len(path_to_uncertainty_country):
+                print("Number of RHS results and number of time steps do not match! Stop RHS processing.")
+            else:
+                data_prior = np.zeros((len(country_code_EUROPE30f),len(ds['time'])))
+                data_posterior = np.zeros((len(country_code_EUROPE30f),len(ds['time'])))
+                for i in range(0,len(path_to_uncertainty_country)):
+                    df_cross = pd.read_csv(path_to_uncertainty_country[i],comment='#',sep=' ',
+                                           names=header_names_rhs, skipinitialspace=True)
+                    #unc_prior_country_file = np.zeros(len(ds['country'].values))
+                    #unc_posterior_country_file = np.zeros(len(ds['country'].values))
+
+                    unc_prior_country_file = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_pri']) * 16.04 * 1e9  # Tmol -> kgCH4/yr
+                    unc_posterior_country_file = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_post']) * 16.04 * 1e9  # Tmol -> kgCH4/yr
+
+                    # needs improvement: still hard-coded for non-leap years...
+                    seconds_per_year = 31536000 #days_in_year * 24 * 60 * 60
+                    unc_prior_country_file = unc_prior_country_file/seconds_per_year
+                    unc_posterior_country_file = unc_posterior_country_file/seconds_per_year
+                    
+                    unc_prior_country_file = np.asarray(unc_prior_country_file)
+                    unc_posterior_country_file = np.asarray(unc_posterior_country_file)
+                    data_prior[:,i] = unc_prior_country_file 
+                    data_posterior[:,i] = unc_posterior_country_file 
+
+                # write to xarray:
+                unc_prior = xr.DataArray(
+                    data=data_prior,
+                    coords={'country': ds['country'].values, 'time': ds['time'].values},
+                    dims=['country','time'],
+                    name='stdev_flux_total_prior_country' 
+                )
+                unc_prior.attrs['units'] = 'kg s-1'
+
+                unc_posterior = xr.DataArray(
+                    data=data_posterior,
+                    coords={'country': ds['country'].values, 'time': ds['time'].values},
+                    dims=['country','time'],
+                    name='stdev_flux_total_posterior_country' 
+                )
+                unc_posterior.attrs['units'] = 'kg s-1'
+
+                ds['stdev_flux_total_prior_country'] = unc_prior 
+                ds['stdev_flux_total_posterior_country'] = unc_posterior 
+
+        else: 
+            print(f"The path to right-hand-side results is not defined.")
+            
+    elif os.path.exists(path_to_uncertainty_country):
+        df_cross = pd.read_csv(path_to_uncertainty_country,comment='#',sep=' ',
+                                names=header_names_rhs, skipinitialspace=True)
+
+        unc_prior_country = np.zeros(len(ds['country'].values))
+        unc_posterior_country = np.zeros(len(ds['country'].values))
+
+        unc_prior_country = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_pri']) * 16.04 * 1e9  # Tmol -> kgCH4/yr
+        unc_posterior_country = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_post']) * 16.04 * 1e9  # Tmol -> kgCH4/yr
+        unc_prior_country = unc_prior_country.values  # Convert from Series to numpy array
+        unc_posterior_country = unc_posterior_country.values  # Convert from Series to numpy array
+
+        # time conversion: # to be revised !! (hard-coded for non-leap years...)
+        #dates = np.datetime64('1970-01-01') + ds['time'].values.astype('timedelta64[D]')
+        #years = dates.astype('datetime64[Y]').astype(int) + 1970
+        #days_in_year = np.array([366 if calendar.isleap(y) else 365 for y in years])
+        seconds_per_year = 31536000 #days_in_year * 24 * 60 * 60
+        unc_prior_country = unc_prior_country/seconds_per_year
+        unc_posterior_country = unc_posterior_country/seconds_per_year
+
+        # only one RHS result available: assume the same uncertainty for all years/months
+        unc_prior = xr.DataArray(
+            data=np.repeat(unc_prior_country[:, np.newaxis], len(ds['time']), axis=1),
+            coords={'country': ds['country'].values, 'time': ds['time'].values},
+            dims=['country','time'],
+            name='stdev_flux_total_prior_country' 
+        )
+        unc_prior.attrs['units'] = 'kg s-1'
+
+        unc_posterior = xr.DataArray(
+            data=np.repeat(unc_posterior_country[:, np.newaxis], len(ds['time']), axis=1),
+            coords={'country': ds['country'].values, 'time': ds['time'].values},
+            dims=['country','time'],
+            name='stdev_flux_total_posterior_country' 
+        )
+        unc_posterior.attrs['units'] = 'kg s-1'
+
+        ds['stdev_flux_total_prior_country'] = unc_prior 
+        ds['stdev_flux_total_posterior_country'] = unc_posterior 
+    
+    else:
+        print(f"The path to right-hand-side results is not defined.")
+
+    # --- National uncertainties end -----------------------------------------------------------------------------------
+
+
     print("_save_dataset")    
     
     _save_dataset(ds, path_to_output)
@@ -78,12 +200,21 @@ def _rename(ds):
                 break
     return ds.rename(rename_dict) if rename_dict else ds
 
+def _rename_country_id(ds_in): 
+    ds = ds_in.copy()
+    if "EUROPE30f" in ds.attrs['filename']:
+        ds['country'] = (("reg"), country_code_EUROPE30f)
+    if "FLUXY" in ds.attrs['filename']:
+        ds['country'] = (("reg"), country_code_FLUXY)
+    return ds
+
 def _combine_fluxes(ds_in, species):
     ds = ds_in.copy()
     land = _check_for_units(f"{species}flux_land", ds_in)
     ocean = _check_for_units(f"{species}flux_ocean", ds_in)
 
     if land is None and ocean is None:
+        print("DEBUG: Only combined flux available!")
         # Fallback to combined flux if neither land nor ocean is available
         combined = _check_for_units(f"{species}flux", ds_in)
         if combined is None:
@@ -99,7 +230,11 @@ def _combine_fluxes(ds_in, species):
         flux_combined = land
         attrs = _copy_attrs(land)
     else:
+        #print("DEBUG: Land and ocean flux available!")
         flux_combined = land + ocean
+        #print("DEBUG: sum land: "+str(np.sum(land)))
+        #print("DEBUG: sum ocean: "+str(np.sum(ocean)))
+        #print("DEBUG: sum combined: "+str(np.sum(flux_combined)))
         attrs = _copy_attrs(land)
         attrs.update(_copy_attrs(ocean))
 
@@ -109,17 +244,57 @@ def _combine_fluxes(ds_in, species):
     
     return ds
 
+def _combine_fluxes_country(ds_in, species):
+    ds = ds_in.copy()
+    flux = _check_for_units_country(f"{species}flux", ds_in)
+
+    ds[f"{species}{list(combine_candidates.keys())[1]}"] = flux
+    
+    return ds
+
 def _copy_attrs(var, default=None):
     return var.attrs.copy() if hasattr(var, "attrs") else (default or {})
     
 
-def _combine_variable(ds_prior, ds_post, species):
+def _combine_variable(ds_prior, ds_post, ds_prior_country, ds_post_country, species):
     ds = ds_prior.copy()
     for v, new_vars in combine_candidates.items():
         varname = f'{species}{v}'
         if varname in ds and varname in ds_post:
             prior_data = _check_for_units(varname, ds)
             post_data = _check_for_units(varname, ds_post)
+            
+            ds[new_vars[0]] = prior_data
+            ds[new_vars[1]] = post_data
+            ds = ds.drop_vars([varname])
+            
+        if varname in ds_prior_country and varname in ds_post_country:
+            prior_data_country = _check_for_units_country(varname, ds_prior_country)
+            post_data_country = _check_for_units_country(varname, ds_post_country)
+            
+            # (reg,time) -> (country,time)
+            country = ds_prior_country['country']
+            prior_data_country.coords['reg'] = country
+            prior_data_country = prior_data_country.rename({'reg': 'country'})
+            post_data_country.coords['reg'] = country
+            post_data_country = post_data_country.rename({'reg': 'country'})
+            
+            ds[new_vars[0]] = prior_data_country
+            ds[new_vars[1]] = post_data_country
+            #ds = ds.drop_vars([varname]) #'ch4flux' not in gridded prior file
+        
+        else:
+            print(f'INFO: {varname} not found in dataset.')
+
+    return ds
+
+def _combine_variable_country(ds_prior_country, ds_post_country, species):
+    ds = ds_prior.copy()
+    for v, new_vars in combine_candidates.items():
+        varname = f'{species}{v}'
+        if varname in ds_prior_country and varname in ds_post_country:
+            prior_data = _check_for_units(varname, ds_prior_country)
+            post_data = _check_for_units(varname, ds_post_country)
             
             ds[new_vars[0]] = prior_data
             ds[new_vars[1]] = post_data
@@ -159,6 +334,33 @@ def _check_for_units(varname, ds):
             logging.info(f"No conversion applied for variable {varname} with unit '{unit}'.")
 
     return data
+
+def _check_for_units_country(varname, ds): #f"{species}flux"
+    if varname not in ds:
+        logging.warning(f"Variable {varname} not found in dataset.")
+        return None
+
+    data = ds[varname]
+    if data.size == 0 or np.all(np.isnan(data)):
+        logging.warning(f"Variable {varname} is empty or all NaN.")
+        return None
+
+    # Copy attrs to preserve metadata
+    data.attrs = ds[varname].attrs.copy()
+
+    if 'units' in data.attrs:
+        unit = data.attrs['units']
+
+        years = _get_years_from_time(ds)
+
+        if unit in unit_conversions:
+            data = data * unit_conversions[unit]
+            data = _pgcyr_to_kg_s_ch4(data, years)
+            data.attrs['units'] = "kg s-1"
+        else:
+            logging.info(f"No conversion applied for variable {varname} with unit '{unit}'.")
+
+    return data
          
 def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2, years):
     
@@ -177,6 +379,24 @@ def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2, years):
    
     flux = mols / seconds_per_year
     return flux / area_m2
+
+def _pgcyr_to_kg_s_ch4(value_pgcyr, years):
+    
+    kilograms = value_pgcyr * 1e12
+    kilograms_ch4 = kilograms / 12.01 * 16.04
+
+    days_in_year = np.array([366 if calendar.isleap(y) else 365 for y in years])
+    seconds_per_year = days_in_year * 24 * 60 * 60
+
+    # Make this an xarray DataArray to allow broadcasting
+    seconds_per_year = xr.DataArray(
+        seconds_per_year,
+        dims=["time"],
+        coords={"time": value_pgcyr["time"]}
+    )
+   
+    flux = kilograms_ch4 / seconds_per_year
+    return flux 
 
 def _convert_time(ds):
     if np.issubdtype(ds['time'].dtype, np.datetime64):
