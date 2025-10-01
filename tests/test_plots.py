@@ -38,6 +38,7 @@ end_date = "2024-01-01"  # not inclusive. Option to set as list of dates, e.g. [
 get_labels_from_file = False
 
 ds_all_flux_scaled = {}
+ds_all_flux_with_sites_scaled = {}
 
 if "all" in species:
     ds_all_flux_scaled = read_flux_total_fgases(
@@ -54,6 +55,9 @@ else:
     ds_all_flux = read_model_output(
         data_dir, "flux", species, models, config_data, period=period
     )
+    ds_all_flux_with_sites = read_model_output(
+        data_dir, "flux", species, models, config_data, period=period, add_sites_to_flux=True,
+    )
 
     for m in models:
         ds_all_flux_scaled[m] = slice_flux(
@@ -64,6 +68,15 @@ else:
             species=species,
             country_flux_units_print=country_flux_units_print,
         )[m]
+
+        ds_all_flux_with_sites_scaled[m] = slice_flux(
+            {m: ds_all_flux_with_sites[m]},
+            config_data,
+            start_date,
+            end_date,
+            species=species,
+            country_flux_units_print=country_flux_units_print,
+        )[m]    
 
 
 site = "MHD"
@@ -110,22 +123,25 @@ stats_ylim = {"pearson": [0, 1], "bias": [-1.5, 0.5], "crmse": [0, 1.5]}
 
 
 def test_flux_timeseries():
-    plot_inventory = False
-    inventory_years = None
-    fix_y_axes = False
-    add_prior = True
-    add_prior_unc = False
-    set_global_leg = True
-    country_codes_as_titles = False
-    plot_separate = True
-    plot_combined = False
-    resample = None
-    resample_uncert_correlation = False
-    plot_resample_and_original = False
-    annex_mode = False
-    rolling_mean = False
+    kwargs = dict(
+        data_dir = data_dir,
+        plot_inventory = False,
+        inventory_years = None,
+        fix_y_axes = False,
+        add_prior = True,
+        add_prior_unc = False,
+        set_global_leg = True,
+        country_codes_as_titles = False,
+        plot_separate = True,
+        plot_combined = False,
+        resample = None,
+        resample_uncert_correlation = False,
+        plot_resample_and_original = False,
+        annex_mode = False,
+        rolling_mean = False,
+    )
 
-    fig = plot_country_flux(
+    plot_country_flux(
         ds_all_flux_scaled,
         species,
         regions,
@@ -134,21 +150,7 @@ def test_flux_timeseries():
         model_labels,
         start_date,
         end_date,
-        annex_mode,
-        plot_inventory,
-        inventory_years,
-        data_dir,
-        fix_y_axes,
-        add_prior,
-        add_prior_unc,
-        set_global_leg,
-        country_codes_as_titles=country_codes_as_titles,
-        plot_separate=plot_separate,
-        plot_combined=plot_combined,
-        resample=resample,
-        resample_uncert_correlation=resample_uncert_correlation,
-        plot_resample_and_original=plot_resample_and_original,
-        rolling_mean=rolling_mean,
+        **kwargs
     )
 
 
@@ -157,10 +159,12 @@ def test_mf_timeseries():
     fig = plot_sites_timeseries(
         ds_all_mf,
         "mf_posterior",
+        species,
         start_date,
         end_date,
         model_colors,
         model_labels,
+        config_data
     )
 
 
@@ -173,6 +177,22 @@ def test_obs_modelled_separate():
         model_labels,
         config_data,
         annotate_coords,
+        plot_type="separate",
+        include={"mf_observed": None, "mf_posterior": "percentile_mf_posterior"},
+        diff_include=["mf_posterior"],
+        y_lim=None,
+    )
+
+def test_mf_timeseries_no_hist():
+    fig = plot_mf_timeseries(
+        ds_all_mf_sliced,
+        species,
+        site,
+        model_colors,
+        model_labels,
+        config_data,
+        annotate_coords,
+        histogram_type="none",
         plot_type="separate",
         include={"mf_observed": None, "mf_posterior": "percentile_mf_posterior"},
         diff_include=["mf_posterior"],
@@ -270,7 +290,7 @@ def test_plot_taylor_diagram():
 def test_plot_flux_map():
 
     fig = plot_flux_map(
-        ds_all=ds_all_flux_scaled,
+        ds_all=ds_all_flux_with_sites_scaled,
         species=species,
         region=region,
         config_data=config_data,
@@ -293,7 +313,7 @@ def test_plot_flux_map_model_comparison():
     models_comparison = [models[0], models[2]]
 
     fig = plot_flux_map_model_comparison(
-        ds_all=ds_all_flux_scaled,
+        ds_all=ds_all_flux_with_sites_scaled,
         var=var,
         models=models_comparison,
         species=species,
@@ -319,7 +339,7 @@ def test_plot_flux_map_over_time():
     dt = 2
 
     fig = plot_flux_map_over_time(
-        ds_all=ds_all_flux_scaled,
+        ds_all=ds_all_flux_with_sites_scaled,
         var=var,
         species=species,
         region=region,
