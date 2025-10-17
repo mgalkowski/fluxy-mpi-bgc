@@ -44,7 +44,7 @@ def produce_plots(
         output_path :
             Path where to store the figures/tables/tex files.
         inventory_years :
-            Inventory year to use in the plots. If a list is given, only the first item will be used in the tables.
+            Inventory year to use in the plots. If a list is given, only the last item will be used in the tables.
 
     Returns:
         annual_res :
@@ -70,6 +70,10 @@ def produce_plots(
         + annex_config_data.yearly_species
         + annex_config_data.combined_species
     )
+
+    # Get last inventory year (most recent)
+    if isinstance(inventory_years, list):
+        inventory_years = inventory_years[-1]
 
     print("\n\n--- GENERATING PLOTS ---")
     for species in all_species:
@@ -186,7 +190,12 @@ def produce_plots(
             plt.close()
 
             # Store results for .csv and table
-            annual_res = dict_to_str_dataframe(res_dict, inventory_years, species)
+            annual_res = dict_to_str_dataframe(
+                res_dict,
+                inventory_years,
+                species,
+                table_start_date=annex_config_data.start_date_table,
+            )
             annual_res_list.append(annual_res)
 
             # 1.2) Plot monthly country fluxes over PARIS time window
@@ -211,7 +220,10 @@ def produce_plots(
         else:
             # Store results for .csv and table
             annual_res = dict_to_str_dataframe(
-                res_dict[region], inventory_years, species
+                res_dict,
+                inventory_years,
+                species,
+                table_start_date=annex_config_data.start_date_table,
             )
             annual_res_list.append(annual_res)
 
@@ -290,7 +302,7 @@ def produce_plots(
         annual_res.species.apply(lambda x: x[:3].lower() == "hfc")
     ].copy()
     hfc_res["species"] = hfc_res.species.apply(lambda x: x.replace("hfc", "HFC-"))
-    make_table(hfc_res, output_path / f"hfc_res_{region}.tex")
+    make_table(hfc_res, output_path / f"hfc_res_{region}.tex", inventory_years)
     hfc_res.to_csv(output_path / f"hfc_res_{region}.csv", index=False)
 
     print("\nTABLE PFC")
@@ -299,18 +311,23 @@ def produce_plots(
     ].copy()
     pfc_res["species"] = pfc_res.species.apply(lambda x: x.replace("pfc", "PFC-"))
     pfc_res["species"] = pfc_res.species.apply(lambda x: x.replace("cf4", "PFC-14"))
-    make_table(pfc_res, output_path / f"pfc_res_{region}.tex")
+    make_table(pfc_res, output_path / f"pfc_res_{region}.tex", inventory_years)
     pfc_res.to_csv(output_path / f"pfc_res_{region}.csv", index=False)
 
     print("\nTABLE main gases")
-
     main_gases_res = annual_res[
         annual_res.species.isin(["ch4", "n2o", "sf6", "all_pfc", "all_hfc"])
     ].copy()
     main_gases_res["species"] = main_gases_res.species.apply(
-        lambda x: x.upper().replace("ALL_", "Total ")
+        lambda x: x.upper()
+        .replace("ALL_", "Total ")
+        .replace("CH4", "CH$_4$")
+        .replace("N2O", "N$_2$O")
+        .replace("SF6", "SF$_6$")
     )
-    make_table(main_gases_res, output_path / f"main_gases_res_{region}.tex")
+    make_table(
+        main_gases_res, output_path / f"main_gases_res_{region}.tex", inventory_years
+    )
     main_gases_res.to_csv(output_path / f"main_gases_res_{region}.csv", index=False)
 
     print("\n--- TABLES GENERATED SUCCESSFULLY! ---")
