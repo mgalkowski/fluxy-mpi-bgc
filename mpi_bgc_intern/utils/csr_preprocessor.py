@@ -7,7 +7,6 @@ import pandas as pd
 import logging
 from pathlib import Path
 
-#new_name: ['old_name1', 'old_name2']
 rename_candidates = {
     'longitude': ['lon'],
     'latitude': ['lat'],
@@ -15,7 +14,7 @@ rename_candidates = {
     'country': ['regname'],
     'area': ['cell_area'],
 }
-#old_name : ['new_name_prior', 'new_name_posterior']
+
 combine_candidates = {
     'flux_combined' : ['flux_total_prior', 'flux_total_posterior'],
     'flux' : ['flux_total_prior_country', 'flux_total_posterior_country'],
@@ -33,12 +32,19 @@ flux_unit = "mol m-2 s-1"
 country_code_EUROPE30f = ['none','AUT','BEL','BGR','CHE','CYP','CZE','DEU','DNK','EST','GRC','ESP','FIN','FRA','HRV','HUN','IRL',
                           'ITA','LTU','LUX','LVA','MLT','NLD','POL','PRT','ROU','SWE','SVN','SVK','GBR','LAND','OCEAN']
 
-country_code_FLUXY = ['CHE','SWE','ESP','SVK','SVN','PRT','POL','NOR','LUX','ITA','IRL','HUN','DEU','CZE','HRV','BEL',
-                      'AUT','OCEAN']
+country_code_FLUXYf = ['CHE','SWE','ESP','SVK','SVN','PRT','POL','NOR','LUX','ITA','IRL','HUN','DEU','CZE','HRV','BEL','AUT','OCEAN']
+
+country_code_FLUXYALLf = ['CHE','SWE','ESP','SVK','SVN','ROU','PRT','POL','NOR','MLT','LUX','LTU','LVA','ITA','IRL','HUN','GRC','DEU',
+                          'EST','CZE','CYP','HRV','BGR','BEL','AUT','TUR','WEE','CEE','NOE','SOE','SEE','EAE','BNL','UKI','IBE','E28',
+                          'E27','E15','EUR','LAND','OCEAN']
 
 header_names_rhs = ['time','row','col','covar_pri','covar_post','corr_pri','corr_post','deriv_mu']
 
-def preprocess(path_to_prior, path_to_posterior, path_to_prior_country, path_to_posterior_country, path_to_uncertainty_country, path_to_output, species):
+def preprocess(path_to_prior, path_to_posterior, path_to_prior_country, path_to_posterior_country, path_to_uncertainty_country,
+               path_to_output, species):
+
+    # --- combine gridded and country-aggregated prior and posterior fluxes ---
+    
     ds_prior = xr.open_dataset(path_to_prior,decode_timedelta=True)
     ds_posterior = xr.open_dataset(path_to_posterior,decode_timedelta=True)
     ds_prior_country = xr.open_dataset(path_to_prior_country,decode_timedelta=True)
@@ -86,107 +92,52 @@ def preprocess(path_to_prior, path_to_posterior, path_to_prior_country, path_to_
     prior = ds["flux_total_prior"].values
     posterior = ds["flux_total_posterior"].values
 
-    # --- National uncertainties begin -----------------------------------------------------------------------------------
-    # This section works for Fabian's setup (for UBA meeting, Sep. 2025). 
-    # Needs further changes to be applied for Saqr & Thomas setup.
+    # --- add uncertainties for country-aggregated fluxes from RHS-runs ---
+
     if isinstance(path_to_uncertainty_country, list):
-        # check if RHS results available for each flux time-step (e.g. each year or month) 
-        # or if RHS result only available for a specific year/month and assumption that it is valid for all years/months
-        if os.path.exists(path_to_uncertainty_country[0]): 
-            print("Number of RHS results: "+str(len(path_to_uncertainty_country)))
-            if len(ds['time'])!=len(path_to_uncertainty_country):
-                print("Number of RHS results and number of time steps do not match! Stop RHS processing.")
-            else:
-                data_prior = np.zeros((len(country_code_EUROPE30f),len(ds['time'])))
-                data_posterior = np.zeros((len(country_code_EUROPE30f),len(ds['time'])))
-                for i in range(0,len(path_to_uncertainty_country)):
-                    df_cross = pd.read_csv(path_to_uncertainty_country[i],comment='#',sep=' ',
-                                           names=header_names_rhs, skipinitialspace=True)
-                    #unc_prior_country_file = np.zeros(len(ds['country'].values))
-                    #unc_posterior_country_file = np.zeros(len(ds['country'].values))
+        # check if RHS results are available for each flux time-step (e.g. each year or month) 
+        if len(ds['time'])!=len(path_to_uncertainty_country):
+            print("Number of RHS results and number of time steps do not match! Stop RHS processing.")
+        else:
+            data_prior = np.zeros((len(ds['country']),len(ds['time'])))
+            data_posterior = np.zeros((len(ds['country']),len(ds['time'])))
+            for i in range(0,len(path_to_uncertainty_country)):
+                if os.path.exists(path_to_uncertainty_country[i]): 
+                    # read RHS results for each flux time-step
+                    df_cross = pd.read_csv(path_to_uncertainty_country[i],comment='#',sep=' ',names=header_names_rhs, skipinitialspace=True)
+                    unc_prior_country_file = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_pri'])
+                    unc_posterior_country_file = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_post'])
+                    unc_prior_country_file = _tmolyr_to_kg_s_ch4_unc_rhs(unc_prior_country_file,ds['time'][i])
+                    unc_posterior_country_file = _tmolyr_to_kg_s_ch4_unc_rhs(unc_posterior_country_file,ds['time'][i]) 
+                else:
+                    unc_prior_country_file = np.nan
+                    unc_posterior_country_file = np.nan
+                data_prior[:,i] = unc_prior_country_file 
+                data_posterior[:,i] = unc_posterior_country_file 
 
-                    unc_prior_country_file = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_pri']) * 16.04 * 1e9  # Tmol -> kgCH4/yr
-                    unc_posterior_country_file = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_post']) * 16.04 * 1e9  # Tmol -> kgCH4/yr
+            # write to xarray:
+            unc_prior = xr.DataArray(
+                data=data_prior,
+                coords={'country': ds['country'].values, 'time': ds['time'].values},
+                dims=['country','time'],
+                name='stdev_flux_total_prior_country' 
+            )
+            unc_prior.attrs['units'] = 'kg s-1'
 
-                    # needs improvement: still hard-coded for non-leap years...
-                    seconds_per_year = 31536000 #days_in_year * 24 * 60 * 60
-                    unc_prior_country_file = unc_prior_country_file/seconds_per_year
-                    unc_posterior_country_file = unc_posterior_country_file/seconds_per_year
-                    
-                    unc_prior_country_file = np.asarray(unc_prior_country_file)
-                    unc_posterior_country_file = np.asarray(unc_posterior_country_file)
-                    data_prior[:,i] = unc_prior_country_file 
-                    data_posterior[:,i] = unc_posterior_country_file 
+            unc_posterior = xr.DataArray(
+                data=data_posterior,
+                coords={'country': ds['country'].values, 'time': ds['time'].values},
+                dims=['country','time'],
+                name='stdev_flux_total_posterior_country' 
+            )
+            unc_posterior.attrs['units'] = 'kg s-1'
 
-                # write to xarray:
-                unc_prior = xr.DataArray(
-                    data=data_prior,
-                    coords={'country': ds['country'].values, 'time': ds['time'].values},
-                    dims=['country','time'],
-                    name='stdev_flux_total_prior_country' 
-                )
-                unc_prior.attrs['units'] = 'kg s-1'
+            ds['stdev_flux_total_prior_country'] = unc_prior 
+            ds['stdev_flux_total_posterior_country'] = unc_posterior 
 
-                unc_posterior = xr.DataArray(
-                    data=data_posterior,
-                    coords={'country': ds['country'].values, 'time': ds['time'].values},
-                    dims=['country','time'],
-                    name='stdev_flux_total_posterior_country' 
-                )
-                unc_posterior.attrs['units'] = 'kg s-1'
-
-                ds['stdev_flux_total_prior_country'] = unc_prior 
-                ds['stdev_flux_total_posterior_country'] = unc_posterior 
-
-        else: 
-            print(f"The path to right-hand-side results is not defined.")
-            
-    elif os.path.exists(path_to_uncertainty_country):
-        df_cross = pd.read_csv(path_to_uncertainty_country,comment='#',sep=' ',
-                                names=header_names_rhs, skipinitialspace=True)
-
-        unc_prior_country = np.zeros(len(ds['country'].values))
-        unc_posterior_country = np.zeros(len(ds['country'].values))
-
-        unc_prior_country = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_pri']) * 16.04 * 1e9  # Tmol -> kgCH4/yr
-        unc_posterior_country = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_post']) * 16.04 * 1e9  # Tmol -> kgCH4/yr
-        unc_prior_country = unc_prior_country.values  # Convert from Series to numpy array
-        unc_posterior_country = unc_posterior_country.values  # Convert from Series to numpy array
-
-        # time conversion: # to be revised !! (hard-coded for non-leap years...)
-        #dates = np.datetime64('1970-01-01') + ds['time'].values.astype('timedelta64[D]')
-        #years = dates.astype('datetime64[Y]').astype(int) + 1970
-        #days_in_year = np.array([366 if calendar.isleap(y) else 365 for y in years])
-        seconds_per_year = 31536000 #days_in_year * 24 * 60 * 60
-        unc_prior_country = unc_prior_country/seconds_per_year
-        unc_posterior_country = unc_posterior_country/seconds_per_year
-
-        # only one RHS result available: assume the same uncertainty for all years/months
-        unc_prior = xr.DataArray(
-            data=np.repeat(unc_prior_country[:, np.newaxis], len(ds['time']), axis=1),
-            coords={'country': ds['country'].values, 'time': ds['time'].values},
-            dims=['country','time'],
-            name='stdev_flux_total_prior_country' 
-        )
-        unc_prior.attrs['units'] = 'kg s-1'
-
-        unc_posterior = xr.DataArray(
-            data=np.repeat(unc_posterior_country[:, np.newaxis], len(ds['time']), axis=1),
-            coords={'country': ds['country'].values, 'time': ds['time'].values},
-            dims=['country','time'],
-            name='stdev_flux_total_posterior_country' 
-        )
-        unc_posterior.attrs['units'] = 'kg s-1'
-
-        ds['stdev_flux_total_prior_country'] = unc_prior 
-        ds['stdev_flux_total_posterior_country'] = unc_posterior 
-    
-    else:
-        print(f"The path to right-hand-side results is not defined.")
-
-    # --- National uncertainties end -----------------------------------------------------------------------------------
-
-
+    else: 
+        print("Uncertainties for country-aggregated fluxes are not available.")
+  
     print("_save_dataset")    
     
     _save_dataset(ds, path_to_output)
@@ -205,8 +156,10 @@ def _rename_country_id(ds_in):
     ds = ds_in.copy()
     if "EUROPE30f" in ds.attrs['filename']:
         ds['country'] = (("reg"), country_code_EUROPE30f)
-    if "FLUXY" in ds.attrs['filename']:
-        ds['country'] = (("reg"), country_code_FLUXY)
+    if "FLUXYf" in ds.attrs['filename']:
+        ds['country'] = (("reg"), country_code_FLUXYf)
+    if "FLUXYALLf" in ds.attrs['filename']:
+        ds['country'] = (("reg"), country_code_FLUXYALLf)
     return ds
 
 def _combine_fluxes(ds_in, species):
@@ -231,11 +184,7 @@ def _combine_fluxes(ds_in, species):
         flux_combined = land
         attrs = _copy_attrs(land)
     else:
-        #print("DEBUG: Land and ocean flux available!")
         flux_combined = land + ocean
-        #print("DEBUG: sum land: "+str(np.sum(land)))
-        #print("DEBUG: sum ocean: "+str(np.sum(ocean)))
-        #print("DEBUG: sum combined: "+str(np.sum(flux_combined)))
         attrs = _copy_attrs(land)
         attrs.update(_copy_attrs(ocean))
 
@@ -421,6 +370,16 @@ def _get_years_from_time(ds):
     years = dates.astype('datetime64[Y]').astype(int) + 1970
 
     return years
+
+def _tmolyr_to_kg_s_ch4_unc_rhs(unc_rhs, time_rhs):
+    # seconds per year 
+    year = pd.to_datetime(time_rhs.values).year
+    days_in_year = np.array([366 if calendar.isleap(year) else 365])
+    seconds_per_year = days_in_year * 24 * 60 * 60
+    # convert Tmol -> kgCH4/s
+    unc_rhs = unc_rhs * 16.04 * 1e9/seconds_per_year
+
+    return unc_rhs
 
   
 
