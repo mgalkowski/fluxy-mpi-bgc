@@ -32,6 +32,9 @@ flux_unit = "mol m-2 s-1"
 country_code_EUROPE30f = ['none','AUT','BEL','BGR','CHE','CYP','CZE','DEU','DNK','EST','GRC','ESP','FIN','FRA','HRV','HUN','IRL',
                           'ITA','LTU','LUX','LVA','MLT','NLD','POL','PRT','ROU','SWE','SVN','SVK','GBR','LAND','OCEAN']
 
+country_code_EUROCOM21f = ["DEU","FIN","FRA","ITA","NOR","POL","SWE","TUR","WEE","CEE","NOE","SOE","SEE","EAE","BNL","UKI","IBE","E28",
+                           "E27","E15","EUR","LAND","OCEAN"]
+
 country_code_FLUXYf = ['CHE','SWE','ESP','SVK','SVN','PRT','POL','NOR','LUX','ITA','IRL','HUN','DEU','CZE','HRV','BEL','AUT','OCEAN']
 
 country_code_FLUXYALLf = ['CHE','SWE','ESP','SVK','SVN','ROU','PRT','POL','NOR','MLT','LUX','LTU','LVA','ITA','IRL','HUN','GRC','DEU',
@@ -156,6 +159,8 @@ def _rename_country_id(ds_in):
     ds = ds_in.copy()
     if "EUROPE30f" in ds.attrs['filename']:
         ds['country'] = (("reg"), country_code_EUROPE30f)
+    if "EUROCOM21f" in ds.attrs['filename']:
+        ds['country'] = (("reg"), country_code_EUROCOM21f)
     if "FLUXYf" in ds.attrs['filename']:
         ds['country'] = (("reg"), country_code_FLUXYf)
     if "FLUXYALLf" in ds.attrs['filename']:
@@ -184,6 +189,7 @@ def _combine_fluxes(ds_in, species):
         flux_combined = land
         attrs = _copy_attrs(land)
     else:
+        print("DEBUG: Land & ocean flux separately available.")
         flux_combined = land + ocean
         attrs = _copy_attrs(land)
         attrs.update(_copy_attrs(ocean))
@@ -196,7 +202,7 @@ def _combine_fluxes(ds_in, species):
 
 def _combine_fluxes_country(ds_in, species):
     ds = ds_in.copy()
-    flux = _check_for_units_country(f"{species}flux", ds_in)
+    flux = _check_for_units_country(f"{species}flux", ds_in, species)
 
     ds[f"{species}{list(combine_candidates.keys())[1]}"] = flux
     
@@ -219,8 +225,8 @@ def _combine_variable(ds_prior, ds_post, ds_prior_country, ds_post_country, spec
             ds = ds.drop_vars([varname])
             
         if varname in ds_prior_country and varname in ds_post_country:
-            prior_data_country = _check_for_units_country(varname, ds_prior_country)
-            post_data_country = _check_for_units_country(varname, ds_post_country)
+            prior_data_country = _check_for_units_country(varname, ds_prior_country, species)
+            post_data_country = _check_for_units_country(varname, ds_post_country, species)
             
             # (reg,time) -> (country,time)
             country = ds_prior_country['country']
@@ -285,7 +291,7 @@ def _check_for_units(varname, ds):
 
     return data
 
-def _check_for_units_country(varname, ds): #f"{species}flux"
+def _check_for_units_country(varname, ds, species): #f"{species}flux"
     if varname not in ds:
         logging.warning(f"Variable {varname} not found in dataset.")
         return None
@@ -305,7 +311,7 @@ def _check_for_units_country(varname, ds): #f"{species}flux"
 
         if unit in unit_conversions:
             data = data * unit_conversions[unit]
-            data = _pgcyr_to_kg_s_ch4(data, years)
+            data = _pgcyr_to_kg_s_tracer(data, years, species)
             data.attrs['units'] = "kg s-1"
         else:
             logging.info(f"No conversion applied for variable {varname} with unit '{unit}'.")
@@ -330,10 +336,14 @@ def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2, years):
     flux = mols / seconds_per_year
     return flux / area_m2
 
-def _pgcyr_to_kg_s_ch4(value_pgcyr, years):
+def _pgcyr_to_kg_s_tracer(value_pgcyr, years, species):
     
     kilograms = value_pgcyr * 1e12
-    kilograms_ch4 = kilograms / 12.01 * 16.04
+    if(species=='ch4'):
+        kilograms_tracer = kilograms / 12.01 * 16.04
+    if(species=='co2'):
+        print("DEBUG: Species="+species)
+        kilograms_tracer = kilograms / 12.01 * 44.01
 
     days_in_year = np.array([366 if calendar.isleap(y) else 365 for y in years])
     seconds_per_year = days_in_year * 24 * 60 * 60
@@ -345,8 +355,9 @@ def _pgcyr_to_kg_s_ch4(value_pgcyr, years):
         coords={"time": value_pgcyr["time"]}
     )
    
-    flux = kilograms_ch4 / seconds_per_year
+    flux = kilograms_tracer / seconds_per_year
     return flux 
+
 
 def _convert_time(ds):
     if np.issubdtype(ds['time'].dtype, np.datetime64):
