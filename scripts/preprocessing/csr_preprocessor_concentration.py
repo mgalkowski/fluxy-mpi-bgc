@@ -1,15 +1,7 @@
-# convert ts files from CSR-format to netcdf fluxy format
-# original version by S. Munassar (Aug 2025), adapted and extended to use
-# including far field contrib conc and use anoher unique-key-scheme for merge
-# by F.Th.Koch (Aug 2025)
-# adapted for use in fluxy preprocessor by F. Maier (Nov 2025)
-
-# hints:
-# a) in this script does not use create_ts_yi_ye, instead is uses create_ts_yi_ye_tk
-#    (creates and works with datetime-object, and also in merge functions now a
-#    datetime-strings as unique keys for merging
-# b) this script handle also far field contribution conc files
-# c) for 46 stations CH4 2006-2023 is in nc-file: times=7257742 (157777 per station x 46 Stations)
+"""
+Script to convert the concentration ts files from CSR format to netcdf fluxy format.
+It can be run by the csr_preprocess.ipynb notebook.
+"""
 
 import numpy as np
 import pandas as pd
@@ -23,14 +15,33 @@ import warnings
 import sys
 warnings.filterwarnings('ignore')
 
-def preprocess_conc(path_to_prior_conc, path_to_posterior_conc, path_to_farfield_conc, path_to_output_conc, start_year, end_year, species):
-
+def preprocess_conc(path_to_prior_conc: str, path_to_posterior_conc: str, path_to_farfield_conc: str, path_to_output_conc: str, 
+                    start_year: int, end_year: int, species: str):
+    """
+    Main function, which converts the CSR concentration time series into the fluxy format.
+    
+    Args:
+        path_to_prior_conc (str): 
+            Full path to CSR prior concentration file
+        path_to_posterior_conc (str): 
+            Full path to CSR posterior concentration file
+        path_to_farfield_conc (str): 
+            Full path to CSR farfield contribution file
+        path_to_output_conc (str):
+            Full path to the directory where the results in fluxy format are to be stored
+        start_year (int):
+            First year of time series
+        end_year (int):
+            Last year of time series
+        species (str):
+            Species (e.g. "ch4", "co2")
+    """
+    
     years=np.arange(start_year,end_year)
     time_vec_df=pd.DataFrame()
     time_vec_df=_create_ts_yi_ye_tk(start_year,end_year)
-    #print("DEBUG full length for extent 2006:2023 len(time_vec_df): ",time_vec_df.size)
 
-    files = [os.path.basename(f) for f in glob.glob(path_to_posterior_conc+"*.ch4.ts")]; ids=[s[2:5] for s in files] # for ch4
+    files = [os.path.basename(f) for f in glob.glob(path_to_posterior_conc+"*."+species+".ts")]; ids=[s[2:5] for s in files] 
     print(files)
     da_all= pd.DataFrame(np.empty((0,16)),columns=['frac_time', 'year', 'month', 'day', 'hour', 'minute', 'second', 'lat', 'lon', 'alt', 'obs', 'std', 'mod','identifier','flag','datetime'])
     da_allp= pd.DataFrame(np.empty((0,16)),columns=['frac_time', 'year', 'month', 'day', 'hour', 'minute', 'second', 'lat', 'lon', 'alt', 'obs', 'std', 'mod','identifier','flag','datetime'])
@@ -48,7 +59,7 @@ def preprocess_conc(path_to_prior_conc, path_to_posterior_conc, path_to_farfield
         m_far = np.array(dffar)
         df=pd.DataFrame(df); dfp=pd.DataFrame(dfp); dffar=pd.DataFrame(dffar)   
     
-        #---------This has an effect and far field conc has to cut for 2006-2023! (far field contrib. are maybe not only for 2006-2023?
+        #---------This has an effect and far field conc has to cut for 2006-2023! (far field contrib. are maybe not only for 2006-2023)
         sel=dffar['year'] <= end_year # use only data until 2023
         dffar=dffar[sel]
         sel=dffar['year'] >= start_year # use only data from and after 2006
@@ -97,18 +108,22 @@ def preprocess_conc(path_to_prior_conc, path_to_posterior_conc, path_to_farfield
         m_df_df=np.array(merged_df)
         m_df_dfp=np.array(merged_dfp)
         m_df_dffar=np.array(merged_dffar)
+
+        # if there are duplicated observations, remove them all
+        duplicates_df = merged_df[merged_df["datetime_str"].duplicated(keep=False)]['datetime_str']
+        merged_df = merged_df.loc[~merged_df['datetime_str'].isin(duplicates_df)]
+        duplicates_dfp = merged_dfp[merged_dfp["datetime_str"].duplicated(keep=False)]['datetime_str']
+        merged_dfp = merged_dfp.loc[~merged_dfp['datetime_str'].isin(duplicates_dfp)]
+        duplicates_dffar = merged_dffar[merged_dffar["datetime_str"].duplicated(keep=False)]['datetime_str']
+        merged_dffar = merged_dffar.loc[~merged_dffar['datetime_str'].isin(duplicates_dffar)]
     
         # Now use only timesteps for merged_dffar  which are also in the merged_df Dataframe        
         # and delete in merged_dffar2 the not needed columns after merging
-        # (in the far field are more times as in the prior,posterio fwd runs (reason missing footprints, and for 2024 data)
-        #merged_dffar2=pd.merge(merged_dffar,merged_df, on='days1970',how='inner')
+        # (in the far field are more times as in the prior,posterior fwd runs (reason missing footprints, and for 2024 data)
         merged_dffar2=pd.merge(merged_dffar,df, on='datetime_str',how='left') # use only keys from rigth dataframe
-        #print("DEBUG:",merged_dffar2.columns)
-        merged_dffar2 = merged_dffar2.drop(columns=['frac_time_y','year_y','month_y','day_y','hour_y','minute_y','second_y'],axis=1) # axis=0 for rows; axis=1 for col
+        merged_dffar2 = merged_dffar2.drop(columns=['frac_time_y','year_y','month_y','day_y','hour_y','minute_y','second_y'],axis=1) 
         merged_dffar2 = merged_dffar2.drop(columns=['lat_y','lon_y','alt_y','obs_y','std_y','mod_y','flag_y','datetime_y'],axis=1)
         merged_dffar2.columns = [col[:-2] if col.endswith('_x') else col for col in merged_dffar2.columns]
-
-        #print("now rows:",merged_df.shape[0]," ",merged_dfp.shape[0]," ",merged_dffar.shape[0])
     
         merged_df['identifier']= ff+1 
         merged_dfp['identifier']=ff+1
@@ -116,60 +131,75 @@ def preprocess_conc(path_to_prior_conc, path_to_posterior_conc, path_to_farfield
         da_all=pd.concat([da_all,merged_df], axis=0)   # this add the values of the current file to da_all (all combined)
         da_allp=pd.concat([da_allp,merged_dfp], axis=0)
         da_allfar=pd.concat([da_allfar,merged_dffar2], axis=0)
-        print('DONE for: '+files[ff])
 
     print("_save_dataset")    
     
     _save_dataset_conc(da_all, da_allp, da_allfar, species, path_to_output_conc, files, ids)
 
-#--------------------------
-def _create_ts_yi_ye(yini,yend,base=None):
-    #function needed to construct time series of days since 1970 based on period of interest, i.e., start_year and end_year as enteries
-    # not used here, _create_ts_yi_ye_tk is used instead
-    import numpy as np
-    leap=np.arange(0,2200,4)
-    years=np.arange(yini,yend+1,1)
-    if base is  None: base = 1970
-    da=np.empty((0,1))
-    for y in list(range(0,len(years))):
-        preleap=np.arange(base,years[y],1)
-        preleap=preleap[np.isin(preleap, leap)]
-        if years[y] in leap: month = [31,29,31,30,31,30,31,31,30,31,30,31]
-        else :           month = [31,28,31,30,31,30,31,31,30,31,30,31]
-        days_of_year=np.arange(0,np.sum(month))
-        for d in list(range(0,len(days_of_year))):
-            hour=np.arange(0,23+1,1)*3600
-            for h in list(range(0,len(hour))):
-                days_since_70s=(years[y] - base)*365+len(preleap)+days_of_year[d]+hour[h]/(24*3600)
-                da=np.vstack([da,days_since_70s])
-    return da
 
-#--------------------------
-def _create_ts_yi_ye_tk(ystart,yend):
-    import pandas as pd
-    import datetime as dt
+def _create_ts_yi_ye_tk(ystart: int, yend: int):
+    """
+    Creates time series of hours between start and end year.
+
+    Args:
+        ystart (int):
+            First year of time series
+        yend (int):
+            Last year of time series
+    Returns:
+        df (DataFrame):
+            Dataframe with one row per hour between start and end year
+    """
+    
     start_date='1/1/'+str(ystart)
-    #end_date='31/12/'+str(yend) # false, must be the 1.1. of next year (right border (end-date) will be not include in the sequence
     end_date='1/1/'+str(yend+1)
 
     df=pd.DataFrame()
-    idx = pd.date_range(start=start_date,end=end_date,freq='1h'),
-    # periods: Number of periods (elements to create) ; freq: h=hourly, min=minues, s=seconds,W=weekly,D=calendar day      
+    idx = pd.date_range(start=start_date,end=end_date,freq='1h'),    
     df=idx[0].to_frame(index=False, name='datetime_str')  # idx is a typle, so get with [0] the index 0, which is the DatetimeIndex field 
 
     return df
 
-#-----------------------------
-# https://www.geeksforgeeks.org/python/how-to-convert-numpy-datetime64-to-timestamp/
-def _calc_time_delta(time):
-   import numpy as np
-   from datetime import datetime
-   time_delta = (time - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,'D') # 's'=sec,'m'=min, 'h'=hr, 'D'=day
-   return time_delta
 
-#-----------------------------
-def _save_dataset_conc(da_all, da_allp, da_allfar, species, path_to_output_conc, files, ids):
-    ##----------------------create nc files and define required dims---------------------------------
+def _calc_time_delta(time):
+    """
+    Calculates time difference compared to 1970-01-01 in days.
+
+    Args:
+        time (Series):
+            Time vector
+    Returns:
+        time_delta (Series):
+            Time difference compared to 1970-01-01 in days
+    """
+    
+    time_delta = (time - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1,'D') 
+    
+    return time_delta
+
+
+def _save_dataset_conc(da_all, da_allp, da_allfar, species: str, path_to_output_conc: str, files, ids):
+    """
+    Writes the data into a netcdf file and saves it.
+
+    Args:
+        da_all (DataFrame):
+            Dataframe with prior concentrations
+        da_allp (DataFrame):
+            Dataframe with posterior concentrations
+        da_allfar (DataFrame):
+            Dataframe with farfield contributions
+        species (str):
+            Species (e.g. "ch4", "co2")
+        path_to_output_conc:
+            Full path to the directory where the results in fluxy format are to be stored
+        files (list):
+            List with file names of the concentration time series
+        ids (list):
+            List with station codes
+    """
+    
+    #----------------------create nc files and define required dims---------------------------------
     #define dimensions
     ncfile = Dataset(path_to_output_conc,mode='w', format='NETCDF4')
     indexdim= ncfile.createDimension('index',len(da_all['datetime_str']))
@@ -184,8 +214,6 @@ def _save_dataset_conc(da_all, da_allp, da_allfar, species, path_to_output_conc,
     times.axis="T"
     times.calendar="proleptic_gregorian"
 
-    #time_vec=pd.to_datetime(da_all['datetime']) # this is time vector, which contains not NA's at position where prior conc at station.
-    #https://stackoverflow.com/questions/50109695/strptime-argument-1-must-be-str-not-series-time-series-convert.
     time_vec=pd.to_datetime(da_all['datetime_str'], format='%Y-%m-%d %H:%M:%S') # this is the full time series 2006-2023 multipl with stat
     delta_dd=_calc_time_delta(time_vec) # delta_dd stands for delta_days
     delta_dd_df=delta_dd.to_frame()
@@ -249,16 +277,9 @@ def _save_dataset_conc(da_all, da_allp, da_allfar, species, path_to_output_conc,
 
     #add global attributes
     ncfile.title="observed and simulated atmospheric "+str.upper(species)+" concentration"
-    #ncfile.stations_set="core+other+validation+itms"
     ncfile.species =str.upper(species)
-    #ncfile.author="F.-Th. Koch, S. Munassar, C. Rödenbeck, C. Gerbig"
     ncfile.inversion="CarboScope-Regional"
-    #ncfile.transport_model="STILT at regional scale and TM3 at global scale for the boundary conditions"
     ncfile.domain= "Europe"
     ncfile.institution= "MPI Biogeochemistry Jena"
-    #ncfile.apriori_description="antropog.: EDGARv6, natural : JSBACH_HIMMELI, geological:Ethope v2018 scaled, lakes: VERIFY, termites: Saunois, ocean: Weber et.al 2019,etc." 
-    #ncfile.reference= "F.-Th. Koch et al. (2025)"
-    #ncfile.history=""
-    #ncfile.comment=""
     ncfile.close()
     print(path_to_output_conc+  "HAS CREATED FOR: "+str(len(files))+" STATIONS")

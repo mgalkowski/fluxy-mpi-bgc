@@ -1,3 +1,8 @@
+"""
+Script to convert the CSR prior and posterior flux results into fluxy format. 
+It can be run by the csr_preprocess.ipynb notebook.
+"""
+
 import xarray as xr
 import os
 import re
@@ -43,8 +48,30 @@ country_code_FLUXYALLf = ['CHE','SWE','ESP','SVK','SVN','ROU','PRT','POL','NOR',
 
 header_names_rhs = ['time','row','col','covar_pri','covar_post','corr_pri','corr_post','deriv_mu']
 
-def preprocess(path_to_prior, path_to_posterior, path_to_prior_country, path_to_posterior_country, path_to_uncertainty_country,
-               path_to_output, species):
+def preprocess(path_to_prior: str, path_to_posterior: str, path_to_prior_country: str, path_to_posterior_country: str,  
+               path_to_uncertainty_country: str, path_to_output: str, species: str):
+    """
+    Main function, which converts the CSR flux results into the fluxy format.
+    
+    Args:
+        path_to_prior (str): 
+            Full path to gridded CSR prior emission file
+        path_to_posterior (str): 
+            Full path to gridded CSR posterior emission file
+        path_to_prior_country (str): 
+            Full path to country-aggregated CSR prior emission file
+        path_to_posterior_country (str): 
+            Full path to country-aggregated CSR posterior emission file
+        path_to_uncertainty_country (str):
+            Full path to the CSR "right-hand-side" results containing the flux uncertainties
+        path_to_output (str):
+            Full path to the directory where the results in fluxy format are to be stored
+        species (str):
+            Species (e.g. "ch4", "co2")
+
+    Note:
+        So far EUROPE30f, EUROCOM21f, FLUXYf, FLUXYALLf country masks are implemented. 
+    """
 
     # --- combine gridded and country-aggregated prior and posterior fluxes ---
     
@@ -110,8 +137,8 @@ def preprocess(path_to_prior, path_to_posterior, path_to_prior_country, path_to_
                     df_cross = pd.read_csv(path_to_uncertainty_country[i],comment='#',sep=' ',names=header_names_rhs, skipinitialspace=True)
                     unc_prior_country_file = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_pri'])
                     unc_posterior_country_file = np.sqrt(df_cross.loc[df_cross['row'] == df_cross['col'], 'covar_post'])
-                    unc_prior_country_file = _tmolyr_to_kg_s_ch4_unc_rhs(unc_prior_country_file,ds['time'][i])
-                    unc_posterior_country_file = _tmolyr_to_kg_s_ch4_unc_rhs(unc_posterior_country_file,ds['time'][i]) 
+                    unc_prior_country_file = _tmolyr_to_kg_s_unc_rhs(unc_prior_country_file,ds['time'][i],species)
+                    unc_posterior_country_file = _tmolyr_to_kg_s_unc_rhs(unc_posterior_country_file,ds['time'][i],species) 
                 else:
                     unc_prior_country_file = np.nan
                     unc_posterior_country_file = np.nan
@@ -147,15 +174,39 @@ def preprocess(path_to_prior, path_to_posterior, path_to_prior_country, path_to_
 
 
 def _rename(ds):
+    """
+    Renames variables of the CSR output files.
+    
+    Args:
+        ds (xarray.Dataset):
+            CSR output with original variable names
+    Returns:
+        ds (xarray.Dataset):
+            CSR output with renamed variables
+    """
+    
     rename_dict = {}
     for target_name, possible_names in rename_candidates.items():
         for name in possible_names:
             if name in ds.dims or name in ds.coords or name in ds.data_vars:
                 rename_dict[name] = target_name
                 break
+                
     return ds.rename(rename_dict) if rename_dict else ds
 
+
 def _rename_country_id(ds_in): 
+    """
+    Renames country codes of the country-aggregated CSR output files.
+
+    Args:
+        ds_in (xarray.Dataset):
+            Country-aggregated CSR output with original contry codes
+    Returns:
+        ds (xarray.Dataset):
+            Country-aggregated CSR output with renamed country codes
+    """
+    
     ds = ds_in.copy()
     if "EUROPE30f" in ds.attrs['filename']:
         ds['country'] = (("reg"), country_code_EUROPE30f)
@@ -165,9 +216,25 @@ def _rename_country_id(ds_in):
         ds['country'] = (("reg"), country_code_FLUXYf)
     if "FLUXYALLf" in ds.attrs['filename']:
         ds['country'] = (("reg"), country_code_FLUXYALLf)
+        
     return ds
 
-def _combine_fluxes(ds_in, species):
+
+def _combine_fluxes(ds_in, species: str):
+    """
+    Combines gridded land and ocean fluxes (if available) and converts units.
+
+    Args:
+        ds_in (xarray.Dataset):
+            Gridded CSR output with land and ocean fluxes
+        species (str):
+            Species (e.g. "ch4", "co2")
+            
+    Returns:
+        ds (xarray.Dataset):
+            Gridded CSR output with combined land and ocean fluxes
+    """
+    
     ds = ds_in.copy()
     land = _check_for_units(f"{species}flux_land", ds_in)
     ocean = _check_for_units(f"{species}flux_ocean", ds_in)
@@ -200,19 +267,65 @@ def _combine_fluxes(ds_in, species):
     
     return ds
 
-def _combine_fluxes_country(ds_in, species):
+
+def _combine_fluxes_country(ds_in, species: str):
+    """
+    Converts units of country-aggregated fluxes.
+    
+    Args:
+        ds_in (xarray.Dataset):
+            Country-aggregated CSR output
+        species (str):
+            Species (e.g. "ch4", "co2")
+            
+    Returns:
+        ds (xarray.Dataset):
+            Country-aggregated CSR output with updated units
+    """
+    
     ds = ds_in.copy()
     flux = _check_for_units_country(f"{species}flux", ds_in, species)
 
     ds[f"{species}{list(combine_candidates.keys())[1]}"] = flux
     
     return ds
+    
 
 def _copy_attrs(var, default=None):
+    """
+    Copies attributes of variables.
+
+    Args:
+        var (xarray.DataArray):
+            Variables of a xarray.Dataset
+    Returns:
+        var (xarray.DataArray):
+            Attributes of the variable
+    """
+    
     return var.attrs.copy() if hasattr(var, "attrs") else (default or {})
     
 
-def _combine_variable(ds_prior, ds_post, ds_prior_country, ds_post_country, species):
+def _combine_variable(ds_prior, ds_post, ds_prior_country, ds_post_country, species: str):
+    """
+    Merges prior, posterior, gridded and country-aggregated fluxes into one dataset.
+
+    Args:
+        ds_prior(xarray.Dataset):
+            Dataset with gridded prior fluxes
+        ds_posterior(xarray.Dataset):
+            Dataset with gridded posterior fluxes
+        ds_prior_country(xarray.Dataset):
+            Dataset with country-aggregated prior fluxes
+        ds_posterior_country(xarray.Dataset):
+            Dataset with country-aggregated posterior fluxes
+        species (str):
+            Species (e.g. "ch4", "co2")
+    Returns:
+        ds (xarray.Dataset):
+            Combined dataset      
+    """
+    
     ds = ds_prior.copy()
     for v, new_vars in combine_candidates.items():
         varname = f'{species}{v}'
@@ -237,31 +350,27 @@ def _combine_variable(ds_prior, ds_post, ds_prior_country, ds_post_country, spec
             
             ds[new_vars[0]] = prior_data_country
             ds[new_vars[1]] = post_data_country
-            #ds = ds.drop_vars([varname]) #'ch4flux' not in gridded prior file
         
         else:
             print(f'INFO: {varname} not found in dataset.')
 
     return ds
 
-def _combine_variable_country(ds_prior_country, ds_post_country, species):
-    ds = ds_prior.copy()
-    for v, new_vars in combine_candidates.items():
-        varname = f'{species}{v}'
-        if varname in ds_prior_country and varname in ds_post_country:
-            prior_data = _check_for_units(varname, ds_prior_country)
-            post_data = _check_for_units(varname, ds_post_country)
-            
-            ds[new_vars[0]] = prior_data
-            ds[new_vars[1]] = post_data
-            ds = ds.drop_vars([varname])
-        else:
-            print(f'INFO: {varname} not found in dataset.')
 
-    return ds
+def _check_for_units(varname: str, ds):
+    """
+    Checks and converts gridded flux units into mol m-2 s-1.
 
-
-def _check_for_units(varname, ds):
+    Args:
+        varname (str):
+            Variable name
+        ds (xarray.Dataset):
+            Dataset with gridded fluxes
+    Returns:
+        data (xarray.DataArray):
+            Gridded fluxes in units mol m-2 s-1
+    """
+    
     if varname not in ds:
         logging.warning(f"Variable {varname} not found in dataset.")
         return None
@@ -280,7 +389,7 @@ def _check_for_units(varname, ds):
             raise KeyError("Dataset is missing 'dxyp' (grid cell area), required for flux conversion.")
 
         area = ds["dxyp"]
-        years = _get_years_from_time(ds)
+        years = ds['time'].dt.year
 
         if unit in unit_conversions:
             data = data * unit_conversions[unit]
@@ -291,7 +400,23 @@ def _check_for_units(varname, ds):
 
     return data
 
-def _check_for_units_country(varname, ds, species): #f"{species}flux"
+    
+def _check_for_units_country(varname: str, ds, species: str): 
+    """
+    Checks and converts country-aggregated flux units into kg s-1.
+
+    Args:
+        varname (str):
+            Variable name
+        ds (xarray.Dataset):
+            Dataset with country-aggregated fluxes
+        species (str):
+            Species (e.g. "ch4", "co2")
+    Returns:
+        data (xarray.DataArray):
+            Country-aggregated fluxes in units kg s-1
+    """
+    
     if varname not in ds:
         logging.warning(f"Variable {varname} not found in dataset.")
         return None
@@ -307,7 +432,7 @@ def _check_for_units_country(varname, ds, species): #f"{species}flux"
     if 'units' in data.attrs:
         unit = data.attrs['units']
 
-        years = _get_years_from_time(ds)
+        years = ds['time'].dt.year
 
         if unit in unit_conversions:
             data = data * unit_conversions[unit]
@@ -317,8 +442,23 @@ def _check_for_units_country(varname, ds, species): #f"{species}flux"
             logging.info(f"No conversion applied for variable {varname} with unit '{unit}'.")
 
     return data
-         
+
+
 def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2, years):
+    """
+    Converts PgC yr-1 into mol m-2 s-1.
+
+    Args:
+        value_pgcyr (xarray.DataArray):
+            Fluxes in PgC yr-1
+        area_m2 (xarray.DataArray):
+            Area in m2
+        years (array):
+            Years of the fluxes
+    Returns:
+        flux (xarray.DataArray):
+            Fluxes in mol m-2 s-1
+    """
     
     grams = value_pgcyr * 1e15
     mols = grams / 12.01
@@ -326,23 +466,38 @@ def _pgcyr_to_mol_m2_s(value_pgcyr, area_m2, years):
     days_in_year = np.array([366 if calendar.isleap(y) else 365 for y in years])
     seconds_per_year = days_in_year * 24 * 60 * 60
 
-      # Make this an xarray DataArray to allow broadcasting
+    # Make this an xarray DataArray to allow broadcasting
     seconds_per_year = xr.DataArray(
         seconds_per_year,
         dims=["time"],
         coords={"time": value_pgcyr["time"]}
     )
    
-    flux = mols / seconds_per_year
-    return flux / area_m2
+    flux = mols / seconds_per_year / area_m2
+    
+    return flux 
 
-def _pgcyr_to_kg_s_tracer(value_pgcyr, years, species):
+    
+def _pgcyr_to_kg_s_tracer(value_pgcyr, years, species: str):
+    """
+    Converts PgC yr-1 into kg s-1.
+
+    Args:
+        value_pgcyr (xarray.DataArray):
+            Fluxes in PgC yr-1
+        years (array):
+            Years of the flux record
+        species (str):
+            Species (e.g. "ch4", "co2")
+    Returns:
+        flux (xarray.DataArray):
+            Fluxes in kg s-1
+    """
     
     kilograms = value_pgcyr * 1e12
     if(species=='ch4'):
         kilograms_tracer = kilograms / 12.01 * 16.04
     if(species=='co2'):
-        print("DEBUG: Species="+species)
         kilograms_tracer = kilograms / 12.01 * 44.01
 
     days_in_year = np.array([366 if calendar.isleap(y) else 365 for y in years])
@@ -356,10 +511,22 @@ def _pgcyr_to_kg_s_tracer(value_pgcyr, years, species):
     )
    
     flux = kilograms_tracer / seconds_per_year
+    
     return flux 
 
 
 def _convert_time(ds):
+    """
+    Converts time in seconds since 2000-01-01 into datetime64.
+
+    Args:
+        ds (xarray.Dataset):
+            Dataset with time coordinate in seconds since 2000-01-01
+    Returns:
+        ds (xarray.Dataset):
+            Dataset with time coordinate in datatime64 format
+    """
+    
     if np.issubdtype(ds['time'].dtype, np.datetime64):
         # already datetime64 — no need to convert
         return ds
@@ -371,30 +538,50 @@ def _convert_time(ds):
 
     # set the new time coordinate, forcing ns resolution to avoid warnings
     ds = ds.assign_coords(time=new_time.astype("datetime64[ns]"))
+    
     return ds
 
-def _get_years_from_time(ds):
-    # Create datetime64 array for time coordinate (days since 1970-01-01)
-    dates = np.datetime64('1970-01-01') + ds['time'].values.astype('timedelta64[D]')
 
-    # Extract years as integers
-    years = dates.astype('datetime64[Y]').astype(int) + 1970
+def _tmolyr_to_kg_s_unc_rhs(unc_rhs, time_rhs, species: str):
+    """
+    Converts flux uncertainties in Tmol yr-1 into kg s-1.
 
-    return years
-
-def _tmolyr_to_kg_s_ch4_unc_rhs(unc_rhs, time_rhs):
+    Args:
+        unc_rhs (series):
+            Flux uncertainties in Tmol yr-1 (from "right-hand-side" run)
+        time_rhs (xarray.DataArray):
+            Flux time step
+        species (str):
+            Species (e.g. "ch4", "co2")
+    Returns:
+        unc_rhs (series):
+            Flux uncertainties in kg s-1
+    """
+    
     # seconds per year 
     year = pd.to_datetime(time_rhs.values).year
     days_in_year = np.array([366 if calendar.isleap(year) else 365])
     seconds_per_year = days_in_year * 24 * 60 * 60
-    # convert Tmol -> kgCH4/s
-    unc_rhs = unc_rhs * 16.04 * 1e9/seconds_per_year
+    # convert Tmol/yr -> kg/s
+    if(species=='ch4'):
+        unc_rhs = unc_rhs * 16.04 * 1e9/seconds_per_year
+    if(species=='co2'):
+        unc_rhs = unc_rhs * 44.01 * 1e9/seconds_per_year
 
     return unc_rhs
 
   
+def _save_dataset(ds, path: str):
+    """
+    Saves the dataset.
 
-def _save_dataset(ds, path):
+    Args:
+        ds (xarray.Dataset):
+            Dataset
+        path (str):
+            Path where the dataset is to be stored
+    """
+    
     ds.encoding.clear()
     for v in ds.variables:
         ds[v].encoding.clear()
