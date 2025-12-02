@@ -143,6 +143,7 @@ def prepare_data_to_plot(
     model_colors: dict[str, list],
     plot_separate: bool | list[bool] = True,
     plot_combined: bool | list[bool] = False,
+    combined_models_dict: dict[str, list[str]] | None = None,
     resample: str | list[str] | None = None,
     rolling_mean: bool | list[bool] = False,
     resample_uncert_correlation: bool = False,
@@ -162,6 +163,8 @@ def prepare_data_to_plot(
         plot_combined: If True, the model is included in combined average result to be plotted. List must be of same size as models,
             e.g. [False, True, True].
             If a single boolean is provided, the same flag is assumed for all models.
+        combined_models_dict: dictionnary defining the different combined models to plot. Keys are the labels of the combined results.
+            Only used if plot_combined is set to True.
         resample: Option to be passed to resample built-in function of xarray Dataset. For yearly average, 'YS' option should be used;
             'QS-DEC' for seasonaly average.
             See http://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html
@@ -176,6 +179,11 @@ def prepare_data_to_plot(
     Returns:
         ds_to_plot : dictionnary of datasets to plot
     """
+
+    if isinstance(plot_combined, bool) and plot_combined:
+        is_plot_combined_single_true = True
+    else:
+        is_plot_combined_single_true = False
 
     # Convert some inputs to list and check their size
     plot_separate, plot_combined, resample, rolling_mean = update_list_params(
@@ -234,32 +242,69 @@ def prepare_data_to_plot(
             model = m + "_resample" if rs else m
             ds_to_plot[model] = calc_rolling_mean(ds_to_plot[model])
 
-    # Add combined dataset to plot
+    # Add combined dataset(s) to plot
     if any(plot_combined):
-        if all([resamp for comb, resamp in zip(plot_combined, resample) if comb]):
-            ds_to_combine = {
-                m: calc_rolling_mean(ds) if rm else ds
-                for rm, (m, ds) in zip(rolling_mean, ds_resampled.items())
+        if is_plot_combined_single_true:
+            if combined_models_dict is None:
+                combined_models_dict = {"Mean": list(ds_all_region.keys())}
+            else:
+                combined_model_list = sum(combined_models_dict.values(), [])
+                check_missing_models = set(combined_model_list) - set(ds_all_region.keys())
+                if check_missing_models:
+                    raise ValueError(
+                        f"Models in `combined_model_list` are not available: {check_missing_models}. "
+                        f"Available models: {list(ds_all_region.keys())}"
+                    )
+        else:
+            if combined_models_dict is not None:
+                logger.warning(
+                    "`combined_models_dict` will be re-written according to the elements of `plot_combined`. Label 'Mean' will be used in the plots."
+                    " To combine the models listed in `combined_models_dict`, please set `plot_combined = True`."
+                )
+            combined_models_dict = {
+                "Mean": [
+                    m for (i, m) in enumerate(ds_all_region.keys()) if plot_combined[i]
+                ]
             }
-            ds_combined = combine_dataset(ds_to_combine, plot_combined)
-            ds_combined["combined"].attrs[
-                "model_label"
-            ] = "PARIS mean (from resampled data)"
+
+        combined_resample = [resamp for comb, resamp in zip(plot_combined, resample) if comb]
+        use_resampled = ( 
+            len(unique_resample := set(combined_resample)) == 1
+            and unique_resample not in ({None}, {False})
+        )
+        if use_resampled:
+                combined_models_dict = {
+                    group_label: [f"{model}_resample" for model in model_list]
+                    for group_label, model_list in combined_models_dict.items()
+                }
+                ds_to_combine = {
+                    m: calc_rolling_mean(ds) if rm else ds
+                    for rm, (m, ds) in zip(rolling_mean, ds_resampled.items())
+                }
         else:
             ds_to_combine = {
                 m: calc_rolling_mean(ds) if rm else ds
                 for rm, (m, ds) in zip(rolling_mean, ds_all_region.items())
             }
-            ds_combined = combine_dataset(ds_to_combine, plot_combined)
-            ds_combined["combined"].attrs["model_label"] = "PARIS mean"
-        ds_to_plot.update(ds_combined)
+
+        for group_label, model_list in combined_models_dict.items():
+                combine_mask = [model in model_list for model in ds_to_combine.keys()]
+                ds_combined = combine_dataset(ds_to_combine, combine_mask)
+                ds_combined["combined"].attrs["model_label"] = group_label
+                if any('_resample' in s for s in model_list) and plot_resample_and_original:
+                    ds_combined["combined"].attrs["model_label"] += " (resampled)"
+                new_key = group_label.replace(" ", "_")
+                ds_combined = {f"combined_{new_key}": ds_combined["combined"]} # rename key to include group label
+                ds_to_plot.update(ds_combined)
 
     # Determine plot color and label of each dataset
     color_usage = {k: 0 for k in map_model_colors.keys()}
+    i_comb = 0
     for m in ds_to_plot.keys():
-        if m == "combined":
-            include_label = "PARIS mean"
-            model_color = "black"
+        if "combined" in m:
+            include_label = ds_to_plot[m].attrs.get("model_label", None)
+            model_color = config.mean_color_palette[i_comb % len(config.mean_color_palette)]
+            i_comb += 1
         else:
             include_label = ds_to_plot[m].attrs.get("model_label", None)
             key_mc = [
@@ -272,9 +317,8 @@ def prepare_data_to_plot(
             color_usage[key_mc] = color_usage[key_mc] + 1
 
         if ("_resample" in m) and plot_resample_and_original:
-            include_label += " (resampled)"
+            ds_to_plot[m].attrs["model_label"] += " (resampled)"
 
-        ds_to_plot[m].attrs["model_label"] = include_label
         ds_to_plot[m].attrs["model_color"] = model_color
 
     return ds_to_plot
@@ -843,6 +887,7 @@ def plot_country_flux(
     plot_separate_unc: bool | None = None,
     plot_combined: bool | list[bool] = False,
     plot_combined_unc: bool | None = None,
+    combined_models_dict: dict[str, list[str]] | None = None,
     resample: str | list[str] | None = None,
     resample_uncert_correlation: bool = False,
     plot_resample_and_original: bool = False,
@@ -885,6 +930,7 @@ def plot_country_flux(
         plot_combined_unc: If True, plots combined average model uncertainty.
             If None, will default to True if any value in plot_combined is True.
             If explicitly True/False, that value is used.
+        combined_models_dict: dictionnary defining the different combined models to plot. Keys are the name of the combined model.
         resample: Option to be passed to resample built-in function of xarray Dataset. For yearly average, 'YS' option should be used; 'QS-DEC' for seasonaly average.
             See http://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html
         resample_uncert_correlation: If True, calculates the resampled uncertainty as the mean from all averaged periods.
@@ -906,6 +952,7 @@ def plot_country_flux(
 
     s_data = config_data.get("species_info", {})
     r_data = config_data.get("regions_info", {})
+
 
     plot_regions = format_plot_regions(plot_regions, ds_all)
     unit = get_posterior_unit(ds_all)
@@ -937,6 +984,7 @@ def plot_country_flux(
             model_colors=model_colors,
             plot_separate=plot_separate,
             plot_combined=plot_combined,
+            combined_models_dict=combined_models_dict,
             resample=resample,
             rolling_mean=rolling_mean,
             plot_resample_and_original=plot_resample_and_original,
@@ -946,10 +994,8 @@ def plot_country_flux(
 
         # plot posterior and prior (if requested)
         for m, ds_region in ds_to_plot.items():
-            highlighted_post = (m == "combined") & annex_mode
-            add_post_unc = ((m == "combined") & plot_combined_unc) | (
-                (m != "combined") & plot_separate_unc
-            )
+            highlighted_post = ("combined" in m) & annex_mode
+            add_post_unc = (("combined" in m) & plot_combined_unc) |  (("combined" not in m) & plot_separate_unc)
             posterior_df = add_posterior_plot(
                 ax, ds_region, highlighted_post, add_post_unc
             )
