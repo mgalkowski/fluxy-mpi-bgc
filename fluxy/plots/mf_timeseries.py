@@ -1,23 +1,24 @@
 import logging
 from typing import Literal
 
-import matplotlib.axes
-import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
+from datetime import date, timedelta
+from calendar import month_abbr
+
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 from matplotlib.dates import MonthLocator, YearLocator
+from matplotlib.figure import Figure
 from matplotlib.ticker import NullFormatter
 
 from fluxy import config
-from fluxy.operators.select import get_site_index, get_unique_sites
 from fluxy.plots.utils import set_min_decimal_points
 from fluxy.types import VariableType
 from fluxy.operators.select import (
     FrequencyType,
     clean_timeseries_missing_data,
     get_site_index,
-    get_unique_sites,
-    slice_site,
     get_unique_site_height_pairs,
 )
 from fluxy.plots.utils import set_min_decimal_points
@@ -54,6 +55,426 @@ def plot_mf_timeseries(*args, **kwargs) -> plt.Figure:
     return plot_timeseries(*args, **kwargs)
 
 
+def _prepare_aggreg_month_var(da_var: xr.DataArray | xr.Dataset) -> xr.Dataset:
+    """
+    Aggregate by month the dataset/array variable(s). The outputed dataset has two dimensions: "time" (array from 1 to 12)
+    and "percentile". The percentile coordinate has 3 values: "mean" corresonding to the mean value for the month and
+    "lower"/"upper" corresponding to the 0.159/0.841 percentile of the variable for the month.
+    Args:
+        da_var: datarray/dataset to aggregate by month
+    Returns:
+        dataset of variable(s) aggregate by month, including their mean and spread.
+    """
+    if isinstance(da_var, xr.DataArray):
+        da_var = da_var.to_dataset()
+    mean = da_var.groupby("time.month").mean().rename({"month": "time"})
+    mean = mean.expand_dims(
+        {
+            "percentile": [
+                "mean",
+            ]
+        }
+    )
+
+    unc = (
+        da_var.groupby("time.month")
+        .quantile([0.159, 0.841])
+        .rename({"month": "time", "quantile": "percentile"})
+    )
+    unc["percentile"] = ["lower", "upper"]
+
+    return xr.merge([mean, unc], compat="no_conflicts", join="outer")
+
+
+def _prepare_var(
+    ds: xr.Dataset, var: str, unc_var: str | None, model: str = None
+) -> xr.Dataset:
+    """
+    Format the required variable <var> and its uncertainty <unc_var> in one dataset containing one variable (named <var>).
+    The variable thus created has two dimensions: "index" (corresponding to time) and "percentile". "percentile" can take 1 to 4
+    values: "mean" (always present) being the main value, "lower" and "upper" (optionnals) which are the "upper" and "lower"
+    boundaries of the associated uncertainty, and "std" (optionnal) which is the std / one side associated uncertainty.
+    Args:
+        ds: dataset containing <var> and <unc_var>
+        var: main variable
+        unc_var: uncertainty corresponding to <var> (optionnal)
+        model: model name, just used to help if there is an error.
+    Return:
+        dataset containing one variable and 2 dimensions: index and percentile.
+    """
+    mean = ds[[var]]
+    mean = mean.expand_dims(
+        {
+            "percentile": [
+                "mean",
+            ]
+        }
+    )
+
+    if not unc_var:
+        return mean
+
+    # Determine uncertainty
+    if unc_var not in ds:
+        unc_var_in = unc_var
+        if "percentile" in unc_var:
+            unc_var = unc_var.replace("percentile", "stdev")
+
+        elif "stdev" in unc_var:
+            unc_var = unc_var.replace("stdev", "percentile")
+
+        if unc_var not in ds:
+            raise KeyError(
+                f"Variables {unc_var_in} and {unc_var} not found for model {model}."
+            )
+        logger.warning(
+            f"Variable {unc_var_in} not found {ds.attrs.get('model','')} so reading uncert from {unc_var}."
+        )
+
+    # Creating variable
+    if unc_var.split("_")[0] == "percentile":
+        unc = ds[unc_var]
+        unc["percentile"] = ["lower", "upper"]
+    elif unc_var.split("_")[-1] in ["prior", "posterior"]:
+        unc_lower = (ds[var] - ds[unc_var]).expand_dims({"percentile": ["lower"]})
+        unc_upper = (ds[var] + ds[unc_var]).expand_dims({"percentile": ["upper"]})
+        unc = xr.concat([unc_lower, unc_upper],dim="percentile")
+        unc.name = unc_var
+    else:
+        unc = ds[unc_var].expand_dims({"percentile": ["std"]})
+
+    unc = unc.to_dataset()
+
+    unc = unc.rename({unc_var: var})
+
+    return xr.merge([mean, unc], compat="no_conflicts", join="outer")
+
+
+def _retrieve_variable(ds, var, unc_var):
+    """
+    Infer variable from dataset. Possibility are to substract the boundary conditions to a variable (var should then finis with "_above_BC")
+    or substract a variable from one another (var should then finis with "_diff").
+    NOTE: the attribute of the new variable will be copied from the first of the original variable of the dataset used to infer it.
+    Args:
+        ds: dataset to infer the new variable from
+        var: new variable to infer. Options are '<var1>_above_BC' and '<var1>_<var2>_diff' with <var1> and <var2> being one of
+            'prior' (for 'mf_prior'), 'posterior' (for 'mf_posterior'), 'observed' (for 'mf_observed').
+        unc_var: uncertainty to associated with the new variable. Currently not implemented. Will raise an error if not None.
+    Returns:
+        ds: dataset with new variable inside.
+    """
+    if unc_var:
+        raise NotImplementedError(
+            "No uncertainty can be plotted for `{var}` as this variable is inferred from others. Please set `include` to `{'{var}': None}`."
+        )
+
+    acceptable_var = ["prior", "posterior", "observed"]
+
+    if var.endswith("_above_BC"):
+        if "posterior" in var:
+            bc = ds["mf_bc_posterior"]
+        else:
+            bc = ds["mf_bc_prior"]
+
+        var0 = var.split("_")[0]
+        if var0 not in acceptable_var:
+            raise NotImplementedError(
+                "The variable names currently available when plotting a variable value above BC are of the form '<var>_above_BC', "
+                "with var being one of 'prior' (for 'mf_prior'), 'posterior' (for 'mf_posterior'), 'observed' (for 'mf_observed')."
+            )
+        ds[var] = ds[f"mf_{var0}"] - bc
+        ds[var].attrs = ds[f"mf_{var0}"].attrs
+
+    elif var.endswith("_diff"):
+        var1, var2 = var.split("_")[:2]
+        if var1 not in acceptable_var or var2 not in acceptable_var:
+            raise NotImplementedError(
+                "The variable names currently available when plotting a difference of two variables are of the form '<var1>_<var2>_diff', "
+                "with var1 and var2 being one of 'prior' (for 'mf_prior'), 'posterior' (for 'mf_posterior'), 'observed' (for 'mf_observed')."
+            )
+        ds[var] = ds[f"mf_{var1}"] - ds[f"mf_{var2}"]
+        ds[var].attrs = ds[f"mf_{var1}"].attrs
+
+    else:
+        raise NotImplementedError(
+            "Currently, the variables accepted are either (1) those present in the dataset, "
+            "or (2) a difference of some of the dataset variables, in which case the variable in `include` must finished by '_diff'; "
+            "or (3) a difference of one of the dataset variables and the boundary conditions, in which case the variable in `include` must finished by '_above_BC'."
+        )
+
+    return ds
+
+
+def _prepare_data_to_plot(
+    ds_all: dict[str, xr.Dataset],
+    include: str | dict[str, str | None] | list | tuple,
+    diff_include: None | list,
+    aggreg_month: bool,
+    time_freq_min: FrequencyType,
+    plot_type: Literal["separate", "together", "diff"],
+) -> dict[str, xr.Dataset]:
+    """
+    Create dictionnary of datasets containing all the data that will be plotted.
+    Args:
+        ds_all: dictionnary of dataset from which the variable are taken
+        include: variables to plot in the main panel. If is a dictionnary : the keys are the variables to plot and the
+            values the uncertainty that will be shaded around them.
+        diff_include: variables that will be plot in the secondary (histogram) panel.
+            In this function, they are treated as the ones passed with `include` parameter.
+        time_freq_min: Time frequency minimum of the timeserie that should be shown as continous line.
+            If the frequency is lower than this, the line will be discontinous. For more information,
+            see :py:func:`fluxy.operators.select.clean_timeseries_missing_data`
+        plot_type: type of plot. Just used to check that no uncertainty plotting is asked for in `include` when `plot_type="diff"`.
+    Returns:
+        data_to_plot: dictionnary of dataset containing the variables to plot. Each variable as two dimensions: "index" (corresponding to time, sometimes named "time")
+            and "percentile". "percentile" can take 4 values: "mean" (always present) being the main value, "lower" and "upper" (optionnals) which are the
+            "upper" and "lower" boundaries of the associated uncertainty, and "std" (optionnal) which is the std / one side associated uncertainty.
+    """
+    if not include:
+        raise ValueError(
+            "The include dictionary is empty. Please provide variables to include in the plot."
+        )
+    if isinstance(include, str):
+        all_var = {include: None}
+    elif isinstance(include, (list, tuple)):
+        all_var = {var: None for var in include}
+    else:
+        all_var = include.copy()
+
+    data_to_plot = {m: xr.Dataset() for m in ds_all.keys()}
+    if isinstance(diff_include, list):
+        all_var.update({var: None for var in diff_include if var not in all_var.keys()})
+        if "mf_observed" not in all_var.keys():
+            all_var["mf_observed"] = None
+
+    for m, ds in ds_all.items():
+
+        # Check there is only one site in the dataset
+        if len(np.unique(ds.get("number_of_identifier", 0))) > 1:
+            raise ValueError(
+                f"Dataset {m} contains more than one site. "
+                "Use slice_site to select a single site."
+            )
+
+        for var, unc_var in all_var.items():
+            if var not in ds.keys():
+                ds = _retrieve_variable(ds, var, unc_var)
+
+        # Clean the time dimension
+        ds_clean = clean_timeseries_missing_data(
+            ds, variables_nans=all_var.keys(), min_freq=time_freq_min
+        )
+
+        for var, unc_var in all_var.items():
+
+            if aggreg_month:
+                if (
+                    var.split("_")[0] != "mf"
+                    and not var.endswith("_above_BC")
+                    and not var.endswith("_diff")
+                ):
+                    raise NotImplementedError(
+                        "`aggreg_month` disabled this for variable that are not mole fractions (i.e. names not starting with `mf`)."
+                    )
+                ds_var = _prepare_aggreg_month_var(ds_clean[var])
+                if all_var[var] is not None:
+                    logger.warning(
+                        f"`{all_var[var]}` present as value of include dict for {var} is overwritten as you put `aggreg_month=True`."
+                        + " The uncertainty plotted is the 0.159 and 0.851 percentile of the variable for the corresponding month."
+                    )
+            else:
+                ds_var = _prepare_var(ds_clean, var, unc_var, model=m)
+
+            if unc_var:
+                if plot_type == "diff":
+                    raise ValueError(
+                        f"Option plot_type='diff' does not accept uncertainties. Replace '{unc_var}' by None."
+                    )
+            data_to_plot[m] = xr.merge(
+                [data_to_plot[m], ds_var], compat="no_conflicts", join="outer"
+            )
+
+    return data_to_plot
+
+
+def _set_labels_and_colors(
+    ds_dict: dict[str, xr.Dataset],
+    model_labels: dict[str, str],
+    model_colors: dict[str, list],
+    plot_type: Literal["separate", "together", "diff"],
+) -> dict[str, xr.Dataset]:
+    """
+    Set labels and colors that will be used by plot_timeseries and plot_histogram as attributes of the variables dataset.
+    For variables "mf_observed" and "observed_above_BC", the color will be black (and not one of model_colors) if more than one variable is plotted.
+    Args:
+        ds_dict: dictionnary containing the dataset with the variables to be plotted (and only them).
+        model_labels: dictionnary with same keys as ds_dict (unless plot_type="diff") that contains corresponding label
+        model_colors: dictionnary with same keys as ds_dict (unless plot_type="diff") that contains list of colors to be used with each model
+        plot_type: type of plot. If diff, look in model_labels for the labels of the two models used for the diff to construct the new label.
+            Otherwise use directly the model_labels value corresponding to the dataset from ds_dict
+    Return:
+        ds_dict: dictionnary of datasets where the label and color have been added as attributes of the dataset / dataset variables.
+    """
+    if model_colors is None:
+        model_colors = config.set_model_colors(ds_dict.keys())
+
+    for m in ds_dict.keys():
+        vars_to_plot = ds_dict[m].data_vars.keys()
+        if plot_type == "diff":
+            mdiff0, mdiff1 = m.split("--")
+            model_label = f"{model_labels[mdiff0]} - {model_labels[mdiff1]}"
+            model_color = model_colors[mdiff0]
+        else:
+            model_label = model_labels.get(m, m)
+            model_color = model_colors[m]
+
+        for var in vars_to_plot:
+            default_index = 1 if "posterior" in var else 0
+            plot_color = model_color[config.mf_color_index.get(var, default_index)]
+            if var in ["mf_observed", "observed_above_BC"] and len(vars_to_plot) > 1:
+                plot_color = "black"
+
+            plot_label = f"{model_label} {config.mf_labels.get(var, var)}"
+
+            ds_dict[m][var].attrs.update(
+                {"plot_label": plot_label, "plot_color": plot_color}
+            )
+
+        ds_dict[m].attrs["label"] = model_label
+
+    return ds_dict
+
+
+def _create_figure(
+    models: list[str],
+    plot_type: Literal["separate", "together", "diff"],
+    histogram_type: str | None,
+    aggreg_month: bool,
+) -> tuple[Figure, Axes]:
+    """
+    Create figure and axes with size, number of columns and rows depending of the arguments.
+    Args:
+        models: list of models to use. Is the number of rows if plot_type=="separate". Otherwise unused.
+        plot_type: Options are "separate" (correspond to a plot where all models are separated), "together (all model on the same plot), "diff" (diff of the two models)
+            If plot_type is one of "together" or "diff", the figure will have one row, otherwise (plot_type="separate"), the number of rows will be the number of models.
+        histogram_type: type of histogramm that will be plotted. If not none, 2 columns will be created, unless aggreg_month is True.
+        aggreg_month: Wheter or not the data will be aggregated by month. If True, the plot size will be smaller than if False, and the histogram_type parameter will be ignored.
+    Return:
+        fig, ax: matplotlib figure and axes object with appropriate sizes.
+    """
+    if plot_type == "separate":
+        nrows = len(models)
+    elif plot_type in ["together", "diff"]:
+        nrows = 1
+    else:
+        raise ValueError(
+            f"Option {plot_type} not implemented. Set plot_type to 'separate', 'together' or 'diff'."
+        )
+
+    ncols = (
+        2 if (histogram_type and histogram_type != "none") and not aggreg_month else 1
+    )
+    lenght = 8 if aggreg_month else 15
+
+    fig, ax = plt.subplots(
+        nrows,
+        ncols,
+        figsize=(lenght, nrows * 3),
+        gridspec_kw={"width_ratios": [0.8, 0.2]} if ncols == 2 else {},
+        constrained_layout=True,
+        sharey="row" if histogram_type == "violin" else False,
+        sharex="col",
+        squeeze=False,
+    )
+
+    return fig, ax
+
+
+def _get_unit(ds_dict: dict[str, xr.Dataset]) -> str:
+    """
+    Check if all variables in the datasets from the dictionnary have the same unit. If so returns it else raise an error.
+    Args:
+        ds_dict: dictionnary of dataset containing the variables to check (and only those).
+    Return:
+        the unit of the variables
+    """
+
+    plot_units = list()
+
+    for m in ds_dict:
+        for var in ds_dict[m].data_vars:
+            plot_units.append(ds_dict[m][var].attrs["units"])
+
+    plot_units = list(set(plot_units))
+    if len(plot_units) != 1:
+        raise ValueError(
+            f"{ds_dict[m].data_vars.keys()} in {ds_dict.keys()} do not have the same units. So far, the following were found: {plot_units}."
+            + "Select only one model to plot, or run 'slice_mf' with 'mf_units_print' equal to a valid mole fraction unit before running 'plot_timeseries'."
+        )
+
+    return plot_units[0]
+
+
+def add_xlims_and_ticks(
+    ax: Axes,
+    yearly_freq: bool,
+    res_dict: dict[str, dict[str, xr.Dataset] | xr.Dataset],
+    aggreg_month: bool,
+    rotate_xticks: bool = False,
+):
+    """
+    Add x limits, ticks and ticks labels to matplotlib axes. Optimize them by looking at if they are monthly, yearly, or monthly aggregated, and covered time range.
+    Args:
+        ax: axis to add xlim and xticks to.
+        yearly_freq: set to True if the data plotted have a yearly frequency.
+        res_dict: dictionnary containing the data plotted.
+        aggreg_month: if True, the data plotted are supposed to be a monthly aggregated so 12 ticks are created, whose labels are the 3 first letters of each month.
+        rotate_xticks: if True, rotate xticks with an angle of 70 degree.
+    """
+    if aggreg_month:
+        ax.set_xticks(np.arange(1, 13))
+        ax.set_xticklabels(list(month_abbr)[1:])
+        return
+
+    min_x, max_x = date(2100, 1, 1), date(1900, 1, 1)
+    for key_1 in res_dict.keys():
+        if isinstance(res_dict[key_1], dict):
+            for key_2 in res_dict[key_1].keys():
+                for key_3 in res_dict[key_1][key_2].keys():
+                    time = res_dict[key_1][key_2][key_3]["time"]
+                    min_x = np.nanmin([*time, min_x])
+                    max_x = np.nanmax([*time, max_x])
+        else:
+            time = res_dict[key_1].time.values.astype("datetime64[D]").tolist()
+            min_x = np.nanmin([*time, min_x])
+            max_x = np.nanmax([*time, max_x])
+
+    # set xticks
+    year_range = date(max_x.year, 1, 1) - date(min_x.year, 1, 1)
+    if yearly_freq:
+        min_x = date(min_x.year, 1, 1)
+        max_x = date(max_x.year + 1, 1, 1)
+    xlim = [min_x - (max_x - min_x) / 50, max_x + (max_x - min_x) / 50]
+
+    if year_range > timedelta(days=8 * 365.25) or yearly_freq:
+        min_x = date(min_x.year, 1, 1)
+        max_x = date(max_x.year + 1, 1, 1)
+        step = (max_x.year - min_x.year) // 8 + 1
+        xticks = [date(year, 1, 1) for year in range(min_x.year, max_x.year, step)]
+        if (max_x.year - min_x.year) % step == 0:
+            xticks = np.append(xticks, max_x)
+        ax.set_xticks(xticks)
+        ax.set_xticklabels(xticks.astype("datetime64[Y]"))
+    else:
+        ax.xaxis.set_minor_locator(MonthLocator())
+    ax.xaxis.set_major_locator(YearLocator())
+
+    if rotate_xticks:
+        ax.tick_params(axis="x", rotation=70)
+
+    ax.set_xlim(xlim)
+
+
 def plot_timeseries(
     ds_all: dict[str, xr.Dataset],
     include: VariableType,
@@ -72,6 +493,7 @@ def plot_timeseries(
     intake_height: int | None = None,
     histogram_type: Literal["hist", "violin", "none"] | None = "hist",
     hist_kwargs: dict[str, any] = {},
+    aggreg_month: bool = False,
 ):
     """
     Timeseries plots of observations, modelled mole fractions, baseline mf and/or
@@ -117,52 +539,26 @@ def plot_timeseries(
     """
 
     models = ds_all.keys()
-    if model_colors is None:
-        model_colors = config.set_model_colors(models)
 
     species_info = config_data.get("species_info", {}).get(species, {})
 
     # Check the include dictionary
-    if not include:
-        raise ValueError(
-            "The include dictionary is empty. Please provide variables to include in the plot."
-        )
-    if isinstance(include, str):
-        include = {include: None}
-    if isinstance(include, (list, tuple)):
-        include = {var: None for var in include}
-
-    vars_to_plot = include.keys()
-    plot_units = []
+    data_to_plot = _prepare_data_to_plot(
+        ds_all, include, diff_include, aggreg_month, time_freq_min, plot_type
+    )
+    data_to_plot = _set_labels_and_colors(
+        data_to_plot, model_labels, model_colors, plot_type
+    )
+    unit = _get_unit(data_to_plot)
 
     min_mf = np.inf
     max_mf = -np.inf
 
-    # Define number of rows in figure
-    if plot_type == "separate":
-        nrows = len(models)
-    elif plot_type in ["together", "diff"]:
-        nrows = 1
-    else:
-        raise ValueError(
-            f"Option {plot_type} not implemented. Set plot_type to 'separate', 'together' or 'diff'."
-        )
-
     # Create figure
-    ncols = 2 if histogram_type and histogram_type != "none" else 1
-    fig, ax = plt.subplots(
-        nrows,
-        ncols,
-        figsize=(15, nrows * 3),
-        gridspec_kw={"width_ratios": [0.8, 0.2]} if ncols == 2 else {},
-        constrained_layout=True,
-        sharey="row" if histogram_type == "violin" else False,
-        sharex="col",
-        squeeze=False,
-    )
+    fig, ax = _create_figure(ds_all.keys(), plot_type, histogram_type, aggreg_month)
 
     logger.info(
-        f"Plotting {len(models)} models with {len(vars_to_plot)} variables in {plot_type} mode."
+        f"Plotting {len(models)} models with {len(include.keys())} variables in {plot_type} mode."
     )
 
     # Loop over all models
@@ -171,49 +567,20 @@ def plot_timeseries(
         # Define plot_type specific settings
         iax = i if plot_type == "separate" else 0
 
-        if plot_type == "diff":
-            mdiff0, mdiff1 = m.split("--")
-            model_label = f"{model_labels[mdiff0]} - {model_labels[mdiff1]}"
-            model_color = model_colors[mdiff0]
-        else:
-            model_label = model_labels.get(m, m)
-            model_color = model_colors[m]
-
-        ds_plot = ds_all[m]
-        # Check there is only one site in the dataset
-        if len(np.unique(ds_plot["number_of_identifier"])) > 1:
-            raise ValueError(
-                f"Dataset {m} contains more than one site. "
-                "Use slice_site to select a single site."
-            )
-
-        # Clean the time dimension
-        ds_plot = clean_timeseries_missing_data(
-            ds_plot, variables_nans=vars_to_plot, min_freq=time_freq_min
-        )
-
         # Loop over all variables to plot
-        for var in vars_to_plot:
+        for var in include.keys():
 
-            if var not in ds_plot.keys():
-                raise KeyError(f"Variable {var} not found in {m}.")
-
-            # Get var unit
-            plot_units.append(ds_plot[var].attrs["units"])
+            ds_plot = data_to_plot[m][var]
 
             # Define plotting color
-            plot_color = model_color[config.mf_color_index.get(var, 0)]
-            if var == "mf_observed" and len(vars_to_plot) > 1:
-                plot_color = "black"
-
-            x, y = ds_plot["time"].values, ds_plot[var].values
+            x, y = ds_plot.time.values, ds_plot.sel(percentile="mean").values
             kwargs = {
-                "label": f"{model_label} {config.mf_labels.get(var, var)}",
-                "color": plot_color,
                 "alpha": 0.8,
+                "color": ds_plot.attrs["plot_color"],
+                "label": ds_plot.attrs["plot_label"],
             }
 
-            if var == "mf_observed" or plot_type == "diff":
+            if var in ["mf_observed", "observed_above_BC"] or plot_type == "diff":
                 # Make scatter plot
                 ax[iax, 0].scatter(
                     x,
@@ -234,76 +601,32 @@ def plot_timeseries(
                     **kwargs,
                 )
 
-            unc_var = include[var]
-
-            if unc_var:
-                if plot_type == "diff":
-                    raise ValueError(
-                        f"Option plot_type='diff' does not accept uncertainties. Replace '{unc_var}' by None."
-                    )
-
-                # Accept both percentile and stdev as uncertainty variables
-                if unc_var not in ds_plot.keys():
-                    unc_var_in = unc_var
-                    if "percentile" in unc_var:
-                        unc_var = unc_var.replace("percentile", "stdev")
-
-                    elif "stdev" in unc_var:
-                        unc_var = unc_var.replace("stdev", "percentile")
-
-                    if unc_var not in ds_plot.keys():
-                        raise KeyError(
-                            f"Variables {unc_var_in} and {unc_var} not found in {m}."
-                        )
-                    logger.warning(
-                        f"Variable {unc_var_in} not found in {m} so reading uncert from {unc_var}."
-                    )
-
-                kwargs = {
-                    "color": plot_color,
-                }
-
-                # Define uncertainty band
-                flag_fill_between = False
-                if unc_var.split("_")[0] == "percentile":
-                    y1 = ds_plot[unc_var].isel(percentile=0).values
-                    y2 = ds_plot[unc_var].isel(percentile=1).values
-                    flag_fill_between = True
-                elif unc_var.split("_")[-1] in ["prior", "posterior"]:
-                    y1 = ds_plot[var].values - ds_plot[unc_var].values
-                    y2 = ds_plot[var].values + ds_plot[unc_var].values
-                    flag_fill_between = True
-
-                if flag_fill_between:
-                    # Add uncertainty band
-                    ax[iax, 0].fill_between(
-                        x,
-                        y1=y1,
-                        y2=y2,
-                        alpha=0.2,
-                        **kwargs,
-                    )
-
-                else:
-                    # Add error bar
-                    ax[iax, 0].errorbar(
-                        x,
-                        y=ds_plot[var].values,
-                        yerr=ds_plot[unc_var].values,
-                        alpha=0.4,
-                        fmt="none",
-                        **kwargs,
-                    )
+            if ds_plot.percentile.size == 3:
+                ax[iax, 0].fill_between(
+                    x,
+                    y1=ds_plot.sel(percentile="lower"),
+                    y2=ds_plot.sel(percentile="upper"),
+                    alpha=0.2,
+                    color=ds_plot.attrs["plot_color"],
+                )
+            elif ds_plot.percentile.size == 2:
+                ax[iax, 0].errorbar(
+                    x,
+                    y=ds_plot.sel(percentile="mean"),
+                    yerr=ds_plot.sel(percentile="std"),
+                    alpha=0.4,
+                    fmt="none",
+                    color=ds_plot.attrs["plot_color"],
+                )
 
         # Plot histogram
-        if ncols == 2:
+        if ax.shape[1] == 2:
             plot_histogram(
                 ax[iax, 1],
-                ds_plot,
+                data_to_plot[m].sel(percentile="mean"),
                 m,
-                vars_to_plot,
+                list(data_to_plot[m].data_vars),
                 diff_include,
-                model_color,
                 presentation_mode,
                 annotate_coords,
                 annotate_index=i,
@@ -319,17 +642,10 @@ def plot_timeseries(
 
         # Set timeseries title
         if plot_type in ["separate", "diff"]:
-            plot_title = model_label
+            plot_title = data_to_plot[m].attrs["label"]
         elif plot_type == "together":
             plot_title = "All models"
         ax[iax, 0].set_title(plot_title)
-
-        # Set print units
-        plot_units = list(set(plot_units))
-        if len(plot_units) != 1:
-            raise ValueError(
-                f"{vars_to_plot} in {models} do not have the same units. So far, the following were found: {plot_units}."
-            )
 
         # Set timeseries y-axis label and legend
 
@@ -342,12 +658,14 @@ def plot_timeseries(
                 [
                     species_info.get("species_print", ""),
                     (site if site else "") + height_label,
-                    f"({plot_units[0]})",
+                    f"({unit})",
                 ]
             )
         )
 
-        leg = ax[iax, 0].legend(ncol=2, borderpad=0.2, columnspacing=1.0)
+        leg = ax[iax, 0].legend(
+            ncol=2, framealpha=0.75, borderpad=0.2, columnspacing=1.0
+        )
         try:
             for l in leg.legend_handles:
                 l.set_linewidth(5.0)
@@ -355,34 +673,28 @@ def plot_timeseries(
             for l in leg.legendHandles:
                 l.set_linewidth(5.0)
 
-        if len(ds_plot["time"]) <= 1:
+        if len(data_to_plot[m].time) <= 1:
             continue
-        start_date = ds_plot["time"].values.min()
-        end_date = ds_plot["time"].values.max()
 
-        # Set timeseries x-axis ticks
-        if (
-            int(end_date.astype("datetime64[M]") - start_date.astype("datetime64[M]"))
-            > 12
-        ):
-            ax[iax, 0].xaxis.set_minor_locator(MonthLocator())
-            ax[iax, 0].xaxis.set_minor_formatter(NullFormatter())
-            ax[iax, 0].xaxis.set_major_locator(YearLocator())
-        else:
-            ax[iax, 0].xaxis.set_major_locator(MonthLocator())
-            if presentation_mode:
-                ax[iax, 0].tick_params(axis="x", rotation=70)
-        ax[iax, 0].grid(color = 'lightgrey', linestyle = '-', linewidth = 0.7)
+        add_xlims_and_ticks(
+            ax[iax, 0],
+            yearly_freq=False,
+            res_dict=data_to_plot,
+            aggreg_month=aggreg_month,
+            rotate_xticks=presentation_mode,
+        )
+
+        ax[iax, 0].grid(color="lightgrey", linestyle="-", linewidth=0.7)
         ax[iax, 0].set_axisbelow(True)
 
     if y_lim is None:
-        y_lim = [min_mf - 0.02 * min_mf, max_mf + 0.05 * max_mf]
+        y_lim = [min_mf - 0.05 * (max_mf - min_mf), max_mf + 0.1 * (max_mf - min_mf)]
 
     # Set all the axes to the same y-axis limits
     for iax, ax0 in enumerate(ax[:, 0]):
         ax0.set_ylim(y_lim)
 
-        if ncols == 2 and (diff_include is None or len(diff_include) == 0):
+        if ax.shape[1] == 2 and (diff_include is None or len(diff_include) == 0):
             method = "set_ylim" if histogram_type == "violin" else "set_xlim"
             getattr(ax[iax, 1], method)(y_lim)
 
@@ -428,7 +740,7 @@ def plot_sites_timeseries(
             Dictionary with settings read from json file.
             Use json filenames as keys.
         margin (float):
-            Horizontal space between datapoints from different models. 
+            Horizontal space between datapoints from different models.
         separate_by_height (bool):
             If True, separates obs by intake height and by site.
     """
@@ -439,7 +751,7 @@ def plot_sites_timeseries(
     model_labels_copy = model_labels.copy()
 
     # create list of grouped site-height pairs
-    site_list = get_unique_site_height_pairs(ds_all,separate_by_height)
+    site_list = get_unique_site_height_pairs(ds_all, separate_by_height)
 
     # Create figure
     fig, ax = plt.subplots(1, 1, figsize=(0.7 * len(site_list), 8))
@@ -493,7 +805,9 @@ def plot_sites_timeseries(
     )
 
     ax.set_xticks(np.arange(len(site_list)))
-    xticklabels = [f"{s}\n{int(h)}m" if separate_by_height else s for (s, h) in site_list]
+    xticklabels = [
+        f"{s}\n{int(h)}m" if separate_by_height else s for (s, h) in site_list
+    ]
     ax.set_xticklabels(xticklabels)
 
     if (
@@ -511,7 +825,7 @@ def plot_sites_timeseries(
 
     plt.legend(loc="upper left", markerscale=4, bbox_to_anchor=(1, 1))
 
-    species_info = config_data.get("species_info",{}).get(species,{})
+    species_info = config_data.get("species_info", {}).get(species, {})
     fig.suptitle(
         (
             f'Timestamps with {species_info.get("species_print","")} assimilated observations between'
@@ -523,12 +837,11 @@ def plot_sites_timeseries(
 
 
 def plot_histogram(
-    ax: matplotlib.axes.Axes,
+    ax: Axes,
     ds: xr.Dataset,
     model: str,
     vars_to_plot: list[str],
     diff_include: list[str] | None,
-    model_color: list[str],
     presentation_mode: bool,
     annotate_coords: dict[int, list],
     annotate_index: int,
@@ -554,8 +867,6 @@ def plot_histogram(
         diff_include (list of str):
             Variables included in the 'obs - variable' difference histogram.
             If None, plots the histogram of the variables specified in vars_to_plot.
-        model_color (list of str):
-            List of colors for plotting a specific model.
         presentation_mode (logical) (optional):
             If True, adjust annotation position to accomodate bigger fonts.
         annotate_coords (dict of lists):
@@ -598,7 +909,7 @@ def plot_histogram(
             a, b, c = ax.hist(
                 var_to_plot.values,
                 bins=n_bins,
-                color=model_color[config.mf_color_index.get(var, 0)],
+                color=ds[var].attrs["plot_color"],
                 density=1,
                 alpha=0.7,
                 **kwargs,
@@ -627,7 +938,7 @@ def plot_histogram(
                 f"$\\mu$: {str_mean}\n$\\sigma$: {str_std}",
                 xy=[xcoord, ycoord],
                 xycoords="axes fraction",
-                color=model_color[config.mf_color_index.get(var, 0)],
+                color=ds[var].attrs["plot_color"],
             )
 
     # Write number of obs
